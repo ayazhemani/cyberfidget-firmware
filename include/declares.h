@@ -9,7 +9,7 @@ unsigned long millisDemoMode = 0;
 unsigned long millisLastInteraction = 0; // Keeps track of when the user last interacted so long execution things can happen
 
 const int nextButtonPin = 15; 
-bool audioPlayerRunning = 0;
+bool audioPlayerRunning = false;
 
 void connectToWiFi();
 
@@ -149,3 +149,7 @@ enum ScrollMode {
 };
 ScrollMode currentScrollMode = PIXEL_SCROLL; // Default to line-based scrolling
 void toggleScrollMode();
+
+void actionKeyOn(bool active, int pin, void* ptr);
+void actionKeyOff(bool active, int pin, void* ptr);
+void setupActions();

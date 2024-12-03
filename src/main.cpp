@@ -135,8 +135,15 @@ const char *urls[] = {
 URLStream url(wifi_ssid, wifi_password);
 //AudioSourceURL source(urlStream, urls, "audio/mp3");
 I2SStream i2s;
-EncodedAudioStream dec(&i2s, new MP3DecoderHelix()); // Decoding stream
-StreamCopy copier(dec, url); // copy url to decoder
+//EncodedAudioStream dec(&i2s, new MP3DecoderHelix()); // Decoding stream
+//StreamCopy copier(dec, url); // copy url to decoder
+
+SineWaveGenerator<int16_t> sine;
+GeneratedSoundStream<int16_t> in(sine); 
+VolumeStream volume(in);
+StreamCopy copier(i2s, volume); 
+AudioActions action;
+
 
 // additional controls
 Debouncer nextButtonDebouncer(2000);
@@ -417,7 +424,7 @@ void setup() {
   pinMode(POWER_PIN_AUX, OUTPUT);
   digitalWrite(POWER_PIN_AUX, HIGH); // Turn on the aux power regulator
 
-  Serial.begin(115200);
+  Serial.begin(250000);
   Serial.println();
   Serial.println();
 
@@ -485,7 +492,7 @@ void setup() {
   // Speaker Setup
   AudioLogger::instance().begin(Serial, AudioLogger::Info);
 
-  // setup output
+  // Audio setup output
   auto cfg = i2s.defaultConfig(TX_MODE);
   cfg.i2s_format = I2S_LSB_FORMAT; //I2S_LSB_FORMAT default vs STD?
   cfg.pin_ws = 27; // LRC pin
@@ -494,6 +501,14 @@ void setup() {
   cfg.channels = 2;
   cfg.bits_per_sample = 16;
   i2s.begin(cfg);
+  in.begin(cfg); // Setup sound generation based on Audioi2s settings
+  // set initial volume
+  auto vcfg = volume.defaultConfig();
+  vcfg.copyFrom(cfg);
+  //vcfg.allow_boost = true; // activate amplification using linear control
+  volume.begin(vcfg); // we need to provide the bits_per_sample and channels
+  volume.setVolume(0.0);
+  setupActions(); // activate sound keys
 
   // Fuel Gauge MAX17048
   lipo.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
@@ -758,6 +773,10 @@ void screenUpdate(){
       clockScreenEnabled = false;
   }
 
+  if (demoMode != 13){
+    audioPlayerRunning = false;
+  }
+
   // // write the buffer to the display
   // display.display();
   updateScrollPositionFromSlider();
@@ -794,6 +813,11 @@ void ledSequencer(){
 void loop() {
   esp_task_wdt_reset();
   millisNow = millis();
+  
+  // Audio sounds
+  copier.copy();
+  action.processActions();
+
   if(reactionGameEnabled){
     Serial.println("reactionGameEnabled loop()");
     reactionGame.update(millisNow);
@@ -832,15 +856,17 @@ void loop() {
       // detectButtonState(buttonPosition, buttonState, buttonDirection);
       // screenMacroUnlockEarlyRelease();
       
-      accelerometer();
-      pinVoltageRead();
-      screenUpdate();
+
     }
 
     if((millisNow - millisOld50) >= 50){
       //Calculate cycle time roughly from millis measurement
       //MyTable.SendData("50ms Task", (millisNow - millisOld50));
       millisOld50 = millisNow;
+
+      accelerometer();
+      pinVoltageRead();
+      screenUpdate();
       
       // canTask();
 
@@ -1128,17 +1154,24 @@ void drawTimeOnCounter() {
 }
 
 void drawAudioPlayer() {
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(64, 10, "Audio (Disabled)");
-  // setup player
-  // if(!audioPlayerRunning){
-  //   audioPlayerRunning = 1;
-  //   player.begin();
-  //   player.setVolume(1.0);
-  // }
-  display.display();
+  float volumeSlider = float(pinVoltagePercentage) / 100.0;
+  volume.setVolume(volumeSlider);
+  if(!audioPlayerRunning){
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.setFont(suiGenerisRg_20);
+    display.drawString(64, 10, "Booper");
+    // setup player
+    // if(!audioPlayerRunning){
+    //   audioPlayerRunning = 1;
+    //   player.begin();
+    //   player.setVolume(1.0);
+    // }
+    display.display();
+    audioPlayerRunning = true;
+  }
+  Serial.print("Volume: ");
+  Serial.print(volume.volume());
 }
 
 void flashlightSwitch(bool flashlightEnable){
@@ -1509,4 +1542,34 @@ void toggleScrollMode() {
         scrollOffset = 0; // Reset pixel offset when switching to line scroll mode
     }
     drawSerialDataScreen(); // Update screen to reflect new scroll mode
+}
+
+
+/*
+Audio Boops with Buttons
+*/
+void actionKeyOn(bool active, int pin, void* ptr){
+  if (audioPlayerRunning){
+    float freq = *((float*)ptr);
+    sine.setFrequency(freq);
+    in.begin();
+  }
+}
+
+
+void actionKeyOff(bool active, int pin, void* ptr){
+  in.end();
+}
+
+// We want to play some notes on the Audioi2s keys 
+void setupActions(){
+  // assign buttons to notes
+  auto act_low = AudioActions::ActiveLow;
+  static float note[] = {N_C3, N_D3, N_E3, N_F3, N_G3, N_A3}; // frequencies
+  action.add(button_TopLeft, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[0])); // C3
+  action.add(button_TopRight, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[1])); // D3
+  action.add(button_MiddleLeft, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[2])); // E3
+  action.add(button_MiddleRight, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[3])); // F3
+  action.add(button_BottomLeft, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[4])); // G3
+  action.add(button_BottomRight, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[5])); // A3
 }

@@ -54,6 +54,10 @@ void drawSliderProgressBar();
 #define VOLT_READ_PIN 35 // Battery voltage divider pin
 
 bool ledSequencerEnabled = false;
+uint16_t pixel_Back = 0;
+uint16_t pixel_Front_Top = 1; 
+uint16_t pixel_Front_Middle = 2; 
+uint16_t pixel_Front_Bottom = 3;  
 
 void colorSet();
 void red();
@@ -61,6 +65,7 @@ void green();
 void blue();
 void white();
 void halfWHITE();
+void mapToRainbow(int input, uint8_t dim, uint8_t &red, uint8_t &green, uint8_t &blue);
 
 
 // Define the GPIO pins for the buttons
@@ -108,9 +113,13 @@ void fuelGaugeReport();
 bool preventSleepWhileCharging = true;
 
 // Slider Pin Voltage
-uint8_t pinVoltagePercentage = 0;
-uint16_t pinVoltage = 0;
-uint16_t pinVoltageBits = 0;
+void sliderPositionRead();
+uint8_t sliderPosition_Percentage = 0;
+uint16_t sliderPosition_Millivolts = 0;
+uint16_t sliderPosition_12Bits = 0;
+uint16_t sliderPosition_12Bits_Inverted = 0;
+uint8_t sliderPosition_8Bits = 0;
+uint8_t sliderPosition_8Bits_Inverted = 0;
 
 // Clock / Time
 void drawClockDemo();

@@ -490,7 +490,7 @@ void setup() {
   display.setFont(ArialMT_Plain_10);
 
   // Speaker Setup
-  AudioLogger::instance().begin(Serial, AudioLogger::Info);
+  //AudioLogger::instance().begin(Serial, AudioLogger::Info);
 
   // Audio setup output
   auto cfg = i2s.defaultConfig(TX_MODE);
@@ -733,13 +733,15 @@ void accelerometer(){
 
 
 
-void pinVoltageRead(){
-  pinVoltage = analogReadMilliVolts(VOLT_READ_PIN); // Read through ADC with calibrated return
-  pinVoltageBits = analogRead(VOLT_READ_PIN); // Read through ADC as raw vits
-  //pinVoltage = pinVoltage * 2; // Compensate for voltage divider, this returns real value in millivolts
-  //pinVoltagePercentage = map(pinVoltage, batteryVoltageLowCutoff, batteryVoltageHighCutoff, 0, 100); // Map to our battery's voltage limits
-  pinVoltagePercentage = map(pinVoltageBits, 4095, 0, 0, 100); // Map to our battery's voltage limits
-  //pinVoltagePercentage = constrain(pinVoltageBits, 0, 100); // Bound to 0 to 100%
+void sliderPositionRead(){
+  sliderPosition_Millivolts = analogReadMilliVolts(VOLT_READ_PIN); // Read through ADC with calibrated return
+  sliderPosition_12Bits = analogRead(VOLT_READ_PIN); // Read through 12-bit ADC as raw bits into 16-bit var
+  sliderPosition_12Bits_Inverted =  4095 - sliderPosition_12Bits;
+  
+  sliderPosition_8Bits =  255 - ((sliderPosition_12Bits * 255) / 4095); // Map 12-bit to 8-bit variable
+  sliderPosition_8Bits_Inverted = (sliderPosition_12Bits * 255) / 4095; // Map 12-bit to 8-bit variable, inverted
+    
+  sliderPosition_Percentage = 100 - ((sliderPosition_12Bits * 100) / 4095); // Map 12-bit to percentage (0-100), inverted
 }
 
 void screenUpdate(){
@@ -865,7 +867,7 @@ void loop() {
       millisOld50 = millisNow;
 
       accelerometer();
-      pinVoltageRead();
+      sliderPositionRead();
       screenUpdate();
       
       // canTask();
@@ -1068,33 +1070,72 @@ void drawBatteryProgressBar() {
   display.display();
 }
 
+// Function to map input (0 to 4095) to a rainbow progression (red -> orange -> yellow -> green t-> blue -> violet)
+void mapToRainbow(int input, uint8_t dim, uint8_t &red, uint8_t &green, uint8_t &blue) {
+    // Ensure input and dim are within bounds
+    input = input < 0 ? 0 : (input > 4095 ? 4095 : input);
+    dim = dim > 255 ? 255 : dim;
+
+    // Normalize input to range 0.0–1.0
+    float normalized = (float)input / 4095.0;
+
+    // Calculate which segment of the rainbow we're in
+    float x, y, z;
+    if (normalized < 0.2) {  // Red → Orange
+        float t = normalized / 0.2;
+        x = 1.0;
+        y = t;
+        z = 0.0;
+    } else if (normalized < 0.4) {  // Orange → Yellow
+        float t = (normalized - 0.2) / 0.2;
+        x = 1.0;
+        y = 1.0;
+        z = 0.0;
+    } else if (normalized < 0.6) {  // Yellow → Green
+        float t = (normalized - 0.4) / 0.2;
+        x = 1.0 - t;
+        y = 1.0;
+        z = 0.0;
+    } else if (normalized < 0.8) {  // Green → Blue
+        float t = (normalized - 0.6) / 0.2;
+        x = 0.0;
+        y = 1.0 - t;
+        z = t;
+    } else {  // Blue → Violet
+        float t = (normalized - 0.8) / 0.2;
+        x = t;
+        y = 0.0;
+        z = 1.0;
+    }
+
+    // Scale RGB values by brightness (dim)
+    red = (uint8_t)((y * dim));
+    green = (uint8_t)((x * dim));
+    blue = (uint8_t)((z * dim));
+}
+
 void drawSliderProgressBar() {
   display.clear();
   // draw the progress bar
-  display.drawProgressBar(0, 30, 120, 10, pinVoltagePercentage);
+  display.drawProgressBar(9, 28, 108, 10, sliderPosition_Percentage);
 
   // draw the percentage as String
   display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(64, 15, "Slider: " + String(pinVoltagePercentage) + "%");
+  display.drawString(64, 14, "Slider: " + String(sliderPosition_Percentage) + "%");
 
   // Battery Voltage
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(70, 40, "Slider (mV): " + String(pinVoltage));
-  display.drawString(70, 50, "Slider (bits): " + String(pinVoltageBits));
-
-  // // Battery Voltage Percentage
-  // display.setFont(ArialMT_Plain_10);
-  // display.setTextAlignment(TEXT_ALIGN_CENTER);
-  // display.drawString(70, 30, "Bat %: " + String(batteryVoltagePercentage));
+  display.drawString(64, 40, "Slider (mV): " + String(sliderPosition_Millivolts));
+  display.drawString(64, 50, "Slider (bits): " + String(sliderPosition_12Bits));
   display.display();
 
-  uint8_t redMap = map(pinVoltageBits, 4095, 0, 0, 255);
-  uint8_t greenMap = map(pinVoltageBits, 4095, 0, 0, 255);
-  uint8_t blueMap = map(pinVoltageBits, 4095, 0, 0, 255);
-  strip.setPixelColor(1, strip.Color(redMap, 0, 0, 0));
-  strip.setPixelColor(2, strip.Color(0, greenMap, 0, 0));
-  strip.setPixelColor(3, strip.Color(0, 0, blueMap, 0));
+  uint8_t red, green, blue;
+  mapToRainbow(sliderPosition_12Bits, 8, red, green, blue);
+  strip.setPixelColor(pixel_Front_Top, strip.Color(red, green, blue, 0));
+  strip.setPixelColor(pixel_Front_Middle, strip.Color(8 - red, 8 - green, 8 - blue, 0));
+  strip.setPixelColor(pixel_Front_Bottom, strip.Color(red, green, blue, 0));
+
   strip.show();
 }
 
@@ -1154,7 +1195,7 @@ void drawTimeOnCounter() {
 }
 
 void drawAudioPlayer() {
-  float volumeSlider = float(pinVoltagePercentage) / 100.0;
+  float volumeSlider = float(sliderPosition_Percentage) / 100.0;
   volume.setVolume(volumeSlider);
   if(!audioPlayerRunning){
     display.clear();
@@ -1170,20 +1211,25 @@ void drawAudioPlayer() {
     display.display();
     audioPlayerRunning = true;
   }
-  Serial.print("Volume: ");
-  Serial.print(volume.volume());
+  Serial.print("Volume: " + String(volume.volume()));
 }
 
 void flashlightSwitch(bool flashlightEnable){
-  if(flashlightEnable && !flashlightStatus){
+  if(flashlightEnable){
     //setDeterminedColors(0, 0 , 0, 0);
-    strip.setPixelColor(0, strip.Color(0, 0, 0, 255));
+    strip.setPixelColor(pixel_Back, strip.Color(sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits));
+    strip.setPixelColor(pixel_Front_Top, strip.Color(sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits));
+    strip.setPixelColor(pixel_Front_Middle, strip.Color(sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits));
+    strip.setPixelColor(pixel_Front_Bottom, strip.Color(sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits));
     strip.show();
     flashlightStatus = true;
   }
   if(!flashlightEnable && flashlightStatus){
     //setDeterminedColors(0, 0 , 0, 0);
-    strip.setPixelColor(0, strip.Color(0, 0, 0, 0));
+    strip.setPixelColor(pixel_Back, strip.Color(0, 0, 0, 0));
+    strip.setPixelColor(pixel_Front_Top, strip.Color(0, 0, 0, 0));
+    strip.setPixelColor(pixel_Front_Middle, strip.Color(0, 0, 0, 0));
+    strip.setPixelColor(pixel_Front_Bottom, strip.Color(0, 0, 0, 0));
     strip.show();
     flashlightStatus = false;
   }
@@ -1504,7 +1550,7 @@ void handleScrollDown() {
 void updateScrollPositionFromSlider() {
     if (currentScrollMode == LINE_SCROLL) {
         // Line-based scrolling: Map slider to line count
-        int newLine = map(pinVoltageBits, 0, 4095, 0, max(lineCount - maxLinesOnScreen, 0));
+        int newLine = map(sliderPosition_12Bits, 0, 4095, 0, max(lineCount - maxLinesOnScreen, 0));
         
         if (newLine != previousLine) { // Only update if there's a change
             currentLine = newLine;
@@ -1516,7 +1562,7 @@ void updateScrollPositionFromSlider() {
     } else if (currentScrollMode == PIXEL_SCROLL) {
         // Pixel-based scrolling: Map slider to total scrollable height across all lines
         int totalScrollablePixels = max(0, (lineCount * 10) - 64); // 64 is the height of the display
-        int scrollPosition = map(pinVoltageBits, 0, 4095, 0, totalScrollablePixels);
+        int scrollPosition = map(sliderPosition_12Bits, 0, 4095, 0, totalScrollablePixels);
 
         // Calculate new line and offset from scrollPosition
         int newLine = scrollPosition / 10;

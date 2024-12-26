@@ -46,12 +46,12 @@ void drawSliderProgressBar();
 #define POWER_PIN_OLED 12 //OLED VREG
 #define POWER_PIN_AUX 2 //RGB VREG
 #define LED_BUILTIN 13
+#define CHRG_ENA 13
 #define PIN 0
 #define LED_COUNT 4
 #define OLED_RESET 7 // also RX
 
-// Battery Voltage Monitor
-#define VOLT_READ_PIN 35 // Battery voltage divider pin
+
 
 bool ledSequencerEnabled = false;
 uint16_t pixel_Back = 0;
@@ -109,8 +109,12 @@ float batteryVoltage = 0;
 uint16_t batteryVoltageLowCutoff = 3200;
 uint16_t batteryVoltageHighCutoff = 4200;
 float batteryVoltagePercentage = 0;
-void fuelGaugeReport();
+void fuelGaugeUpdate();
 bool preventSleepWhileCharging = true;
+#define VOLT_READ_PIN 35 // Battery voltage divider pin
+bool enableBatterySOCCutoff = true; // Requires jumper on R64 solder bridge to connect ESPP32 IO13 to MCP73831 PROG
+float batterySOCCutoff = 80.0; // Percentage to cut-off battery charging 
+float sleepChargingChangeThreshold = -10.0;
 
 // Slider Pin Voltage
 void sliderPositionRead();

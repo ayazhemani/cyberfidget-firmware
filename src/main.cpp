@@ -890,7 +890,7 @@ void loop() {
       // updateScreenOverrideValues();
       // nvmPositionStorage();
       
-      fuelGaugeReport();
+      fuelGaugeUpdate();
       
       // Slow NVM write cycle, only check every
       if((millisNow - millisLastInteraction) >= 3000){
@@ -904,7 +904,7 @@ void loop() {
   if((millisNow - millisLastInteraction) >= 30000){
     // Go to deep sleep
     if(preventSleepWhileCharging){
-      if(lipo.getChangeRate() < -10.0){ // If discharging greater than 10% per hour, shut down
+      if(lipo.getChangeRate() < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
         Serial.println("Going to sleep now...");
         delay(1000);
         esp_deep_sleep_start();
@@ -1280,7 +1280,7 @@ void startSimonSaysGame() {
     drawSimonSaysGame(numButtons);
 }
 
-void fuelGaugeReport() {
+void fuelGaugeUpdate() {
   batteryVoltagePercentage = lipo.getSOC();
   batteryVoltage = lipo.getVoltage();
 
@@ -1316,6 +1316,22 @@ void fuelGaugeReport() {
   Serial.print(lipo.isHibernating()); // Print the alert flag
   
   Serial.println();
+
+  // Logic to check for battery State of Charge and disable the LiPo charger as desired per the calibration
+  // Requires Jumper on R64 to be soldered
+  // Need to modify this so the LED isn't kept on when the device isn't charging
+  if(enableBatterySOCCutoff) {
+    if ((batteryVoltagePercentage > batterySOCCutoff) && (lipo.getChangeRate() > sleepChargingChangeThreshold)) {
+      pinMode(CHRG_ENA, OUTPUT);
+      digitalWrite(CHRG_ENA, HIGH);
+      Serial.println("Charging Disabled, SOC Cutoff Reached");
+    }
+    else {
+      pinMode(CHRG_ENA, OUTPUT);
+      digitalWrite(CHRG_ENA, LOW);
+      Serial.println("Charging Enabled, SOC Cutoff Not Reached");
+    }
+  }
 }
 
 // New clock drawing function

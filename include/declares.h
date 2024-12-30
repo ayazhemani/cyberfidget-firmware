@@ -18,6 +18,7 @@ void startWebServer();
 void stopWebServer();
 void startWiFiManager();
 bool isWebServerRunning = false;
+bool wifimanager_nonblocking = false; 
 
 int demoMode = 0; // Default screen
 int demoModeSaved = 0;

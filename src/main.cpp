@@ -817,6 +817,9 @@ void ledSequencer(){
 }
 
 void loop() {
+  if(wifimanager_nonblocking) {
+    wifiManager.process(); // avoid delays() in loop when non-blocking and other long running code 
+  } 
   esp_task_wdt_reset();
   millisNow = millis();
   
@@ -1347,7 +1350,7 @@ void drawClockDemo() {
     display.display();
     
     // WiFi
-    //connectToWiFi();
+    connectToWiFi();
 
     // Initialize RTC with the current time if needed
     // Set timezone if needed
@@ -1433,7 +1436,8 @@ void decreaseMinute(struct tm *currentTime) {
 // Function to connect to WiFi
 void connectToWiFi() {
   Serial.print("Connecting to WiFi");
-  WiFi.begin(wifi_ssid, wifi_password);
+  //WiFi.begin(wifi_ssid, wifi_password);
+  WiFi.begin();
   // while (WiFi.status() != WL_CONNECTED) {
   //   //delay(500);
   //   Serial.print(".");
@@ -1447,7 +1451,9 @@ void startWebServer() {
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/html", "<h1>Cyber Fidget Config Portal</h1>");
     });
-    wifiManager.setConfigPortalBlocking(false);
+
+    wifiManager.setConfigPortalTimeout(60);
+    wifiManager.setConfigPortalBlocking(wifimanager_nonblocking);
     server.begin(); // Start the web server
     isWebServerRunning = true;
     Serial.println("Web Server Started");

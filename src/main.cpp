@@ -130,7 +130,12 @@ const char *urls[] = {
   "http://streaming.swisstxt.ch/m/drsvirus/mp3_128"
 };
 
+// WiFi
+#include <WiFiManager.h> //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
+#include <ESPAsyncWebServer.h>
 #include "credentials.h" 
+WiFiManager wifiManager;
+AsyncWebServer server(80); // Declare but don’t start the server yet
 
 URLStream url(wifi_ssid, wifi_password);
 //AudioSourceURL source(urlStream, urls, "audio/mp3");
@@ -187,7 +192,8 @@ Demo demos[] = {
   //startSimonSaysGame, // 
   drawSliderProgressBar, // 17
   drawClockDemo,          // 18 - Add the new screen for clock
-  drawSerialDataScreenWrapper // 19
+  drawSerialDataScreenWrapper, // 19
+  drawWifiConfig // 20
   };
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
@@ -359,15 +365,15 @@ void printWakeupReason() {
 }
 
 
-// // Master watch dog - Just a dumb dog for really long cycle loops to reboot the display
-// void masterWatchdogDeadSwitch(){
-//   esp_task_wdt_reset();
-//   // if(millisNow - masterWatchdogTimer >= 60000){ // If we don't poll the watchdog for >10sec, reset the system
-//   //   MyTable.SendData("masterWatchdogFired", masterWatchdogTimer);
-//   //     System.reset();
-//   // }
-//   // masterWatchdogTimer = millisNow;
-// }
+void disableWatchdog() {
+    esp_task_wdt_delete(NULL); // Remove the current task from the watchdog
+    Serial.println("Watchdog disabled");
+}
+
+void enableWatchdog() {
+    esp_task_wdt_add(NULL); // Re-add the current task to the watchdog
+    Serial.println("Watchdog enabled");
+}
 
 void setup() {
   // Initialize the task watchdog timer
@@ -383,7 +389,7 @@ void setup() {
   esp_err_t result = esp_task_wdt_init(15, true); // Set a 15-second timeout
 
   // Add current task to the watchdog timer
-  esp_task_wdt_add(NULL);
+  //esp_task_wdt_add(NULL);
 
   // Configure the wakeup pins
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_15, LOW); // For Active LOW button, ext0 single pin lowest power
@@ -626,10 +632,8 @@ void setup() {
   Serial.print(hibThr, 3);
   Serial.println(F("%/h"));
 
-
-
-
-
+  // Initialize WiFi in low-power mode
+  WiFi.mode(WIFI_STA); // Set to station mode by default
 
   esp_task_wdt_reset();
 }
@@ -849,9 +853,12 @@ void loop() {
 
       // Reset LEDs
       if (demoModePreviously == 11 || demoModePreviously == 14 || demoModePreviously == 17) { 
-        //if (demoMode != 11 && demoMode != 14 && demoMode != 17){
-          setColorsOff();
-        //}        
+        setColorsOff();    
+      }
+
+      // Turn WiFi back off
+      if (demoModePreviously == 20) {
+        stopWebServer();
       }
       
       // switchStateUpdate();
@@ -1202,12 +1209,6 @@ void drawAudioPlayer() {
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.setFont(suiGenerisRg_20);
     display.drawString(64, 10, "Booper");
-    // setup player
-    // if(!audioPlayerRunning){
-    //   audioPlayerRunning = 1;
-    //   player.begin();
-    //   player.setVolume(1.0);
-    // }
     display.display();
     audioPlayerRunning = true;
   }
@@ -1346,7 +1347,7 @@ void drawClockDemo() {
     display.display();
     
     // WiFi
-    connectToWiFi();
+    //connectToWiFi();
 
     // Initialize RTC with the current time if needed
     // Set timezone if needed
@@ -1354,7 +1355,7 @@ void drawClockDemo() {
     
     
     // Attempt to get time with multiple retries
-    for (int i = 0; i < 10; i++) {  // Try up to 10 times
+    for (int i = 0; i < 5; i++) {  // Try up to 10 times
       if (getLocalTime(&currentTime)) {
         Serial.println("Successfully obtained time.");
         break;
@@ -1440,6 +1441,47 @@ void connectToWiFi() {
   Serial.println(" Connected!");
 }
 
+void startWebServer() {
+  if (!isWebServerRunning) {
+    disableWatchdog();
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+      request->send(200, "text/html", "<h1>Cyber Fidget Config Portal</h1>");
+    });
+    wifiManager.setConfigPortalBlocking(false);
+    server.begin(); // Start the web server
+    isWebServerRunning = true;
+    Serial.println("Web Server Started");
+  }
+}
+
+void stopWebServer() {
+  if (isWebServerRunning) {
+    server.end(); // Stop the web server
+    isWebServerRunning = false;
+    Serial.println("Web Server Stopped");
+    enableWatchdog();
+  }
+}
+
+void startWiFiManager() {
+  if (!wifiManager.startConfigPortal("CyberFidget_AP")) {
+    Serial.println("Failed to connect to WiFi");
+  } else {
+    Serial.println("WiFi Connected");
+    startWebServer(); // Start server after successful WiFi connection
+  }
+}
+
+void drawWifiConfig() {
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.setFont(ArialMT_Plain_10); // Use an appropriate font size
+  display.drawString(64, 22, "Starting WiFi Portal...");
+  display.display();
+  startWiFiManager();
+  //startWebServer();
+}
+
 void drawSerialDataScreenWrapper() {
     newDataReceived = false;
 
@@ -1516,31 +1558,31 @@ void drawSerialDataScreen() {
 }
 
 void drawDefaultInfoScreen() {
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-    display.drawString(64, 22, "Waiting for Data...");
-    display.display();
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.setFont(ArialMT_Plain_10); // Use an appropriate font size
+  display.drawString(64, 22, "Waiting for Data...");
+  display.display();
 }
 
 void handleScrollUp() {
-    if (currentScrollMode == LINE_SCROLL) {
-        // Line-based scrolling
-        if (currentLine > 0) {
-            currentLine--;
-            drawSerialDataScreen();
-        }
-    } else if (currentScrollMode == PIXEL_SCROLL) {
-        // Pixel-based scrolling
-        if (scrollOffset > 0) {
-            scrollOffset--;
-            drawSerialDataScreen();
-        } else if (currentLine > 0) {
-            currentLine--;
-            scrollOffset = maxScrollOffset;
-            drawSerialDataScreen();
-        }
+  if (currentScrollMode == LINE_SCROLL) {
+    // Line-based scrolling
+    if (currentLine > 0) {
+      currentLine--;
+      drawSerialDataScreen();
     }
+  } else if (currentScrollMode == PIXEL_SCROLL) {
+    // Pixel-based scrolling
+    if (scrollOffset > 0) {
+      scrollOffset--;
+      drawSerialDataScreen();
+    } else if (currentLine > 0) {
+      currentLine--;
+      scrollOffset = maxScrollOffset;
+      drawSerialDataScreen();
+    }
+  }
 }
 
 void handleScrollDown() {

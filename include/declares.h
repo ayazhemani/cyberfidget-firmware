@@ -1,4 +1,6 @@
 // Main Loop timers
+void disableWatchdog();
+void enableWatchdog();
 unsigned long millisNow = 0;
 unsigned long millisOldHeartbeat = 0;
 unsigned long millisOld200 = 0;
@@ -12,6 +14,10 @@ const int nextButtonPin = 15;
 bool audioPlayerRunning = false;
 
 void connectToWiFi();
+void startWebServer();
+void stopWebServer();
+void startWiFiManager();
+bool isWebServerRunning = false;
 
 int demoMode = 0; // Default screen
 int demoModeSaved = 0;
@@ -41,6 +47,7 @@ void drawTimeOnCounter();
 void startSimonSaysGame();
 void drawSimonSaysGame();
 void drawSliderProgressBar();
+void drawWifiConfig();
 
 // ECU Peripherals
 #define POWER_PIN_OLED 12 //OLED VREG

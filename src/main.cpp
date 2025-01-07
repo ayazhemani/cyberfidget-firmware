@@ -166,8 +166,8 @@ ReactionTimeGame reactionGame(display, button_BottomRight); // Display class nam
 SimonSaysGame* simonSaysGame = nullptr;  // Initialized later
 bool simonSaysGameEnabled = false;
 
-
-
+#include "PixelWaterFallGame.h"
+PixelWaterfallGame pixelGame(display);
 
 // Demo Config
 typedef void (*Demo)(void);
@@ -193,7 +193,8 @@ Demo demos[] = {
   drawSliderProgressBar, // 17
   drawClockDemo,          // 18 - Add the new screen for clock
   drawSerialDataScreenWrapper, // 19
-  drawWifiConfig // 20
+  drawWifiConfig, // 20
+  drawPixelWaterfallGame //21
   };
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
@@ -634,6 +635,13 @@ void setup() {
 
   // Initialize WiFi in low-power mode
   WiFi.mode(WIFI_STA); // Set to station mode by default
+
+  // Set inertia and damping using global variables
+  pixelGame.setInertia(pixelGameInertia);
+  pixelGame.setDamping(pixelGameInertia);
+
+  // Reset pixel positions
+  pixelGame.resetPixels();
 
   esp_task_wdt_reset();
 }
@@ -1262,6 +1270,11 @@ void drawReactionTimeGame() {
     detachInterrupt(digitalPinToInterrupt(button_BottomRight));
     reactionGame.enableISR();
   }
+}
+
+void drawPixelWaterfallGame(){
+    // Update the game with new accelerometer data
+    pixelGame.update(accelX, accelY);
 }
 
 /*

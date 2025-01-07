@@ -49,6 +49,7 @@ void startSimonSaysGame();
 void drawSimonSaysGame();
 void drawSliderProgressBar();
 void drawWifiConfig();
+void drawPixelWaterfallGame();
 
 // ECU Peripherals
 #define POWER_PIN_OLED 12 //OLED VREG
@@ -94,6 +95,10 @@ bool accelerometerScreenEnabled = false;
 volatile bool inReactionGame = false; // Global flag to track if the reaction game is active
 volatile bool buttonPressed = false;  // Flag to track button presses
 bool reactionGameEnabled = false; // Let the game be main priority
+
+// Configuration variables for PixelWaterfallGame
+float pixelGameInertia = 1.2;
+float pixelGameDamping = 0.95;
 
 void flashlightSwitch(bool flashlightEnable);
 bool flashlightStatus = false;

@@ -51,6 +51,7 @@ void drawSliderProgressBar();
 void drawWifiConfig();
 void drawPixelWaterfallGame();
 void drawSPHFluidGame();
+void drawBreakoutGame();
 
 // ECU Peripherals
 #define POWER_PIN_OLED 12 //OLED VREG

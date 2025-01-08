@@ -1,0 +1,53 @@
+#pragma once
+
+#include <vector>
+#include <math.h>
+#include <Arduino.h>       // For random(), etc., on Arduino/ESP
+#include "SSD1306Wire.h"   // Or your specific SSD1306 library
+
+class SPHFluidGame {
+public:
+    struct Particle {
+        float x, y;
+        float vx, vy;
+        float density;
+        float pressure;
+    };
+
+    SPHFluidGame(SSD1306Wire& disp);
+
+    // Updates the simulation by one step, taking external acceleration (e.g., from an IMU).
+    void update(float accelX, float accelY);
+
+    // Resets/re-randomizes particles.
+    void resetParticles();
+
+private:
+    // ---- SPH parameters ----
+    int   numParticles;       // e.g., 100 or 200 for microcontroller
+    float smoothingLength;    // h
+    float restDensity;        // ρ0
+    float stiffness;          // k
+    float viscosity;          // μ
+    float gravityX;           // external accel in X
+    float gravityY;           // external accel in Y
+    float damping;            // boundary damping factor
+    float dt;                 // timestep
+
+    // -- Surface Tension (cohesion) parameter --
+    float cohesionStrength;   // Additional force pulling particles together
+
+    // ---- Display / screen ----
+    SSD1306Wire& display;
+    int screenWidth;
+    int screenHeight;
+
+    // ---- Particle container ----
+    std::vector<Particle> particles;
+
+    // Core SPH steps
+    void computeDensityPressure();
+    void computeForces(float ax, float ay);
+    void integrate();
+    void render();
+};

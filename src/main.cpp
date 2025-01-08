@@ -169,8 +169,11 @@ bool simonSaysGameEnabled = false;
 #include "PixelWaterFallGame.h"
 PixelWaterfallGame pixelGame(display);
 
-#include "SPHFluidGame.cpp"
+#include "SPHFluidGame.h"
 SPHFluidGame sphGame(display);
+
+#include "BreakoutGame.h"
+BreakoutGame breakout(display);
 
 // Demo Config
 typedef void (*Demo)(void);
@@ -197,8 +200,9 @@ Demo demos[] = {
   drawClockDemo,          // 18 - Add the new screen for clock
   drawSerialDataScreenWrapper, // 19
   drawWifiConfig, // 20
-  drawPixelWaterfallGame, //21
-  drawSPHFluidGame //22
+  drawPixelWaterfallGame, // 21
+  drawSPHFluidGame, // 22
+  drawBreakoutGame // 23
   };
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
@@ -1284,6 +1288,11 @@ void drawPixelWaterfallGame(){
 void drawSPHFluidGame(){
     // Update the game with new accelerometer data
     sphGame.update(accelX, accelY);
+}
+
+void drawBreakoutGame(){
+    // Update the game with new accelerometer data
+    breakout.update(accelX);
 }
 
 /*

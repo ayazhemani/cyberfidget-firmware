@@ -54,7 +54,7 @@ SPHFluidGame::SPHFluidGame(SSD1306Wire& disp)
     returning very large values.
     */
 
-    numParticles     = 200;        // Try small first to keep it real-time on MCU
+    numParticles     = 100;        // Try small first to keep it real-time on MCU
     smoothingLength  = 5.0f;       // h
     restDensity      = 1.0f;       // ρ0
     stiffness        = 2.0f;       // k
@@ -79,8 +79,8 @@ void SPHFluidGame::update(float accelX, float accelY)
 {
     // Combine tilt acceleration with gravity
     // Tweak scale if you want weaker/stronger tilt
-    float ax = gravityX + accelX * -5.0f;
-    float ay = gravityY + accelY * 5.0f;
+    float ax = gravityX + accelX * -0.10f;
+    float ay = gravityY + accelY * 0.10f;
 
     // 1) Compute densities & pressures
     computeDensityPressure();

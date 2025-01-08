@@ -651,6 +651,12 @@ void setup() {
   // Reset pixel positions
   pixelGame.resetPixels();
 
+  // Initialize the breakout game
+  breakout.reset();
+
+  // Specify which pin to monitor for game resets
+  breakout.setResetButton(button_BottomRight, /* activeLow = */ true);
+
   esp_task_wdt_reset();
 }
 
@@ -883,6 +889,8 @@ void loop() {
       // switchStateUpdate();
       // detectButtonState(buttonPosition, buttonState, buttonDirection);
       // screenMacroUnlockEarlyRelease();
+      sliderPositionRead();
+      screenUpdate();
       
 
     }
@@ -893,8 +901,8 @@ void loop() {
       millisOld50 = millisNow;
 
       accelerometer();
-      sliderPositionRead();
-      screenUpdate();
+      // sliderPositionRead();
+      //screenUpdate();
       
       // canTask();
 

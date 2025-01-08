@@ -23,7 +23,7 @@ private:
     static constexpr int SCREEN_HEIGHT = 64;
     
     // ↓ Try reducing this number to see clearer motion
-    static constexpr int NUM_PIXELS = 2;
+    static constexpr int NUM_PIXELS = 2500;
 
     SSD1306Wire& display;
     std::vector<Pixel> pixels;

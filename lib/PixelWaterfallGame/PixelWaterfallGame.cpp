@@ -4,45 +4,70 @@
 PixelWaterfallGame* PixelWaterfallGame::instance = nullptr;
 
 PixelWaterfallGame::PixelWaterfallGame(SSD1306Wire& disp)
-    : display(disp), inertia(1.0f), damping(0.98f)
+    : display(disp), inertia(.01f), damping(0.98f)
 {
     instance = this;
     resetPixels();
 }
 
 void PixelWaterfallGame::update(float Ax, float Ay) {
-    float normalizedAx = Ax / 1030.0f;
-    float normalizedAy = Ay / 1030.0f;
+    float clampedAx = constrain(Ax, -32768.0f, 32767.0f);
+    float clampedAy = constrain(Ay, -32768.0f, 32767.0f);
+    // Then scale or normalize
+    float normalizedAx = clampedAx / 1030.0f;
+    float normalizedAy = clampedAy / 1030.0f;
 
-    for (int i = 0; i < pixels.size(); ++i) {
-        auto &pixel = pixels[i];
 
-        // Update velocities
+    // Update positions
+    for (auto& pixel : pixels) {
         pixel.vx += normalizedAx * inertia;
         pixel.vy += normalizedAy * inertia;
+
         pixel.vx *= damping;
         pixel.vy *= damping;
 
-        // Update position
         pixel.x += pixel.vx;
         pixel.y += pixel.vy;
 
-        // Screen boundaries
-        // ...
-        
-        // Debug print for first 5 pixels
-        if (i < 5) {
-            Serial.print("Pixel "); Serial.print(i);
-            Serial.print(": x="); Serial.print(pixel.x);
-            Serial.print(", y="); Serial.print(pixel.y);
-            Serial.print(", vx2="); Serial.print(pixel.vx);
-            Serial.print(", vy="); Serial.println(pixel.vy);
+        // Boundary checks
+        if (pixel.x < 0) {
+            pixel.x = 0;
+            pixel.vx *= -0.5f;
+        } else if (pixel.x >= SCREEN_WIDTH) {
+            pixel.x = SCREEN_WIDTH - 1;
+            pixel.vx *= -0.5f;
+        }
+
+        if (pixel.y < 0) {
+            pixel.y = 0;
+            pixel.vy *= -0.5f;
+        } else if (pixel.y >= SCREEN_HEIGHT) {
+            pixel.y = SCREEN_HEIGHT - 1;
+            pixel.vy *= -0.5f;
         }
     }
 
-    // Clear, setPixel, display, etc...
-}
+    // Clear display once
+    display.clear();
 
+    // Make sure the color is set to WHITE (or whatever the library needs)
+    // If your library has "setColor()", do it here:
+    // display.setColor(WHITE);
+
+    // Draw everything
+    for (const auto& pixel : pixels) {
+        int px = static_cast<int>(pixel.x);
+        int py = static_cast<int>(pixel.y);
+
+        if (px >= 0 && px < SCREEN_WIDTH && py >= 0 && py < SCREEN_HEIGHT) {
+            // If your library has "drawPixel(x, y)", use that
+            // If it only has "setPixel(x, y)", that's okay—just confirm doc
+            display.setPixel(px, py);
+        }
+    }
+
+    display.display();
+}
 
 void PixelWaterfallGame::resetPixels() {
     pixels.clear();

@@ -161,10 +161,6 @@ Easiest to include these libraries by adding them to the OS's Arduino Library Fo
 #include "ReactionTimeGame.h" 
 ReactionTimeGame reactionGame(display, button_BottomRight); // Display class name and button to use
 
-#include "SimonSaysGame.h"
-SimonSaysGame* simonSaysGame = nullptr;  // Initialized later
-bool simonSaysGameEnabled = false;
-
 #include "PixelWaterFallGame.h"
 PixelWaterfallGame pixelGame(display);
 
@@ -173,6 +169,9 @@ SPHFluidGame sphGame(display);
 
 #include "BreakoutGame.h"
 BreakoutGame breakout(display);
+
+#include "SimonSaysGame.h"
+SimonSaysGame simonGame(display);
 
 // Demo Config
 typedef void (*Demo)(void);
@@ -201,7 +200,8 @@ Demo demos[] = {
   drawWifiConfig, // 20
   drawPixelWaterfallGame, // 21
   drawSPHFluidGame, // 22
-  drawBreakoutGame // 23
+  drawBreakoutGame, // 23
+  drawSimonSaysGame2 // 24
   };
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
@@ -245,7 +245,7 @@ void IRAM_ATTR handleButtonPress5() {
 }
 
 void IRAM_ATTR handleButtonPress6() {
-  if(!reactionGameEnabled && !simonSaysGameEnabled){
+  if(!reactionGameEnabled){
     debounceButton(5);
     //buttonPressed = true;  // Just set the flag
   }
@@ -650,6 +650,8 @@ void setup() {
   // Reset pixel positions
   pixelGame.resetPixels();
 
+
+
   // Initialize the breakout game
   breakout.reset();
 
@@ -658,6 +660,9 @@ void setup() {
 
   // **Attach the bounce callback** so BreakoutGame calls beepOnBounce
   breakout.setBounceCallback(beepOnBounce);
+
+  // Start the Simon game
+  simonGame.begin();
 
   esp_task_wdt_reset();
 }
@@ -856,9 +861,6 @@ void loop() {
   if(reactionGameEnabled){
     Serial.println("reactionGameEnabled loop()");
     reactionGame.update(millisNow);
-  }
-  if (simonSaysGameEnabled && simonSaysGame != nullptr) {
-      simonSaysGame->update(millis());
   }
   else{
     // Speaker Audio Handler thing
@@ -1307,25 +1309,7 @@ void drawBreakoutGame(){
     breakout.update(accelX);
 }
 
-/*
-Simon Says Game
-*/
-void drawSimonSaysGame(int numButtons) {
-    int btnPins[4] = {button_TopLeft, button_TopRight, button_MiddleLeft, button_MiddleRight};
-    
-    if (simonSaysGame != nullptr) {
-        delete simonSaysGame;  // Clean up the previous instance
-    }
 
-    simonSaysGame = new SimonSaysGame(display, btnPins, numButtons);
-    simonSaysGameEnabled = true;
-    simonSaysGame->enableISR();
-}
-
-void startSimonSaysGame() {
-    int numButtons = 3;  // Example: Start the game with 3 buttons
-    drawSimonSaysGame(numButtons);
-}
 
 void fuelGaugeUpdate() {
   batteryVoltagePercentage = lipo.getSOC();
@@ -1749,4 +1733,22 @@ void loopAudio() {
       playingBounce = false;
     }
   }
+}
+
+// Return which button is pressed, or -1 if none
+int readWhichButton() {
+  // Because using INPUT_PULLUP, pressed == LOW
+  if (digitalRead(button_MiddleLeft)  == LOW) return 0; 
+  if (digitalRead(button_MiddleRight) == LOW) return 1; 
+  if (digitalRead(button_BottomLeft)  == LOW) return 2; 
+  if (digitalRead(button_BottomRight) == LOW) return 3; 
+  return -1; 
+}
+
+void drawSimonSaysGame2(){
+  // Check which button is pressed
+  int pressed = readWhichButton();
+
+  // Update the game
+  simonGame.update(pressed);
 }

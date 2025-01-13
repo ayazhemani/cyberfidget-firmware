@@ -57,6 +57,7 @@ void drawWifiConfig();
 void drawPixelWaterfallGame();
 void drawSPHFluidGame();
 void drawBreakoutGame();
+void drawSimonSaysGame2();
 
 // ECU Peripherals
 #define POWER_PIN_OLED 12 //OLED VREG
@@ -186,3 +187,6 @@ void toggleScrollMode();
 void actionKeyOn(bool active, int pin, void* ptr);
 void actionKeyOff(bool active, int pin, void* ptr);
 void setupActions();
+
+// Simon Says Game
+int readWhichButton();

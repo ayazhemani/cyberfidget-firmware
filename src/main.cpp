@@ -171,7 +171,7 @@ SPHFluidGame sphGame(display);
 BreakoutGame breakout(display);
 
 #include "SimonSaysGame.h"
-SimonSaysGame simonGame(display);
+SimonSaysGame simonGame(display, beepForSquareFn, beepOnUserPressFn);
 
 // Demo Config
 typedef void (*Demo)(void);
@@ -663,6 +663,14 @@ void setup() {
 
   // Start the Simon game
   simonGame.begin();
+  // Initialize button states
+  for (int i = 0; i < 4; i++) {
+    //pinMode(buttonPins[i], INPUT_PULLUP); // Done Already
+    btns[i].stableState    = false;
+    btns[i].lastReading    = true;  
+    btns[i].lastChangeTime = 0;
+  }
+  // randomSeed(analogRead(A0)); // If you want truly random patterns each reset
 
   esp_task_wdt_reset();
 }
@@ -1713,11 +1721,11 @@ void setupActions(){
 
 void beepOnBounce() {
   // Start the beep if not already playing
-  if (!playingBounce) {
+  if (!playingBeep) {
     //float freq = random(220, 880); // to randomize frequency
     sine.setFrequency(440.0f);  // A4 note, for example
     in.begin();                 // Start generating the sine wave
-    playingBounce = true;
+    playingBeep = true;
     beepStart = millis();
   }
 }
@@ -1727,28 +1735,97 @@ void loopAudio() {
   copier.copy();
 
   // If beep is playing, check if time is up
-  if (playingBounce) {
+  if (playingBeep) {
     if (millis() - beepStart >= beepDuration) {
       in.end();          // Stop the wave generator
-      playingBounce = false;
+      playingBeep = false;
     }
   }
 }
 
 // Return which button is pressed, or -1 if none
 int readWhichButton() {
-  // Because using INPUT_PULLUP, pressed == LOW
-  if (digitalRead(button_MiddleLeft)  == LOW) return 0; 
-  if (digitalRead(button_MiddleRight) == LOW) return 1; 
-  if (digitalRead(button_BottomLeft)  == LOW) return 2; 
-  if (digitalRead(button_BottomRight) == LOW) return 3; 
-  return -1; 
+  int pressedIndex = -1;
+  for (int i = 0; i < 4; i++) {
+    bool rawReading = (digitalRead(buttonPinsSimonSays[i]) == LOW); 
+    if (rawReading != btns[i].lastReading) {
+      btns[i].lastChangeTime = millis();
+      btns[i].lastReading    = rawReading;
+    } else {
+      // if stable for > DEBOUNCE_MS, accept new state
+      if ((millis() - btns[i].lastChangeTime) > ButtonDebounce::DEBOUNCE_MS) {
+        btns[i].stableState = rawReading;
+      }
+    }
+    // if stableState is true => button i is pressed
+    if (btns[i].stableState) {
+      pressedIndex = i;
+      break; 
+    }
+  }
+  return pressedIndex;
 }
 
 void drawSimonSaysGame2(){
-  // Check which button is pressed
+  // 1) Read debounced button
   int pressed = readWhichButton();
 
-  // Update the game
+  // 2) Update the Simon game
   simonGame.update(pressed);
+
+  // 3) Manage beep timing (non-blocking)
+  updateBeep();
+
+  // If using AudioTools, call your copier.copy() here
+}
+
+void beepOn(float freq) {
+  Serial.print("BEEP ON @ "); Serial.println(freq);
+  // e.g. sine.setFrequency(freq); in.begin();
+}
+
+void beepOff() {
+  Serial.println("BEEP OFF");
+  // e.g. in.end();
+}
+
+void updateBeep() {
+  if (beepActive && (millis() - beepStartTime >= beepDurationSimonSays)) {
+    beepOff();
+    beepActive = false;
+  }
+}
+
+void startBeep(float freq) {
+  beepFrequency = freq;
+  beepOn(freq);
+  beepActive = true;
+  beepStartTime = millis();
+}
+
+// ------------------- 4) Callback Functions for the Simon Game -------------------
+void beepForSquareFn(int sq) {
+  // Use `sq` to pick a beep frequency, for example:
+  float freq = 220.0f;
+  switch (sq) {
+    case 0: freq = 220.0f; break;
+    case 1: freq = 330.0f; break;
+    case 2: freq = 440.0f; break;
+    case 3: freq = 550.0f; break;
+  }
+  // Then your code to start the beep
+  startBeep(freq);
+}
+
+// Called when the user presses a correct button (must take int sq)
+void beepOnUserPressFn(int sq) {
+  // Possibly a different freq set:
+  float freq = 660.0f;
+  switch (sq) {
+    case 0: freq = 660.0f; break;
+    case 1: freq = 770.0f; break;
+    case 2: freq = 880.0f; break;
+    case 3: freq = 990.0f; break;
+  }
+  startBeep(freq);
 }

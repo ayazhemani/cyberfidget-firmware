@@ -12,7 +12,7 @@ unsigned long millisLastInteraction = 0; // Keeps track of when the user last in
 
 const int nextButtonPin = 15; 
 bool audioPlayerRunning = false;
-bool playingBounce = false; // track if a beep is playing
+bool playingBeep = false; // track if a beep is playing
 unsigned long beepStart = 0; 
 const unsigned long beepDuration = 50; // 50 ms beep (tweak as you like)
 void beepOnBounce();
@@ -189,4 +189,33 @@ void actionKeyOff(bool active, int pin, void* ptr);
 void setupActions();
 
 // Simon Says Game
+int readWhichButton();
+// Layout: 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right
+const int buttonPinsSimonSays[4] = {button_MiddleLeft, button_MiddleRight, button_BottomLeft, button_BottomRight};
+
+struct ButtonDebounce {
+  bool stableState;         
+  bool lastReading;         
+  unsigned long lastChangeTime;
+  static const unsigned long DEBOUNCE_MS = 50;
+};
+
+ButtonDebounce btns[4];
+// -------------------  Audio Setup (Non-blocking beep) -------------------
+bool beepActive = false;
+unsigned long beepStartTime = 0;
+unsigned long beepDurationSimonSays = 200; 
+float beepFrequency = 440.0f;
+
+// Placeholder for your AudioTools objects, e.g.:
+// SineWaveGenerator<int16_t> sine;
+// GeneratedSoundStream<int16_t> in(sine); 
+// etc.
+
+void beepOn();
+void beepOff();
+void updateBeep();
+void startBeep();
+void beepForSquareFn(int sq);
+void beepOnUserPressFn(int sq);
 int readWhichButton();

@@ -3,71 +3,74 @@
 
 #include <Arduino.h>
 
-// Forward declaration if you're using a specific SSD1306 library:
 class SSD1306Wire;
 
 /**
- * A simple Simon Says game with 4 buttons:
- *   0 -> MiddleLeft  (top-left square)
- *   1 -> MiddleRight (top-right square)
- *   2 -> BottomLeft  (bottom-left square)
- *   3 -> BottomRight (bottom-right square)
- *
- * The game displays a 2x2 grid on a 128x64 screen and blinks the square 
- * corresponding to each pattern step.
+ * Simon Says with:
+ *  - 4 buttons (0..3) mapped to a 2×2 grid
+ *  - Score display when user loses (how many patterns were completed)
+ *  - No dynamic memory
  */
 class SimonSaysGame {
 public:
-    // Maximum length of the pattern
     static const int MAX_PATTERN = 32;
 
-    // Game States
     enum State {
-        WAIT_START,    // idle, waiting for user to press a button to start
-        SHOW_PATTERN,  // automatically blinking squares to show pattern
-        WAIT_USER,     // waiting for user to press the correct sequence
-        GAME_OVER      // user failed or completed (could reset after delay)
+        WAIT_START,
+        SHOW_PATTERN,
+        WAIT_USER,
+        GAME_OVER
     };
 
     /**
-     * @param display Reference to your SSD1306 display object
+     * @param display Reference to SSD1306 display
+     * @param beepForSquareFn Called when the game shows a pattern step
+     * @param beepOnUserPressFn Called when user presses a correct button
      */
-    SimonSaysGame(SSD1306Wire &display);
+    SimonSaysGame(
+        SSD1306Wire &display,
+        void (*beepForSquareFn)(int),
+        void (*beepOnUserPressFn)(int)
+    );
 
-    // Call once in setup
+    // Initialize the game (call in setup())
     void begin();
 
-    // Call in loop; pass the button index pressed (0..3) or -1 if none
+    // Update the game logic (call in loop()). 
+    //  pressedButton = 0..3 if pressed, or -1 if no button pressed.
     void update(int pressedButton);
 
-    // Reset the entire game state/pattern
+    // Resets the entire game
     void resetGame();
 
 private:
     // Reference to the OLED
     SSD1306Wire &display;
 
-    // The pattern array (no dynamic memory)
-    int pattern[MAX_PATTERN];
+    // Audio callbacks (function pointers)
+    void (*beepForSquare)(int);
+    void (*beepOnUserPress)(int);
 
-    // Current length of the pattern
-    int patternLength;
+    // Pattern data
+    int  pattern[MAX_PATTERN];
+    int  patternLength;  // how many steps in the current pattern
+    int  patternIndex;   // which step we’re currently showing or checking
 
-    // Index of the step currently being shown or checked
-    int patternIndex;
+    // Keep track of how many full patterns the user has matched
+    int  score;
 
-    // Current state
+    // Game flow state
     State currentState;
 
-    // Timing helpers for showing the pattern
+    // SHOW_PATTERN timing
     unsigned long showStartTime; 
     unsigned long showStepTime;  
-    static const unsigned long SHOW_STEP_ON  = 500; // ms to fill the square
-    static const unsigned long SHOW_STEP_OFF = 200; // ms gap after clearing
-    bool showingSquare;  // true if currently “on” for the step
-    bool gapPhase;       // true if we’re in the “off” phase between steps
+    static const unsigned long SHOW_STEP_ON  = 500; 
+    static const unsigned long SHOW_STEP_OFF = 200; 
+    bool showingSquare;  
+    bool gapPhase;       
 
-    // For game-over auto-reset or delay
+    // GAME_OVER timing
     unsigned long gameOverStartTime;
 
     // Private methods
@@ -77,12 +80,12 @@ private:
     void checkUserInput(int pressedButton);
     void gameOver();
 
-    // ---- Drawing Helpers ----
-    // Draws the 2x2 grid. highlightIndex = which square to fill (0..3) or -1 for none
+    // Helpers to draw the 2×2 grid
     void drawGrid(int highlightIndex);
-
-    // Fills the correct region of the display for the given square
     void fillSquare(int sq);
+
+    // Display a “Game Over” message and the final score
+    void drawGameOver();
 };
 
 #endif

@@ -12,6 +12,11 @@ unsigned long millisLastInteraction = 0; // Keeps track of when the user last in
 
 const int nextButtonPin = 15; 
 bool audioPlayerRunning = false;
+bool playingBounce = false; // track if a beep is playing
+unsigned long beepStart = 0; 
+const unsigned long beepDuration = 50; // 50 ms beep (tweak as you like)
+void beepOnBounce();
+void loopAudio();
 
 void connectToWiFi();
 void startWebServer();

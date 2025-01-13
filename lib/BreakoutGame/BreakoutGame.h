@@ -2,10 +2,17 @@
 #define BREAKOUT_GAME_H
 
 #include "SSD1306Wire.h"
+#include <functional> // for std::function
 
 class BreakoutGame {
 public:
+    // The callback type: no parameters, no return, called on paddle bounce.
+    using BounceCallback = std::function<void()>;
+    
     BreakoutGame(SSD1306Wire& display);
+
+    // If you want to provide your bounce sound callback after construction:
+    void setBounceCallback(BounceCallback cb);
 
     // Update game logic. Ax is the horizontal acceleration from the IMU.
     void update(float Ax);
@@ -61,6 +68,10 @@ private:
     unsigned long lastButtonCheckTime;  
     bool lastButtonState;
     static constexpr unsigned long DEBOUNCE_MS = 150;
+
+    // The function we call when the ball bounces off the paddle.
+    // Default = nullptr (no sound).
+    BounceCallback bounceCallback; 
 
     // Private methods
     void initResetButton();  

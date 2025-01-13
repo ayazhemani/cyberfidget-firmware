@@ -5,7 +5,7 @@
 // Constructor
 //----------------------------------------------------------------------------------------
 BreakoutGame::BreakoutGame(SSD1306Wire& disp)
-    : display(disp)
+    : display(disp), bounceCallback(nullptr)
 {
     resetButtonPin       = -1;
     resetButtonActiveLow = true;
@@ -146,6 +146,13 @@ void BreakoutGame::moveBall() {
 }
 
 //----------------------------------------------------------------------------------------
+// Set a user-provided callback for paddle bounces
+//----------------------------------------------------------------------------------------
+void BreakoutGame::setBounceCallback(BounceCallback cb) {
+    bounceCallback = cb;
+}
+
+//----------------------------------------------------------------------------------------
 // Check for collisions with walls, paddle, bricks
 //----------------------------------------------------------------------------------------
 void BreakoutGame::checkCollisions() {
@@ -179,6 +186,11 @@ void BreakoutGame::checkCollisions() {
         if ((ballX + BALL_SIZE) >= paddleX && ballX <= (paddleX + PADDLE_WIDTH)) {
             ballY = PADDLE_Y - BALL_SIZE;
             ballVY *= -1;
+
+            // **Play bounce sound** if callback is provided
+            if (bounceCallback) {
+                bounceCallback();
+            }
         }
     }
 
@@ -229,6 +241,7 @@ void BreakoutGame::checkVictory() {
 //----------------------------------------------------------------------------------------
 void BreakoutGame::drawGame() {
     display.clear();
+    display.setFont(ArialMT_Plain_10);
 
     // If the user has won, display a "YOU WIN" message, death count, and time
     if (gameWon) {

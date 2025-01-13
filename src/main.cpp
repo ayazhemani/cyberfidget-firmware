@@ -149,7 +149,6 @@ VolumeStream volume(in);
 StreamCopy copier(i2s, volume); 
 AudioActions action;
 
-
 // additional controls
 Debouncer nextButtonDebouncer(2000);
 
@@ -657,6 +656,9 @@ void setup() {
   // Specify which pin to monitor for game resets
   breakout.setResetButton(button_BottomRight, /* activeLow = */ true);
 
+  // **Attach the bounce callback** so BreakoutGame calls beepOnBounce
+  breakout.setBounceCallback(beepOnBounce);
+
   esp_task_wdt_reset();
 }
 
@@ -848,6 +850,8 @@ void loop() {
   // Audio sounds
   copier.copy();
   action.processActions();
+  // Handle audio streaming + beep logic
+  loopAudio();
 
   if(reactionGameEnabled){
     Serial.println("reactionGameEnabled loop()");
@@ -864,7 +868,7 @@ void loop() {
     // Check for new commands at the serial port
     //SerialCommandHandler.Process();
     
-    if((millisNow - millisOld10) >= 10){
+    if((millisNow - millisOld10) >= 20){
       //Calculate cycle time roughly from millis measurement
       //MyTable.SendData("millis", millis());
       //MyTable.SendData("10ms Task", (millisNow - millisOld10));
@@ -1721,4 +1725,28 @@ void setupActions(){
   action.add(button_MiddleRight, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[3])); // F3
   action.add(button_BottomLeft, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[4])); // G3
   action.add(button_BottomRight, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[5])); // A3
+}
+
+void beepOnBounce() {
+  // Start the beep if not already playing
+  if (!playingBounce) {
+    //float freq = random(220, 880); // to randomize frequency
+    sine.setFrequency(440.0f);  // A4 note, for example
+    in.begin();                 // Start generating the sine wave
+    playingBounce = true;
+    beepStart = millis();
+  }
+}
+
+void loopAudio() {
+  // Copy audio data from 'in' -> 'volume' -> 'i2s'
+  copier.copy();
+
+  // If beep is playing, check if time is up
+  if (playingBounce) {
+    if (millis() - beepStart >= beepDuration) {
+      in.end();          // Stop the wave generator
+      playingBounce = false;
+    }
+  }
 }

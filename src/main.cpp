@@ -266,7 +266,7 @@ bool compareButtonCounters(volatile int* counter1, volatile int* counter2, int l
 void buttonPressedTap(int buttonIndex){
   // Button 1 (Top Left)
   if (buttonIndex == 0){
-    Serial.println("ButtonTap: " + String(buttonIndex));
+    //Serial.println("ButtonTap: " + String(buttonIndex));
     demoModePreviously = demoMode;
     demoMode = (demoMode - 1 + demoLength) % demoLength;    
   }
@@ -274,7 +274,7 @@ void buttonPressedTap(int buttonIndex){
   if (buttonIndex == 1){
     demoModePreviously = demoMode;
     demoMode = (demoMode + 1)  % demoLength;
-    Serial.println("ButtonTap: " + String(buttonIndex));
+    //Serial.println("ButtonTap: " + String(buttonIndex));
   }
   // // Button 6 (Bottom Right)
   // if (buttonIndex == 5){
@@ -786,9 +786,6 @@ void sliderPositionRead(){
 }
 
 void screenUpdate(){
-  // clear the display
-  //display.clear(); // Removed to support reaction time game
-
   // draw the current demo method
   demos[demoMode]();
 
@@ -803,12 +800,6 @@ void screenUpdate(){
   } else {
       reactionGameEnabled = false;
   }
-
-  // if (demoMode == 17) {
-  //     reactionGameEnabled = true;
-  // } else {
-  //     reactionGameEnabled = false;
-  // }
   
   if (demoMode == 18) {
       clockScreenEnabled = true;
@@ -819,33 +810,11 @@ void screenUpdate(){
   if (demoMode != 13){
     audioPlayerRunning = false;
   }
-
-  // // write the buffer to the display
-  // display.display();
   updateScrollPositionFromSlider();
-}
-
-void serialPrinter(){
-  // For debugging: print the button counters to the serial monitor
-  // for (int i = 0; i < numButtons; i++) {
-  //   Serial.print("Button ");
-  //   Serial.print(i + 1);
-  //   Serial.print(": ");
-  //   Serial.println(buttonCounter[i]);
-  // }
 }
 
 void ledSequencer(){
   if(ledSequencerEnabled){
-    //colors[colorMode]();
-    //rainbow(20);
-    
-    // Cycle through available screens
-    //demoMode = (demoMode + 1)  % demoLength;
-    
-    
-    //colorMode = (colorMode + 1) % colorLength;
-    // Set NeoPixel colors
     setRandomColors(); // or rainbow(20);
 
     // Display the updated NeoPixel strip
@@ -870,18 +839,8 @@ void loop() {
     Serial.println("reactionGameEnabled loop()");
     reactionGame.update(millisNow);
   }
-  else{
-    // Speaker Audio Handler thing
-    //player.copy();
-
-    // Megunolink Command Handler 
-    // Check for new commands at the serial port
-    //SerialCommandHandler.Process();
-    
+  else{    
     if((millisNow - millisOld10) >= 20){
-      //Calculate cycle time roughly from millis measurement
-      //MyTable.SendData("millis", millis());
-      //MyTable.SendData("10ms Task", (millisNow - millisOld10));
       millisOld10 = millisNow;
 
       if(demoMode != 14) {
@@ -899,51 +858,22 @@ void loop() {
       if (demoModePreviously == 20) {
         stopWebServer();
       }
-      
-      // switchStateUpdate();
-      // detectButtonState(buttonPosition, buttonState, buttonDirection);
-      // screenMacroUnlockEarlyRelease();
+
       sliderPositionRead();
       screenUpdate();
-      
-
     }
 
     if((millisNow - millisOld50) >= 50){
-      //Calculate cycle time roughly from millis measurement
-      //MyTable.SendData("50ms Task", (millisNow - millisOld50));
       millisOld50 = millisNow;
-
       accelerometer();
-      // sliderPositionRead();
-      //screenUpdate();
-      
-      // canTask();
-
-      // voltageSenseRead();
-      // homingManager();
-      // screenMacroCoordinator();
-      // screenFaultCoordinator();
-      // screenTimeoutCoordinator();
-      // nvmCANHandler();
-      // masterWatchdogDeadSwitch();
     }
 
     if((millisNow - millisOld200) >= 200){
-      //Calculate cycle time roughly from millis measurement
-      //MyTable.SendData("200ms task", (millisNow - millisOld200));
       millisOld200 = millisNow;
-      
-      // updateScreenDebugValues();
-      // updateScreenOverrideValues();
-      // nvmPositionStorage();
-      
       fuelGaugeUpdate();
       
       // Slow NVM write cycle, only check every
       if((millisNow - millisLastInteraction) >= 3000){
-        Serial.println("demoMode: " + String(demoMode));
-        //demoMode = 10;
         saveButtonCounters();
       }  
     }
@@ -966,10 +896,7 @@ void loop() {
 
   if((millisNow - millisOldHeartbeat) >= 600000){
     //Calculate cycle time roughly from millis measurement
-    //MyTable.SendData("Heartbeat task", (millisNow - millisOldHeartbeat)); //2mins = 120,000
     millisOldHeartbeat = millisNow;
-    
-    //dataLoggerHeartbeat();
   }
 
   if (DEMO_DURATION != 0){ // Disable demo mode if duration is set to 0
@@ -978,8 +905,6 @@ void loop() {
       millisDemoMode = millisNow;
     }
   }
-  // particlePubRequestManager(); //Poll for publish requests
-  // dataLoggerNvmRequestManager(); //Poll for NVM requests
 }
 
 void drawFontFaceDemo() {
@@ -1323,38 +1248,38 @@ void fuelGaugeUpdate() {
   batteryVoltagePercentage = lipo.getSOC();
   batteryVoltage = lipo.getVoltage();
 
-  // Print the variables:
-  Serial.print("Voltage: ");
-  Serial.print(lipo.getVoltage());  // Print the battery voltage
-  Serial.print("V");
+  // // Print the variables:
+  // Serial.print("Voltage: ");
+  // Serial.print(lipo.getVoltage());  // Print the battery voltage
+  // Serial.print("V");
 
-  Serial.print(" Percentage: ");
-  Serial.print(lipo.getSOC(), 2); // Print the battery state of charge with 2 decimal places
-  Serial.print("%");
+  // Serial.print(" Percentage: ");
+  // Serial.print(lipo.getSOC(), 2); // Print the battery state of charge with 2 decimal places
+  // Serial.print("%");
 
-  Serial.print(" Change Rate: ");
-  Serial.print(lipo.getChangeRate(), 2); // Print the battery change rate with 2 decimal places
-  Serial.print("%/hr");
+  // Serial.print(" Change Rate: ");
+  // Serial.print(lipo.getChangeRate(), 2); // Print the battery change rate with 2 decimal places
+  // Serial.print("%/hr");
 
-  Serial.print(" Alert: ");
-  Serial.print(lipo.getAlert()); // Print the generic alert flag
+  // Serial.print(" Alert: ");
+  // Serial.print(lipo.getAlert()); // Print the generic alert flag
 
-  Serial.print(" Voltage High Alert: ");
-  Serial.print(lipo.isVoltageHigh()); // Print the alert flag
+  // Serial.print(" Voltage High Alert: ");
+  // Serial.print(lipo.isVoltageHigh()); // Print the alert flag
 
-  Serial.print(" Voltage Low Alert: ");
-  Serial.print(lipo.isVoltageLow()); // Print the alert flag
+  // Serial.print(" Voltage Low Alert: ");
+  // Serial.print(lipo.isVoltageLow()); // Print the alert flag
 
-  Serial.print(" Empty Alert: ");
-  Serial.print(lipo.isLow()); // Print the alert flag
+  // Serial.print(" Empty Alert: ");
+  // Serial.print(lipo.isLow()); // Print the alert flag
 
-  Serial.print(" SOC 1% Change Alert: ");
-  Serial.print(lipo.isChange()); // Print the alert flag
+  // Serial.print(" SOC 1% Change Alert: ");
+  // Serial.print(lipo.isChange()); // Print the alert flag
   
-  Serial.print(" Hibernating: ");
-  Serial.print(lipo.isHibernating()); // Print the alert flag
+  // Serial.print(" Hibernating: ");
+  // Serial.print(lipo.isHibernating()); // Print the alert flag
   
-  Serial.println();
+  // Serial.println();
 
   // Logic to check for battery State of Charge and disable the LiPo charger as desired per the calibration
   // Requires Jumper on R64 to be soldered
@@ -1363,12 +1288,12 @@ void fuelGaugeUpdate() {
     if ((batteryVoltagePercentage > batterySOCCutoff) && (lipo.getChangeRate() > sleepChargingChangeThreshold)) {
       pinMode(CHRG_ENA, OUTPUT);
       digitalWrite(CHRG_ENA, HIGH);
-      Serial.println("Charging Disabled, SOC Cutoff Reached");
+      //Serial.println("Charging Disabled, SOC Cutoff Reached");
     }
     else {
       pinMode(CHRG_ENA, OUTPUT);
       digitalWrite(CHRG_ENA, LOW);
-      Serial.println("Charging Enabled, SOC Cutoff Not Reached");
+      //Serial.println("Charging Enabled, SOC Cutoff Not Reached");
     }
   }
 }
@@ -1505,7 +1430,7 @@ void stopWebServer() {
 }
 
 void startWiFiManager() {
-  if (!wifiManager.startConfigPortal("CyberFidget_AP")) {
+  if (!wifiManager.startConfigPortal(wifiAP_SSID)) {
     Serial.println("Failed to connect to WiFi");
   } else {
     Serial.println("WiFi Connected");
@@ -1517,10 +1442,20 @@ void drawWifiConfig() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-  display.drawString(64, 22, "Starting WiFi Portal...");
+  display.drawString(64, 12, "Press Button to Start");
+  display.drawString(64, 22, "WiFi Portal");
   display.display();
-  startWiFiManager();
-  //startWebServer();
+
+  // Check if button_BottomRight is pressed
+  if (digitalRead(button_BottomRight) == LOW) {
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.setFont(ArialMT_Plain_10); // Use an appropriate font size
+    display.drawString(64, 12, wifiAP_SSID);
+    display.drawString(64, 22, "Started...192.168.4.1");
+    display.display();
+    startWiFiManager();
+  }
 }
 
 void drawSerialDataScreenWrapper() {
@@ -1743,7 +1678,6 @@ void loopAudio() {
   }
 }
 
-// Return which button is pressed, or -1 if none
 int readWhichButton() {
   int pressedIndex = -1;
   for (int i = 0; i < 4; i++) {
@@ -1758,9 +1692,14 @@ int readWhichButton() {
       }
     }
     // if stableState is true => button i is pressed
-    if (btns[i].stableState) {
+    if (btns[i].stableState && !btns[i].wasPressed) {
       pressedIndex = i;
+      btns[i].wasPressed = true;
       break; 
+    }
+    // Reset wasPressed if button is released
+    if (!btns[i].stableState) {
+      btns[i].wasPressed = false;
     }
   }
   return pressedIndex;

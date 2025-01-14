@@ -23,7 +23,8 @@ void startWebServer();
 void stopWebServer();
 void startWiFiManager();
 bool isWebServerRunning = false;
-bool wifimanager_nonblocking = false; 
+bool wifimanager_nonblocking = false;
+char wifiAP_SSID[] = "CyberFidget_AP";
 
 int demoMode = 0; // Default screen
 int demoModeSaved = 0;
@@ -197,7 +198,8 @@ struct ButtonDebounce {
   bool stableState;         
   bool lastReading;         
   unsigned long lastChangeTime;
-  static const unsigned long DEBOUNCE_MS = 50;
+  bool wasPressed; // Add this field to track if the button was previously pressed
+  static const unsigned long DEBOUNCE_MS = 100;
 };
 
 ButtonDebounce btns[4];

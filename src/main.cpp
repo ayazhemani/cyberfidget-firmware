@@ -1233,6 +1233,17 @@ void drawPixelWaterfallGame(){
 }
 
 void drawSPHFluidGame(){
+
+    // Map to 1–100
+    int targetParticleCount = map(sliderPosition_12Bits_Inverted, 0, 4095, 1, 100);
+
+    // If you want to prevent re-randomizing the fluid on every tiny pot change,
+    // check if the count has actually changed.
+    static int currentCount = 100; // or whatever you start with
+    if (targetParticleCount != currentCount) {
+        sphGame.setParticleCount(targetParticleCount);
+        currentCount = targetParticleCount;
+    }
     // Update the game with new accelerometer data
     sphGame.update(accelX, accelY);
 }

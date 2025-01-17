@@ -69,6 +69,9 @@ SPHFluidGame::SPHFluidGame(SSD1306Wire& disp)
     // Surface tension "stickiness" parameter
     cohesionStrength = 0.08f;  // Tweak to achieve desired "stickiness"
 
+    // How big the particles are on screen, 
+    particleRadius   = 2.0f; 
+
     resetParticles();
 }
 
@@ -90,6 +93,9 @@ void SPHFluidGame::update(float accelX, float accelY)
 
     // 3) Integrate positions/velocities
     integrate();
+
+    // 3.5) Resolve collisions to prevent overlap
+    resolveParticleCollisions();
 
     // 4) Render particles
     render();
@@ -113,6 +119,20 @@ void SPHFluidGame::resetParticles()
         p.pressure = 0.0f;
         particles.push_back(p);
     }
+}
+
+//--------------------------------------------------------------------------------
+// Adjust the number of rendered particles
+//--------------------------------------------------------------------------------
+void SPHFluidGame::setParticleCount(int newCount) {
+    // Clamp to valid range, just in case
+    if (newCount < 1) {
+        newCount = 1;
+    }
+    numParticles = newCount;
+
+    // Now reset (randomize) the particle array
+    resetParticles();
 }
 
 //--------------------------------------------------------------------------------
@@ -257,6 +277,44 @@ void SPHFluidGame::integrate()
 }
 
 //--------------------------------------------------------------------------------
+// 3.5) Check for particle collisions
+//--------------------------------------------------------------------------------
+void SPHFluidGame::resolveParticleCollisions() {
+    // Choose a minimum distance that you don’t want particles to violate.
+    // For 1-pixel “radius,” you might want minDist = 2.0. 
+    // But start with something small like 1.0 or 2.0 and see how it looks.
+    // The distance at which particles “collide”
+    float minDist = 2.0f * particleRadius;
+    float minDistSq = minDist * minDist;
+
+    // Simple O(N^2) loop again
+    for (int i = 0; i < numParticles; i++) {
+        for (int j = i + 1; j < numParticles; j++) {
+            float dx = particles[j].x - particles[i].x;
+            float dy = particles[j].y - particles[i].y;
+            float distSq = dx * dx + dy * dy;
+
+            if (distSq < minDistSq && distSq > 0.000001f) {
+                float dist = sqrtf(distSq);
+
+                // Overlap amount
+                float overlap = 0.5f * (minDist - dist);
+
+                // Normalize the vector from i to j
+                dx /= dist;
+                dy /= dist;
+
+                // Push each particle so they're just at minDist
+                particles[i].x -= dx * overlap;
+                particles[i].y -= dy * overlap;
+                particles[j].x += dx * overlap;
+                particles[j].y += dy * overlap;
+            }
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------
 // 4) Render (plot) particles on the OLED
 //--------------------------------------------------------------------------------
 void SPHFluidGame::render()
@@ -267,11 +325,22 @@ void SPHFluidGame::render()
     // display.setColor(WHITE);
 
     for (int i = 0; i < numParticles; i++) {
-        int px = static_cast<int>(particles[i].x);
-        int py = static_cast<int>(particles[i].y);
+        int cx = static_cast<int>(particles[i].x);
+        int cy = static_cast<int>(particles[i].y);
 
-        if (px >= 0 && px < screenWidth && py >= 0 && py < screenHeight) {
-            display.setPixel(px, py);
+        // Draw a filled circle for each particle
+        for (int dy = -particleRadius; dy <= particleRadius; dy++) {
+            for (int dx = -particleRadius; dx <= particleRadius; dx++) {
+                float distSq = dx*dx + dy*dy;
+                float rSq = particleRadius * particleRadius;
+                if (distSq <= rSq) {
+                    int px = cx + dx;
+                    int py = cy + dy;
+                    if (px >= 0 && px < screenWidth && py >= 0 && py < screenHeight) {
+                        display.setPixel(px, py);
+                    }
+                }
+            }
         }
     }
 

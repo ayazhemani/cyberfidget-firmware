@@ -22,6 +22,9 @@ public:
     // Resets/re-randomizes particles.
     void resetParticles();
 
+    // Adjusts the number of particles rendered
+    void setParticleCount(int newCount);
+
 private:
     // ---- SPH parameters ----
     int   numParticles;       // e.g., 100 or 200 for microcontroller
@@ -33,6 +36,7 @@ private:
     float gravityY;           // external accel in Y
     float damping;            // boundary damping factor
     float dt;                 // timestep
+    float particleRadius;     // e.g. 2.0, how big the particle is on screen
 
     // -- Surface Tension (cohesion) parameter --
     float cohesionStrength;   // Additional force pulling particles together
@@ -48,6 +52,7 @@ private:
     // Core SPH steps
     void computeDensityPressure();
     void computeForces(float ax, float ay);
+    void resolveParticleCollisions();
     void integrate();
     void render();
 };

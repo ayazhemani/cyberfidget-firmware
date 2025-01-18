@@ -3,38 +3,38 @@
 
 #include <Arduino.h>
 
-class SSD1306Wire; // forward declaration
+class SSD1306Wire;
 
 class MatrixScreensaver {
 public:
-    static const int SCREEN_HEIGHT = 64; // or 32, etc.
-    static const int FONT_HEIGHT   = 12;  // each char row is 8 px tall
-    static const int NUM_ROWS      = SCREEN_HEIGHT / FONT_HEIGHT; // e.g. 8 if 64 px tall
-    static const int FONT_WIDTH    = 10;  // or 8, depending on your font
+    // Adjust to match your display
+    static const int SCREEN_HEIGHT = 64;
+    static const int FONT_HEIGHT   = 8;  // 8 pixels tall
+    static const int FONT_WIDTH    = 8;  // or 8, depending on your font
+    static const int NUM_ROWS      = SCREEN_HEIGHT / FONT_HEIGHT; // e.g. 8
     static const int NUM_COLUMNS   = 16; // how many columns horizontally
 
     static const char ALIEN_CHARS[16];
 
     MatrixScreensaver(SSD1306Wire &disp);
 
-    void begin();
-    void update();
-    void draw();
+    void begin();  // Initialize state
+    void update(); // Step state machine
+    void draw();   // Render to the display
 
 private:
     SSD1306Wire &display;
 
-    // We'll run a basic “step” every frameInterval ms
+    // We do small stepping every frameInterval ms
     unsigned long lastUpdateTime;
     unsigned long frameInterval;
 
-    // Rate at which we turn on/off each row from top to bottom
-    unsigned long rowTransitionDelay;
+    // The time to increase/decrease each row by 1 pixel line
+    // e.g. if rowPixelDelay=30, we take 30ms to move from litPixels=0 to litPixels=1
+    // Then after 8 * 30=240ms, that row is fully on.
+    unsigned long rowPixelDelay;
 
-    // For flicker updates, how often we check if a row can change char
-    // (We can either do it in the main update() or track times per row.)
-    // We'll track times per row for more randomness.
-
+    // Column-level states
     enum ColumnState {
         OFF,
         TURNING_ON,
@@ -42,38 +42,47 @@ private:
         TURNING_OFF
     };
 
+    // Info about each row
     struct RowInfo {
-        char  ch;                 // current character in this row
-        unsigned long nextChange; // next time in ms we flicker to a new char
+        char ch;
+        int litPixels;          // 0..FONT_HEIGHT
+        unsigned long nextChange; // next time to flicker
     };
 
     struct Column {
         ColumnState state;
+        int currentRow;        // which row are we currently turning on/off?
+        unsigned long nextStep; // when we increment/decrement row's litPixels
 
-        // row indices for the “lit” region
-        int topLitRow;      // which row index is the topmost lit?
-        int bottomLitRow;   // which row index is the bottommost lit?
+        unsigned long onDuration;   // how long we stay fully on
+        unsigned long offDuration;  // how long we stay fully off
+        unsigned long nextStateChangeTime; // when we transition from ON->OFF or OFF->ON
 
-        // next time we do a row on/off step
-        unsigned long nextRowStepTime;
-
-        // durations for how long we remain fully ON or fully OFF
-        unsigned long onDuration;
-        unsigned long offDuration;
-        unsigned long nextStateChangeTime; // when we leave ON or OFF state
-
-        // each row holds a RowInfo
         RowInfo rows[NUM_ROWS];
     };
 
     Column columns[NUM_COLUMNS];
 
-    // Helper methods
+    // -------------- Internal Helpers ------------------
     void startTurningOn(Column &col, unsigned long now);
     void startTurningOff(Column &col, unsigned long now);
+
+    // randomize entire column's character set
     void randomizeColumnSymbols(Column &col);
+
+    // pick random char
     char randomAlienChar();
-    void drawChar(int x, int y, char c);
+
+    // partial draw
+    void drawCharPartial(int x, int y, char c, int litPixels, bool fill);
+
+    // The main raw font data / look-up
+    // If you have it in a separate .cpp, you can extern it here
+    // or embed it directly. Example signature:
+    // static const uint8_t MY_FONT[];  // stored in PROGMEM
+
+    // findGlyphOffset(c) -> returns the index in MY_FONT for char c
+    uint16_t findGlyphOffset(char c);
 };
 
 #endif

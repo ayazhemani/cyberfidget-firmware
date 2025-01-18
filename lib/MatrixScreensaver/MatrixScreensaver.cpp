@@ -1,46 +1,91 @@
 #include "MatrixScreensaver.h"
 #include <SSD1306Wire.h>
 
-// Example set, replace with your own
+// Just an example set
 const char MatrixScreensaver::ALIEN_CHARS[16] = {
     '@', '#', '$', '%', '*', '+', '=','?',
     'Z', 'N', 'J', '!', ':', ';', '(', ')'
 };
 
+/* 
+   Suppose we have an 8-high font stored in an array MY_FONT[] where:
+
+   - Each glyph is 8 bytes (one byte per row).
+   - The bits in each byte define which columns are on/off.
+   - Typically, a '1' bit means "pixel on."
+   - We have a function findGlyphOffset(c) to get the start index in MY_FONT.
+
+   We'll do a small dummy example here. In real code, you'll have the full array.
+*/
+static const uint8_t MY_FONT[] PROGMEM = {
+    // minimal data... you'd have full glyphs for your entire ASCII or custom set
+    // For demonstration, let's say each glyph = 8 bytes
+    // '!' => 0x00,0x00,0xF8,... etc. 
+    // We'll just have placeholders:
+    // Use this to draw custom characters - https://sourpuss.net/projects/fontedit/
+    //0x00,0x00,0x00,0x00,0x00,0x00,0xF8,0x5F, // '!'
+    //0x18,0x3E,0x22,0x40,0x1A,0x32,0x26,0x18,
+	0x00,0x7C,0x76,0x58,0x1A,0x76,0x3C,	// 33
+	0x00,0x62,0x66,0x3E,0x0C,0x78,0x70,	// 34
+	0x00,0x7E,0x3E,0x02,0x3E,0x7E,0x06,	// 35
+	0x00,0x7E,0x0E,0x02,0x38,0x7C,0x44,	// 36
+	0x00,0x74,0x14,0x16,0x16,0x7E,0x7C,	// 37
+    
+    // ... etc. for other chars ...
+};
+
+// If your font maps ASCII 33 ('!') at index 0 in the array, 
+// ASCII 34 ('"') at index 8, etc., then:
+static uint16_t glyphBase = 32; // first character in MY_FONT is '!'
+static uint16_t glyphSize = 7;  // 8 bytes per glyph
+
+// Example function: findGlyphOffset(c)
+// Returns the index in MY_FONT for character c, or a default if out of range
+uint16_t MatrixScreensaver::findGlyphOffset(char c) {
+    // ASCII code
+    uint16_t code = (uint8_t)c;
+    // clamp
+    if (code < glyphBase || code > 126) {
+        // fallback to e.g. '!'
+        code = glyphBase;
+    }
+    // index in MY_FONT
+    uint16_t glyphIndex = (code - glyphBase) * glyphSize; 
+    return glyphIndex;
+}
+
+// Constructor
 MatrixScreensaver::MatrixScreensaver(SSD1306Wire &disp)
 : display(disp)
 {
-    // Adjust these as needed
-    frameInterval = 40;         // ms between each update step
-    rowTransitionDelay = 200;   // ms per row to turn on/off
+    // e.g. update the state machine every 30ms
+    frameInterval = 30;
+
+    // rowPixelDelay = how many ms between increments of litPixels
+    // for example, 30ms means each pixel line lights up or down each 30ms
+    // => 8 lines * 30ms = 240ms to fully light a row
+    rowPixelDelay = 30;
 }
 
 void MatrixScreensaver::begin() {
     unsigned long now = millis();
 
-    // Initialize columns
     for (int i = 0; i < NUM_COLUMNS; i++) {
         Column &col = columns[i];
 
-        // Start all columns in OFF state
         col.state = OFF;
-        col.topLitRow = 1;       // if topLitRow > bottomLitRow => no rows lit
-        col.bottomLitRow = 0;
+        col.currentRow = -1; // no row being turned on/off
+        col.nextStep = 0;
 
-        // random OFF duration (time to remain fully off)
-        col.offDuration = random(500, 2000); 
-        col.nextStateChangeTime = now + col.offDuration;
+        // random durations
+        col.onDuration = random(1500, 4000);
+        col.offDuration = random(500, 2000);
+        col.nextStateChangeTime = now + col.offDuration; // remain OFF until then
 
-        // random ON duration
-        col.onDuration  = random(1500, 4000);
-
-        // nextRowStepTime = not relevant in OFF state
-        col.nextRowStepTime = 0;
-
-        // Initialize row info
+        // init row data
         for (int r = 0; r < NUM_ROWS; r++) {
-            col.rows[r].ch = ' ';  
-            col.rows[r].nextChange = 0; // no changes yet
+            col.rows[r].ch = ' ';
+            col.rows[r].litPixels = 0;
         }
     }
 
@@ -49,163 +94,207 @@ void MatrixScreensaver::begin() {
 
 void MatrixScreensaver::update() {
     unsigned long now = millis();
-    // Only do logic steps every frameInterval ms
     if (now - lastUpdateTime < frameInterval) {
         return;
     }
     lastUpdateTime = now;
 
-    // For each column, run the state machine
     for (int i = 0; i < NUM_COLUMNS; i++) {
         Column &col = columns[i];
 
         switch (col.state) {
             case OFF: {
-                // Check if time to start turning on
+                // check if time to transition to TURNING_ON
                 if (now >= col.nextStateChangeTime) {
-                    // We transition OFF -> TURNING_ON
                     startTurningOn(col, now);
                 }
             } break;
 
             case TURNING_ON: {
-                // We turn on one row at a time from the top to bottom
-                // bottomLitRow goes from -1 up to NUM_ROWS-1
-                if (now >= col.nextRowStepTime) {
-                    col.bottomLitRow++;
-                    col.nextRowStepTime = now + rowTransitionDelay;
-
-                    if (col.bottomLitRow >= NUM_ROWS - 1) {
-                        // Reached bottom => fully ON
-                        col.bottomLitRow = NUM_ROWS - 1;
-                        col.state = ON;
-                        col.nextStateChangeTime = now + col.onDuration;
+                // col.currentRow goes from 0..NUM_ROWS-1
+                if (col.currentRow >= 0 && col.currentRow < NUM_ROWS) {
+                    RowInfo &rw = col.rows[col.currentRow];
+                    // increment litPixels
+                    if (now >= col.nextStep) {
+                        if (rw.litPixels < FONT_HEIGHT) {
+                            rw.litPixels++;
+                            col.nextStep = now + rowPixelDelay;
+                        } else {
+                            // row is fully lit, move to next row
+                            col.currentRow++;
+                            if (col.currentRow < NUM_ROWS) {
+                                col.nextStep = now + rowPixelDelay;
+                            } else {
+                                // reached bottom => fully ON
+                                col.state = ON;
+                                col.nextStateChangeTime = now + col.onDuration;
+                            }
+                        }
                     }
                 }
             } break;
 
             case ON: {
-                // While ON, rows from topLitRow=0 to bottomLitRow=NUM_ROWS-1 are lit
-                // We can do random flickers in each row
-                // Check if time to go TURNING_OFF
+                // Check if time to start turning off
                 if (now >= col.nextStateChangeTime) {
                     startTurningOff(col, now);
+                }
+
+                // Flicker for any fully lit row
+                for (int r = 0; r < NUM_ROWS; r++) {
+                    RowInfo &rw = col.rows[r];
+                    // If the row is fully lit
+                    if (rw.litPixels == FONT_HEIGHT) {
+                        if (now >= rw.nextChange) {
+                            rw.ch = randomAlienChar();
+                            // next flicker in 300..800 ms
+                            rw.nextChange = now + random(300, 800);
+                        }
+                    }
                 }
             } break;
 
             case TURNING_OFF: {
-                // We turn off one row at a time from the top down
-                // topLitRow goes from 0 up to bottomLitRow
-                if (now >= col.nextRowStepTime) {
-                    col.topLitRow++;
-                    col.nextRowStepTime = now + rowTransitionDelay;
-
-                    // If topLitRow > bottomLitRow => no rows lit => OFF
-                    if (col.topLitRow > col.bottomLitRow) {
-                        col.state = OFF;
-                        // Random OFF duration
-                        col.offDuration = random(500, 2000);
-                        col.nextStateChangeTime = now + col.offDuration;
+                // turning off from top to bottom means row 0 first, then row 1, etc., turning off pixels bottom to top in each glyph
+                if (col.currentRow >= 0 && col.currentRow < NUM_ROWS) {
+                    RowInfo &rw = col.rows[col.currentRow];
+                    if (now >= col.nextStep) {
+                        if (rw.litPixels > 0) {
+                            rw.litPixels--;
+                            col.nextStep = now + rowPixelDelay;
+                        } else {
+                            // row fully off, move to next
+                            col.currentRow++;
+                            if (col.currentRow < NUM_ROWS) {
+                                col.nextStep = now + rowPixelDelay;
+                            } else {
+                                // all rows off => OFF state
+                                col.state = OFF;
+                                col.nextStateChangeTime = now + col.offDuration;
+                            }
+                        }
                     }
                 }
             } break;
-        }
-
-        // **Random Flicker**: if a row is lit, possibly change its char
-        if (col.state == TURNING_ON || col.state == ON || col.state == TURNING_OFF) {
-            // lit rows are from col.topLitRow..col.bottomLitRow
-            int litTop = col.topLitRow;
-            int litBot = col.bottomLitRow;
-            // If we are turningOn, topLitRow=0 by default, bottomLitRow < topLitRow if we haven't lit anything?
-            // Actually, we should ensure that topLitRow=0 from the moment we start turning on.
-            // Similarly for turning off. Let's ensure that in startTurningOn/off.
-
-            for (int r = litTop; r <= litBot; r++) {
-                if (r < 0 || r >= NUM_ROWS) continue; // out of bounds
-                // row is lit, check flicker
-                RowInfo &rw = col.rows[r];
-                if (now >= rw.nextChange) {
-                    // pick a new char
-                    rw.ch = randomAlienChar();
-                    // next change in random 300..800 ms
-                    rw.nextChange = now + random(300, 800);
-                }
-            }
         }
     }
 }
 
 void MatrixScreensaver::draw() {
     display.clear();
-    // Use your real font. This is just a default example
-    display.setFont(ArialMT_Plain_10);
+    // If using built-in text, set a font, but we'll do partial draws ourselves:
+    display.setFont(ArialMT_Plain_10); // Not used for partial pixel rendering
 
-    // For each column => x position
     for (int i = 0; i < NUM_COLUMNS; i++) {
-        int colX = i * (FONT_WIDTH + 1); // a bit of horizontal spacing if desired
+        int colX = i * (FONT_WIDTH + 1);
         Column &col = columns[i];
 
-        int litTop = col.topLitRow;
-        int litBot = col.bottomLitRow;
-        // Draw rows in [litTop .. litBot]
-        for (int r = litTop; r <= litBot; r++) {
-            if (r < 0 || r >= NUM_ROWS) continue;
+        bool isTurningOn = (col.state == TURNING_ON || col.state == ON);
+
+        // Draw each row
+        for (int r = 0; r < NUM_ROWS; r++) {
             int rowY = r * FONT_HEIGHT;
             char c   = col.rows[r].ch;
-            drawChar(colX, rowY, c);
+            int lp   = col.rows[r].litPixels; // 0..8
+
+            if (lp > 0) {
+                // Call partial draw with direction info
+                drawCharPartial(colX, rowY, c, lp, isTurningOn);
+            }
         }
     }
 
     display.display();
 }
 
-/*--- State transition helpers ---*/
-
-// Called when transitioning from OFF -> TURNING_ON
+// OFF->TURNING_ON
 void MatrixScreensaver::startTurningOn(Column &col, unsigned long now) {
     col.state = TURNING_ON;
-    // Re-randomize the entire column’s symbols once we begin turning on
+    col.currentRow = 0; // start at row #0
+    col.nextStep = now + rowPixelDelay;
+
+    // randomize entire column’s symbol set each time we go from OFF->ON
     randomizeColumnSymbols(col);
 
-    // We start with topLitRow=0 always (lighting from top row #0)
-    col.topLitRow = 0;
-    // bottomLitRow = -1 means no rows are lit yet
-    col.bottomLitRow = -1;
-    // We will light the first row
-    col.bottomLitRow++;
-    col.nextRowStepTime = now + rowTransitionDelay;
-
-    // We also know once fully ON, we remain on for col.onDuration
-    // (that gets set in the main loop once bottomLitRow == NUM_ROWS-1)
-}
-
-// Called when transitioning from ON -> TURNING_OFF
-void MatrixScreensaver::startTurningOff(Column &col, unsigned long now) {
-    col.state = TURNING_OFF;
-    // We turn off from the top down
-    col.topLitRow = 0;
-    col.bottomLitRow = NUM_ROWS - 1;
-    col.nextRowStepTime = now + rowTransitionDelay;
-}
-
-/*--- Randomizing the column’s symbols all at once ---*/
-void MatrixScreensaver::randomizeColumnSymbols(Column &col) {
+    // reset all litPixels=0
     for (int r = 0; r < NUM_ROWS; r++) {
-        col.rows[r].ch = randomAlienChar();
-        // set an initial random flicker time so it can flicker eventually
-        col.rows[r].nextChange = millis() + random(300, 800);
+        col.rows[r].litPixels = 0;
     }
 }
 
+// ON->TURNING_OFF
+void MatrixScreensaver::startTurningOff(Column &col, unsigned long now) {
+    col.state = TURNING_OFF;
+    col.currentRow = 0;  // fade out from top row first
+    col.nextStep = now + rowPixelDelay;
+}
+
+
+// Fill with new random chars
+void MatrixScreensaver::randomizeColumnSymbols(Column &col) {
+    for (int r = 0; r < NUM_ROWS; r++) {
+        col.rows[r].ch = randomAlienChar();
+        col.rows[r].nextChange = millis() + random(300, 800);
+        // or just set nextChange to some future time
+    }
+}
 char MatrixScreensaver::randomAlienChar() {
     int idx = random(0, 16);
     return ALIEN_CHARS[idx];
 }
 
-/*--- Actually draw a character at (x,y) ---*/
-void MatrixScreensaver::drawChar(int x, int y, char c) {
-    // If using an internal function that uses your custom font data, do so here.
-    // Example with SSD1306Wire:
-    String s(c);
-    display.drawString(x, y, s);
+/**
+ * @param x, y      Top-left of the character cell on screen.
+ * @param c         The character to draw.
+ * @param litPixels How many pixel lines are lit (0..FONT_HEIGHT).
+ * @param fill      True if we are filling ON (top to bottom),
+ *                  False if we are fading OFF (top to bottom).
+ */
+void MatrixScreensaver::drawCharPartial(int x, int y, char c, int litPixels, bool fill) {
+    // find glyph offset in your font
+    uint16_t offset = findGlyphOffset(c);
+
+    // If fill == true, interpret litPixels as "draw lines [0..litPixels-1]"
+    // so if litPixels=1 => only row 0, litPixels=8 => rows [0..7].
+    // This yields a top-down reveal (top line appears first).
+    if (fill) {
+        // clamp
+        if (litPixels > FONT_HEIGHT) {
+            litPixels = FONT_HEIGHT;
+        }
+        int endRow = litPixels - 1; 
+        for (int row = 0; row <= endRow; row++) {
+            uint8_t rowData = pgm_read_byte(&MY_FONT[offset + row]);
+            int drawY = y + row; 
+            for (int col = 0; col < FONT_WIDTH; col++) {
+                if (rowData & (1 << col)) {
+                    display.setPixel(x + col, drawY);
+                }
+            }
+        }
+    } else {
+        // fill == false => turning OFF from the top line first
+        // If litPixels=8 => full glyph rows [0..7].
+        // If litPixels=7 => skip row 0 => draw [1..7].
+        // If litPixels=1 => skip rows [0..6], only draw row 7. 
+        // => top row disappears first.
+        
+        if (litPixels > FONT_HEIGHT) {
+            litPixels = FONT_HEIGHT;
+        }
+        // start row = how many lines from the top we skip
+        int startRow = FONT_HEIGHT - litPixels; 
+        if (startRow < 0) {
+            startRow = 0;
+        }
+        for (int row = startRow; row < FONT_HEIGHT; row++) {
+            uint8_t rowData = pgm_read_byte(&MY_FONT[offset + row]);
+            int drawY = y + row; 
+            for (int col = 0; col < FONT_WIDTH; col++) {
+                if (rowData & (1 << col)) {
+                    display.setPixel(x + col, drawY);
+                }
+            }
+        }
+    }
 }

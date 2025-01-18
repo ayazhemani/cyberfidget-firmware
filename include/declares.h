@@ -59,6 +59,7 @@ void drawPixelWaterfallGame();
 void drawSPHFluidGame();
 void drawBreakoutGame();
 void drawSimonSaysGame2();
+void drawMatrixScreensaver();
 
 // ECU Peripherals
 #define POWER_PIN_OLED 12 //OLED VREG

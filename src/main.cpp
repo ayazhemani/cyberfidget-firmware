@@ -64,6 +64,7 @@
 #include "fontSuiGenerisRg.h"
 
 
+
 // Initialize the OLED display using Arduino Wire:
 SSD1306Wire display(0x3c, SDA, SCL);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h e.g. https://github.com/esp8266/Arduino/blob/master/variants/nodemcu/pins_arduino.h
 // SSD1306Wire display(0x3c, D3, D5);  // ADDRESS, SDA, SCL  -  If not, they can be specified manually.
@@ -173,6 +174,9 @@ BreakoutGame breakout(display);
 #include "SimonSaysGame.h"
 SimonSaysGame simonGame(display, beepForSquareFn, beepOnUserPressFn);
 
+#include "MatrixScreensaver.h"
+MatrixScreensaver matrixScreensaver(display);
+
 // Demo Config
 typedef void (*Demo)(void);
 Demo demos[] = {
@@ -201,7 +205,8 @@ Demo demos[] = {
   drawPixelWaterfallGame, // 21
   drawSPHFluidGame, // 22
   drawBreakoutGame, // 23
-  drawSimonSaysGame2 // 24
+  drawSimonSaysGame2, // 24
+  drawMatrixScreensaver // 25
   };
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
@@ -671,6 +676,9 @@ void setup() {
     btns[i].lastChangeTime = 0;
   }
   // randomSeed(analogRead(A0)); // If you want truly random patterns each reset
+
+  // Matrix Screensaver
+  matrixScreensaver.begin();
 
   esp_task_wdt_reset();
 }
@@ -1727,6 +1735,12 @@ void drawSimonSaysGame2(){
   updateBeep();
 
   // If using AudioTools, call your copier.copy() here
+}
+
+void drawMatrixScreensaver(){
+  // Update the screensaver
+  matrixScreensaver.update();
+  matrixScreensaver.draw();
 }
 
 void beepOn(float freq) {

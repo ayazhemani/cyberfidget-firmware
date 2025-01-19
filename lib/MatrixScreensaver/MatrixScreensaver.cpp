@@ -22,7 +22,7 @@ static const uint8_t MY_FONT[] PROGMEM = {
     // For demonstration, let's say each glyph = 8 bytes
     // '!' => 0x00,0x00,0xF8,... etc. 
     // We'll just have placeholders:
-    // Use this to draw custom characters - https://sourpuss.net/projects/fontedit/
+    // Use this to draw custom characters, careful of bytes per glyph and height/width match - https://sourpuss.net/projects/fontedit/
     //0x00,0x00,0x00,0x00,0x00,0x00,0xF8,0x5F, // '!'
     //0x18,0x3E,0x22,0x40,0x1A,0x32,0x26,0x18,
 	0x00,0x7C,0x76,0x58,0x1A,0x76,0x3C,	// 33

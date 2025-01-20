@@ -5,9 +5,11 @@ extern const int lineHeight;
 extern const int displayHeight;
 extern int maxScrollOffset;
 
-void drawSerialDataScreenWrapper();
+void serialDataScreenProcessor();
 void handleScrollUp();
 void handleScrollDown();
 void toggleScrollMode();
+void updateScrollPositionFromSlider();
+void drawSerialDataScreen();
 
 #endif

@@ -24,7 +24,7 @@ const int displayHeight = 64;         // Height of your display in pixel
 extern void drawSerialDataScreen();
 extern void drawDefaultInfoScreen();
 
-void drawSerialDataScreenWrapper() {
+void serialDataScreenProcessor() {
     newDataReceived = false;
 
     while (Serial.available() > 0) {
@@ -46,15 +46,24 @@ void drawSerialDataScreenWrapper() {
             lastSegment.trim();
             parsedData[parsedLineCount++] = lastSegment; 
 
+            // Preserve current scroll offset before updating
+            int savedOffset = scrollOffset;
+
             // Always update dataLines
             lineCount = parsedLineCount;
             for (int i = 0; i < lineCount; i++) {
                 dataLines[i] = parsedData[i];
             }
-            // After updating lineCount:
+
+            // Recalculate maxScrollOffset
             maxScrollOffset = max(0, lineCount * lineHeight - displayHeight);
-            if (maxScrollOffset < 0) {
-                maxScrollOffset = 0;  // If fewer lines than fit on screen, no need to scroll
+
+
+            // Restore scrollOffset, ensuring it's within new bounds
+            if (savedOffset <= maxScrollOffset) {
+                scrollOffset = savedOffset;
+            } else {
+                scrollOffset = maxScrollOffset;
             }
 
             Serial.printf("Parsed lineCount: %d\n", lineCount);
@@ -66,8 +75,6 @@ void drawSerialDataScreenWrapper() {
             //currentLine = 0;
             //scrollOffset = 0;
 
-            drawSerialDataScreen();
-            isScreenUpdated = true;
             incomingData = "";
             lastDataTime = millis();
             Serial.println(", Data processed.");
@@ -84,34 +91,30 @@ void drawSerialDataScreenWrapper() {
     }
 }
 
-void handleScrollUp() {
+void handleScrollUp() { // Intended to handle button presses
   if (currentScrollMode == LINE_SCROLL) {
     // Line-based scrolling
     if (currentLine > 0) {
       currentLine--;
-      drawSerialDataScreen();
     }
   } else if (currentScrollMode == PIXEL_SCROLL) {
     // Pixel-based scrolling
     if (scrollOffset > 0) {
         scrollOffset--;
-        drawSerialDataScreen();
     }
   }
 }
 
-void handleScrollDown() {
+void handleScrollDown() { // Intended to handle button presses
     if (currentScrollMode == LINE_SCROLL) {
         // Line-based scrolling
         if (currentLine < lineCount - maxLinesOnScreen) {
             currentLine++;
-            drawSerialDataScreen();
         }
     } else if (currentScrollMode == PIXEL_SCROLL) {
         // Pixel-based scrolling
         if (scrollOffset < maxScrollOffset) {
             scrollOffset++;
-            drawSerialDataScreen();
         }
     }
 }
@@ -123,6 +126,57 @@ void toggleScrollMode() {
         currentScrollMode = LINE_SCROLL;
         scrollOffset = 0; // Reset pixel offset when switching to line scroll mode
     }
-    drawSerialDataScreen(); // Update screen to reflect new scroll mode
+}
+
+void updateScrollPositionFromSlider() {
+    if (currentScrollMode == LINE_SCROLL) {
+        int newLine = map(sliderPosition_12Bits, 0, 4095, 
+                          0, max(lineCount - maxLinesOnScreen, 0));
+        if (newLine != previousLine) {
+            currentLine = newLine;
+            previousLine = newLine;
+        }
+    } else if (currentScrollMode == PIXEL_SCROLL) {
+        int totalScrollablePixels = max(0, (lineCount * lineHeight) - displayHeight);
+        int newScrollOffset = map(sliderPosition_12Bits, 0, 4095, 0, totalScrollablePixels);
+
+        if (newScrollOffset != scrollOffset) {
+            scrollOffset = newScrollOffset;
+            drawSerialDataScreen();
+            isScreenUpdated = true;
+            previousScrollOffset = newScrollOffset; // Update previousScrollOffset if tracking changes
+        }
+    }
+}
+
+void drawSerialDataScreen() {
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.setFont(ArialMT_Plain_10);
+
+    updateScrollPositionFromSlider();
+    serialDataScreenProcessor();
+
+    if (currentScrollMode == LINE_SCROLL) {
+        // Line-based scrolling: Display lines based on currentLine
+        for (int i = 0; i < maxLinesOnScreen && i + currentLine < lineCount; i++) {
+            display.drawString(0, i * 10, dataLines[currentLine + i]);
+        }
+    } else if (currentScrollMode == PIXEL_SCROLL) {
+        // Pixel-based scrolling: Apply pixel offset across all lines
+        for (int i = 0; i < lineCount; i++) {
+            int yPos = i * lineHeight - scrollOffset;
+            // Render lines within the visible area:
+            if (yPos >= -lineHeight && yPos <= displayHeight) {
+                display.drawString(0, yPos, dataLines[i]);
+            }
+        }
+    }
+
+    display.display();
+    isScreenUpdated = true;
+
+    Serial.printf("scrollOffset=%d, maxScrollOffset=%d, lineCount=%d, lineHeight=%d\n", 
+              scrollOffset, maxScrollOffset, lineCount, lineHeight);
 }
 

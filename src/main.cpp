@@ -142,7 +142,7 @@ Demo demos[] = {
   //startSimonSaysGame, // 
   drawSliderProgressBar, // 17
   drawClockDemo,          // 18 - Add the new screen for clock
-  drawSerialDataScreenWrapper, // 19
+  drawSerialDataScreen, // 19
   drawWifiConfig, // 20
   drawPixelWaterfallGame, // 21
   drawSPHFluidGame, // 22
@@ -529,7 +529,6 @@ void screenUpdate(){
   if (demoMode != 13){
     audioPlayerRunning = false;
   }
-  updateScrollPositionFromSlider();
 }
 
 void ledSequencer(){
@@ -993,32 +992,6 @@ void drawWifiConfig() {
   }
 }
 
-void drawSerialDataScreen() {
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.setFont(ArialMT_Plain_10);
-
-    if (currentScrollMode == LINE_SCROLL) {
-        // Line-based scrolling: Display lines based on currentLine
-        for (int i = 0; i < maxLinesOnScreen && i + currentLine < lineCount; i++) {
-            display.drawString(0, i * 10, dataLines[currentLine + i]);
-        }
-    } else if (currentScrollMode == PIXEL_SCROLL) {
-        // Pixel-based scrolling: Apply pixel offset across all lines
-        for (int i = 0; i < lineCount; i++) {
-            int yPos = i * lineHeight - scrollOffset;
-            // Render lines within the visible area:
-            if (yPos >= -lineHeight && yPos <= displayHeight) {
-                display.drawString(0, yPos, dataLines[i]);
-            }
-        }
-    }
-
-    display.display();
-
-    Serial.printf("scrollOffset=%d, maxScrollOffset=%d, lineCount=%d, lineHeight=%d\n", 
-              scrollOffset, maxScrollOffset, lineCount, lineHeight);
-}
 
 void drawDefaultInfoScreen() {
   display.clear();

@@ -108,3 +108,9 @@ void mapToRainbow(int input, uint8_t dim, uint8_t &red, uint8_t &green, uint8_t 
     green = (uint8_t)((x * dim));
     blue = (uint8_t)((z * dim));
 }
+
+void ledSequencer(){
+  if(ledSequencerEnabled){
+    setRandomColors(); // or rainbow(20);
+  }
+}

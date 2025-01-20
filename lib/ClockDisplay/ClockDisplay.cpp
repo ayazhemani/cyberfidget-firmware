@@ -42,3 +42,22 @@ void drawClockDemo() {
     display.display();
   }
 }
+
+// Function to set the time from structure
+void updateTime(struct tm *currentTime) {
+  time_t now = mktime(currentTime);
+  timeval epoch = { .tv_sec = now, .tv_usec = 0 };
+  settimeofday(&epoch, NULL);
+}
+
+// Increase time by 1 minute
+void increaseMinute(struct tm *currentTime) {
+  currentTime->tm_min += 1;
+  updateTime(currentTime);
+}
+
+// Decrease time by 1 minute
+void decreaseMinute(struct tm *currentTime) {
+  currentTime->tm_min -= 1;
+  updateTime(currentTime);
+}

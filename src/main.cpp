@@ -32,7 +32,21 @@
 
 // Main Include
 #include <Arduino.h>  // Required for Arduino-specific types
-#include "declares.h"
+#include "globals.h"
+
+
+#include "AudioManager.h"
+#include "BatteryManager.h"
+//buttonmanager
+//displayermanager
+#include "RGBController.h"
+#include "SliderPosition.h"
+#include "WiFiManagerCF.h"
+
+#include "ClockDisplay.h"
+#include "Flashlight.h"
+#include "SerialDisplay.h"
+
 
 // Include watchdog timer library
 #include <esp_system.h>
@@ -46,55 +60,23 @@
 // For a connection via I2C using the Arduino Wire include:
 #include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
 #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
-// OR #include "SH1106Wire.h"   // legacy: #include "SH1106.h"
-
-// For a connection via I2C using brzo_i2c (must be installed) include:
-// #include <brzo_i2c.h>        // Only needed for Arduino 1.6.5 and earlier
-// #include "SSD1306Brzo.h"
-// OR #include "SH1106Brzo.h"
-
-// For a connection via SPI include:
-// #include <SPI.h>             // Only needed for Arduino 1.6.5 and earlier
-// #include "SSD1306Spi.h"
-// OR #include "SH1106SPi.h"
 
 
 // Optionally include custom images and fonts
 #include "images.h"
-#include "fontSuiGenerisRg.h"
-
 
 
 // Initialize the OLED display using Arduino Wire:
-SSD1306Wire display(0x3c, SDA, SCL);   // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h e.g. https://github.com/esp8266/Arduino/blob/master/variants/nodemcu/pins_arduino.h
-// SSD1306Wire display(0x3c, D3, D5);  // ADDRESS, SDA, SCL  -  If not, they can be specified manually.
-// SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32);  // ADDRESS, SDA, SCL, OLEDDISPLAY_GEOMETRY  -  Extra param required for 128x32 displays.
-// SH1106Wire display(0x3c, SDA, SCL);     // ADDRESS, SDA, SCL
-//SSD1306Wire display(0x3c, 22, 20); //Dismo Config
-
-// Initialize the OLED display using brzo_i2c:
-// SSD1306Brzo display(0x3c, D3, D5);  // ADDRESS, SDA, SCL
-// or
-// SH1106Brzo display(0x3c, D3, D5);   // ADDRESS, SDA, SCL
+SSD1306Wire display(0x3c, SDA, SCL);  
 
 #include "SparkFun_LIS2DH12.h" //Click here to get the library: http://librarymanager/All#SparkFun_LIS2DH12
 SPARKFUN_LIS2DH12 accel;       //Create instance
-
-/*
-Fuel Gauge - Thanks Sparkfun and Paul Clark
-*/ 
-#include <SparkFun_MAX1704x_Fuel_Gauge_Arduino_Library.h> 
-SFE_MAX1704X lipo(MAX1704X_MAX17048); // Create a MAX17048
 
 /*
 Clock/RTC
 */
 // Include libraries for time manipulation
 #include <time.h>
-
-/*
-WiFi
-*/
 
 // Memory Management
 /* 
@@ -109,46 +91,6 @@ Preferences preferencesMainApp;
 #include "esp_log.h"
 static const char *TAG_MAIN = "mainApp";
 //static const char *TAG_SENSOR = "Sensor";
-
-/**
- * @file player-url-i2s.ino
- * @brief see https://github.com/pschatzmann/arduino-audio-tools/blob/main/examples/examples-player/player-url-i2s/README.md
- * 
- * @author Phil Schatzmann
- * @copyright GPLv3
- */
-
-
-#include "AudioTools.h"
-#include "AudioTools/AudioCodecs/CodecMP3Helix.h"
-
-
-const char *urls[] = {
-  "http://stream.srg-ssr.ch/m/rsj/mp3_128",
-  "http://stream.srg-ssr.ch/m/drs3/mp3_128",
-  "http://stream.srg-ssr.ch/m/rr/mp3_128",
-  "http://sunshineradio.ice.infomaniak.ch/sunshineradio-128.mp3",
-  "http://streaming.swisstxt.ch/m/drsvirus/mp3_128"
-};
-
-// WiFi
-#include <WiFiManager.h> //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-#include <ESPAsyncWebServer.h>
-#include "credentials.h" 
-WiFiManager wifiManager;
-AsyncWebServer server(80); // Declare but don’t start the server yet
-
-URLStream url(wifi_ssid, wifi_password);
-//AudioSourceURL source(urlStream, urls, "audio/mp3");
-I2SStream i2s;
-//EncodedAudioStream dec(&i2s, new MP3DecoderHelix()); // Decoding stream
-//StreamCopy copier(dec, url); // copy url to decoder
-
-SineWaveGenerator<int16_t> sine;
-GeneratedSoundStream<int16_t> in(sine); 
-VolumeStream volume(in);
-StreamCopy copier(i2s, volume); 
-AudioActions action;
 
 // additional controls
 Debouncer nextButtonDebouncer(2000);
@@ -210,18 +152,6 @@ Demo demos[] = {
   };
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
-
-
-// RGBW LEDs
-
-#include <Adafruit_NeoPixel.h>
-typedef void (*RGBW)(void);
-RGBW colors[] = {red, green, blue, white, halfWHITE};
-
-int colorLength = (sizeof(colors) / sizeof(RGBW));
-
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(LED_COUNT, PIN, NEO_RGBW + NEO_KHZ800);
-
 
 // Function prototypes
 void IRAM_ATTR debounceButton(int buttonIndex);
@@ -443,7 +373,7 @@ void setup() {
   pinMode(POWER_PIN_AUX, OUTPUT);
   digitalWrite(POWER_PIN_AUX, HIGH); // Turn on the aux power regulator
 
-  Serial.begin(250000);
+  Serial.begin(115200);
   Serial.println();
   Serial.println();
 
@@ -454,17 +384,8 @@ void setup() {
   display.setFont(ArialMT_Plain_10);
 
   // RGBW LEDs
-  strip.begin();
-  strip.show(); // Initialize all pixels to 'off'
-
-  // Battery Voltage
-  /*
-  Battery voltage divider
-  VBAT is plit through a 50/50 divider (2x 200k resistors) into VOLT_READ_PIN
-  Circuit additional has 1uF cap to ground for filtering
-
-  */
-  pinMode(VOLT_READ_PIN, INPUT);
+  initRGB();
+  pinMode(VOLT_READ_PIN, INPUT); // Slider Input
 
   // Set up the buttons as inputs with internal pull-up resistors if supported
   // Only GPIO 15 supports pull up, the other buttons have external pull-ups
@@ -511,142 +432,11 @@ void setup() {
   // Speaker Setup
   //AudioLogger::instance().begin(Serial, AudioLogger::Info);
 
-  // Audio setup output
-  auto cfg = i2s.defaultConfig(TX_MODE);
-  cfg.i2s_format = I2S_LSB_FORMAT; //I2S_LSB_FORMAT default vs STD?
-  cfg.pin_ws = 27; // LRC pin
-  cfg.pin_bck = 26; //BCLK pin
-  cfg.pin_data = 14; //DIN pin
-  cfg.channels = 2;
-  cfg.bits_per_sample = 16;
-  i2s.begin(cfg);
-  in.begin(cfg); // Setup sound generation based on Audioi2s settings
-  // set initial volume
-  auto vcfg = volume.defaultConfig();
-  vcfg.copyFrom(cfg);
-  //vcfg.allow_boost = true; // activate amplification using linear control
-  volume.begin(vcfg); // we need to provide the bits_per_sample and channels
-  volume.setVolume(0.0);
-  setupActions(); // activate sound keys
-
-  // Fuel Gauge MAX17048
-  lipo.enableDebugging(); // Uncomment this line to enable helpful debug messages on Serial
-
-  if (lipo.begin() == false) // Connect to the MAX17048 using the default wire port
-  {
-    Serial.println(F("MAX17048 not detected. Please check wiring. Freezing."));
-    while (1)
-      ;
-  }
-
-  // // Just because we can, let's reset the MAX17048
-  // Serial.println(F("Resetting the MAX17048..."));
-  // delay(1000); // Give it time to get its act back together
-
-  // Read and print the reset indicator
-  Serial.print(F("Reset Indicator was: "));
-  bool RI = lipo.isReset(true); // Read the RI flag and clear it automatically if it is set
-  Serial.println(RI); // Print the RI
-  // If RI was set, check it is now clear
-  if (RI)
-  {
-    Serial.print(F("Reset Indicator is now: "));
-    RI = lipo.isReset(); // Read the RI flag
-    Serial.println(RI); // Print the RI    
-  }
-
-  // To quick-start or not to quick-start? That is the question!
-  // Read the following and then decide if you do want to quick-start the fuel gauge.
-  // "Most systems should not use quick-start because the ICs handle most startup problems transparently,
-  //  such as intermittent battery-terminal connection during insertion. If battery voltage stabilizes
-  //  faster than 17ms then do not use quick-start. The quick-start command restarts fuel-gauge calculations
-  //  in the same manner as initial power-up of the IC. If the system power-up sequence is so noisy that the
-  //  initial estimate of SOC has unacceptable error, the system microcontroller might be able to reduce the
-  //  error by using quick-start."
-  // If you still want to try a quick-start then uncomment the next line:
-	//lipo.quickStart();
-
-  // Read and print the device ID
-  Serial.print(F("Device ID: 0x"));
-  uint8_t id = lipo.getID(); // Read the device ID
-  if (id < 0x10) Serial.print(F("0")); // Print the leading zero if required
-  Serial.println(id, HEX); // Print the ID as hexadecimal
-
-  // Read and print the device version
-  Serial.print(F("Device version: 0x"));
-  uint8_t ver = lipo.getVersion(); // Read the device version
-  if (ver < 0x10) Serial.print(F("0")); // Print the leading zero if required
-  Serial.println(ver, HEX); // Print the version as hexadecimal
-
-  // Read and print the battery threshold
-  Serial.print(F("Battery empty threshold is currently: "));
-  Serial.print(lipo.getThreshold());
-  Serial.println(F("%"));
-
-	// We can set an interrupt to alert when the battery SoC gets too low.
-	// We can alert at anywhere between 1% and 32%:
-	lipo.setThreshold(20); // Set alert threshold to 20%.
-
-  // Read and print the battery empty threshold
-  Serial.print(F("Battery empty threshold is now: "));
-  Serial.print(lipo.getThreshold());
-  Serial.println(F("%"));
-
-  // Read and print the high voltage threshold
-  Serial.print(F("High voltage threshold is currently: "));
-  float highVoltage = ((float)lipo.getVALRTMax()) * 0.02; // 1 LSb is 20mV. Convert to Volts.
-  Serial.print(highVoltage, 2);
-  Serial.println(F("V"));
-
-  // Set the high voltage threshold
-  lipo.setVALRTMax((float)4.1); // Set high voltage threshold (Volts)
-
-  // Read and print the high voltage threshold
-  Serial.print(F("High voltage threshold is now: "));
-  highVoltage = ((float)lipo.getVALRTMax()) * 0.02; // 1 LSb is 20mV. Convert to Volts.
-  Serial.print(highVoltage, 2);
-  Serial.println(F("V"));
-
-  // Read and print the low voltage threshold
-  Serial.print(F("Low voltage threshold is currently: "));
-  float lowVoltage = ((float)lipo.getVALRTMin()) * 0.02; // 1 LSb is 20mV. Convert to Volts.
-  Serial.print(lowVoltage, 2);
-  Serial.println(F("V"));
-
-  // Set the low voltage threshold
-  lipo.setVALRTMin((float)3.9); // Set low voltage threshold (Volts)
-
-  // Read and print the low voltage threshold
-  Serial.print(F("Low voltage threshold is now: "));
-  lowVoltage = ((float)lipo.getVALRTMin()) * 0.02; // 1 LSb is 20mV. Convert to Volts.
-  Serial.print(lowVoltage, 2);
-  Serial.println(F("V"));
-
-  // Enable the State Of Change alert
-  Serial.print(F("Enabling the 1% State Of Change alert: "));
-  if (lipo.enableSOCAlert())
-  {
-    Serial.println(F("success."));
-  }
-  else
-  {
-    Serial.println(F("FAILED!"));
-  }
-  
-  // Read and print the HIBRT Active Threshold
-  Serial.print(F("Hibernate active threshold is: "));
-  float actThr = ((float)lipo.getHIBRTActThr()) * 0.00125; // 1 LSb is 1.25mV. Convert to Volts.
-  Serial.print(actThr, 5);
-  Serial.println(F("V"));
-
-  // Read and print the HIBRT Hibernate Threshold
-  Serial.print(F("Hibernate hibernate threshold is: "));
-  float hibThr = ((float)lipo.getHIBRTHibThr()) * 0.208; // 1 LSb is 0.208%/hr. Convert to %/hr.
-  Serial.print(hibThr, 3);
-  Serial.println(F("%/h"));
+  initAudio();  // Initialize the audio system
+  batteryManager.init(); // Initialize fuel gauge and battery management
 
   // Initialize WiFi in low-power mode
-  WiFi.mode(WIFI_STA); // Set to station mode by default
+  WiFiManagerCFObject.init();
 
   // Set inertia and damping using global variables
   pixelGame.setInertia(pixelGameInertia);
@@ -655,21 +445,14 @@ void setup() {
   // Reset pixel positions
   pixelGame.resetPixels();
 
-
-
   // Initialize the breakout game
   breakout.reset();
-
-  // Specify which pin to monitor for game resets
-  breakout.setResetButton(button_BottomRight, /* activeLow = */ true);
-
-  // **Attach the bounce callback** so BreakoutGame calls beepOnBounce
-  breakout.setBounceCallback(beepOnBounce);
+  breakout.setResetButton(button_BottomRight, /* activeLow = */ true); // Specify which pin to monitor for game resets
+  breakout.setBounceCallback(beepOnBounce); // **Attach the bounce callback** so BreakoutGame calls beepOnBounce
 
   // Start the Simon game
   simonGame.begin();
-  // Initialize button states
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++) { // Initialize button states
     //pinMode(buttonPins[i], INPUT_PULLUP); // Done Already
     btns[i].stableState    = false;
     btns[i].lastReading    = true;  
@@ -681,68 +464,6 @@ void setup() {
   matrixScreensaver.begin();
 
   esp_task_wdt_reset();
-}
-
-// Sets RGB LEDs pixels
-void colorSet(uint32_t c, uint8_t wait) { // From NeoPixel Library
-  for(uint16_t i=0; i<strip.numPixels(); i++) {
-      strip.setPixelColor(i, c);
-  }
-   strip.show();
-   delay(wait);
-}
-
-void red() {
-  colorSet(strip.Color(0, 25, 0, 0), 0); // Red
-}
-
-void green() {
-  colorSet(strip.Color(25, 0, 0, 0), 0); // Green
-}
-
-void blue() {
-  colorSet(strip.Color(0, 0, 25, 0), 0); // Blue
-}
-
-void white() {
-  colorSet(strip.Color(0, 0, 0, 50), 0); // WHITE
-}
-
-void halfWHITE() {
-  colorSet(strip.Color(0, 0, 0, 25), 0); // half WHITE
-}
-
-void setRandomColors() {
-  uint8_t maxBrightness = 10;
-  for(int i = 1; i < strip.numPixels(); i++) { //Set i=1 to skip over flashlight LED
-    strip.setPixelColor(i, strip.Color(random(0, maxBrightness), random(0, maxBrightness), random(0, maxBrightness), 0));
-  }
-  strip.show();
-}
-
-void setDeterminedColors(uint8_t colorR, uint8_t colorG, uint8_t colorB, uint8_t colorW) {
-  for(int i = 1; i < strip.numPixels(); i++) { //Set i=1 to skip over flashlight LED
-    strip.setPixelColor(i, strip.Color(colorR, colorG, colorB, colorW));
-  }
-  strip.show();
-}
-
-void setColorsOff() {
-  for(int i = 0; i < strip.numPixels(); i++) { //Set i=1 to skip over flashlight LED
-    strip.setPixelColor(i, strip.Color(0, 0, 0, 0));
-  }
-  strip.show();
-}
-
-void rainbow(int wait) {
-  for(long firstPixelHue = 0; firstPixelHue < 5*65536; firstPixelHue += 256) {
-    for(int i=1; i<strip.numPixels(); i++) { //Set i=1 to skip over flashlight LED
-      int pixelHue = firstPixelHue + (i * 65536L / strip.numPixels());
-      strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(pixelHue)));
-    }
-    strip.show();
-    delay(wait);
-  }
 }
 
 void accelerometer(){
@@ -782,16 +503,6 @@ void accelerometer(){
 
 
 
-void sliderPositionRead(){
-  sliderPosition_Millivolts = analogReadMilliVolts(VOLT_READ_PIN); // Read through ADC with calibrated return
-  sliderPosition_12Bits = analogRead(VOLT_READ_PIN); // Read through 12-bit ADC as raw bits into 16-bit var
-  sliderPosition_12Bits_Inverted =  4095 - sliderPosition_12Bits;
-  
-  sliderPosition_8Bits =  255 - ((sliderPosition_12Bits * 255) / 4095); // Map 12-bit to 8-bit variable
-  sliderPosition_8Bits_Inverted = (sliderPosition_12Bits * 255) / 4095; // Map 12-bit to 8-bit variable, inverted
-    
-  sliderPosition_Percentage = 100 - ((sliderPosition_12Bits * 100) / 4095); // Map 12-bit to percentage (0-100), inverted
-}
 
 void screenUpdate(){
   // draw the current demo method
@@ -824,22 +535,15 @@ void screenUpdate(){
 void ledSequencer(){
   if(ledSequencerEnabled){
     setRandomColors(); // or rainbow(20);
-
-    // Display the updated NeoPixel strip
-    strip.show();
   }
 }
 
 void loop() {
-  if(wifimanager_nonblocking) {
-    wifiManager.process(); // avoid delays() in loop when non-blocking and other long running code 
-  } 
+  WiFiManagerCFObject.process();  // Non-blocking WiFi processing if enabled
+
   esp_task_wdt_reset();
   millisNow = millis();
   
-  // Audio sounds
-  copier.copy();
-  action.processActions();
   // Handle audio streaming + beep logic
   loopAudio();
 
@@ -851,11 +555,11 @@ void loop() {
     if((millisNow - millisOld10) >= 20){
       millisOld10 = millisNow;
 
-      if(demoMode != 14) {
-        if(flashlightStatus){
-          flashlightSwitch(false);
-        }
-      }
+      // if(demoMode != 14) {
+      //   if(flashlightStatus){
+      //     flashlightSwitch(false);
+      //   }
+      // }
 
       // Reset LEDs
       if (demoModePreviously == 11 || demoModePreviously == 14 || demoModePreviously == 17) { 
@@ -864,7 +568,7 @@ void loop() {
 
       // Turn WiFi back off
       if (demoModePreviously == 20) {
-        stopWebServer();
+        WiFiManagerCFObject.stopWebServer();
       }
 
       sliderPositionRead();
@@ -878,7 +582,7 @@ void loop() {
 
     if((millisNow - millisOld200) >= 200){
       millisOld200 = millisNow;
-      fuelGaugeUpdate();
+      batteryManager.update();
       
       // Slow NVM write cycle, only check every
       if((millisNow - millisLastInteraction) >= 3000){
@@ -890,7 +594,7 @@ void loop() {
   if((millisNow - millisLastInteraction) >= 30000){
     // Go to deep sleep
     if(preventSleepWhileCharging){
-      if(lipo.getChangeRate() < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
+      if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
         Serial.println("Going to sleep now...");
         delay(1000);
         esp_deep_sleep_start();
@@ -1051,50 +755,6 @@ void drawBatteryProgressBar() {
   display.display();
 }
 
-// Function to map input (0 to 4095) to a rainbow progression (red -> orange -> yellow -> green t-> blue -> violet)
-void mapToRainbow(int input, uint8_t dim, uint8_t &red, uint8_t &green, uint8_t &blue) {
-    // Ensure input and dim are within bounds
-    input = input < 0 ? 0 : (input > 4095 ? 4095 : input);
-    dim = dim > 255 ? 255 : dim;
-
-    // Normalize input to range 0.0–1.0
-    float normalized = (float)input / 4095.0;
-
-    // Calculate which segment of the rainbow we're in
-    float x, y, z;
-    if (normalized < 0.2) {  // Red → Orange
-        float t = normalized / 0.2;
-        x = 1.0;
-        y = t;
-        z = 0.0;
-    } else if (normalized < 0.4) {  // Orange → Yellow
-        float t = (normalized - 0.2) / 0.2;
-        x = 1.0;
-        y = 1.0;
-        z = 0.0;
-    } else if (normalized < 0.6) {  // Yellow → Green
-        float t = (normalized - 0.4) / 0.2;
-        x = 1.0 - t;
-        y = 1.0;
-        z = 0.0;
-    } else if (normalized < 0.8) {  // Green → Blue
-        float t = (normalized - 0.6) / 0.2;
-        x = 0.0;
-        y = 1.0 - t;
-        z = t;
-    } else {  // Blue → Violet
-        float t = (normalized - 0.8) / 0.2;
-        x = t;
-        y = 0.0;
-        z = 1.0;
-    }
-
-    // Scale RGB values by brightness (dim)
-    red = (uint8_t)((y * dim));
-    green = (uint8_t)((x * dim));
-    blue = (uint8_t)((z * dim));
-}
-
 void drawSliderProgressBar() {
   display.clear();
   // draw the progress bar
@@ -1117,7 +777,7 @@ void drawSliderProgressBar() {
   strip.setPixelColor(pixel_Front_Middle, strip.Color(8 - red, 8 - green, 8 - blue, 0));
   strip.setPixelColor(pixel_Front_Bottom, strip.Color(red, green, blue, 0));
 
-  strip.show();
+  updateStrip();
 }
 
 void drawAccelerometerScreen() {
@@ -1175,50 +835,6 @@ void drawTimeOnCounter() {
   display.display();
 }
 
-void drawAudioPlayer() {
-  float volumeSlider = float(sliderPosition_Percentage) / 100.0;
-  volume.setVolume(volumeSlider);
-  if(!audioPlayerRunning){
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(suiGenerisRg_20);
-    display.drawString(64, 10, "Booper");
-    display.display();
-    audioPlayerRunning = true;
-  }
-  Serial.print("Volume: " + String(volume.volume()));
-}
-
-void flashlightSwitch(bool flashlightEnable){
-  if(flashlightEnable){
-    //setDeterminedColors(0, 0 , 0, 0);
-    strip.setPixelColor(pixel_Back, strip.Color(sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits));
-    strip.setPixelColor(pixel_Front_Top, strip.Color(sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits));
-    strip.setPixelColor(pixel_Front_Middle, strip.Color(sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits));
-    strip.setPixelColor(pixel_Front_Bottom, strip.Color(sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits, sliderPosition_8Bits));
-    strip.show();
-    flashlightStatus = true;
-  }
-  if(!flashlightEnable && flashlightStatus){
-    //setDeterminedColors(0, 0 , 0, 0);
-    strip.setPixelColor(pixel_Back, strip.Color(0, 0, 0, 0));
-    strip.setPixelColor(pixel_Front_Top, strip.Color(0, 0, 0, 0));
-    strip.setPixelColor(pixel_Front_Middle, strip.Color(0, 0, 0, 0));
-    strip.setPixelColor(pixel_Front_Bottom, strip.Color(0, 0, 0, 0));
-    strip.show();
-    flashlightStatus = false;
-  }
-}
-
-void drawFlashlight() {
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.setFont(ArialMT_Plain_16);
-  display.drawString(64, 18, "Flashlight");
-  display.display();
-  flashlightSwitch(true);
-}
-
 /*
 Reaction Time Game
 */
@@ -1259,62 +875,6 @@ void drawSPHFluidGame(){
 void drawBreakoutGame(){
     // Update the game with new accelerometer data
     breakout.update(accelX);
-}
-
-
-
-void fuelGaugeUpdate() {
-  batteryVoltagePercentage = lipo.getSOC();
-  batteryVoltage = lipo.getVoltage();
-
-  // // Print the variables:
-  // Serial.print("Voltage: ");
-  // Serial.print(lipo.getVoltage());  // Print the battery voltage
-  // Serial.print("V");
-
-  // Serial.print(" Percentage: ");
-  // Serial.print(lipo.getSOC(), 2); // Print the battery state of charge with 2 decimal places
-  // Serial.print("%");
-
-  // Serial.print(" Change Rate: ");
-  // Serial.print(lipo.getChangeRate(), 2); // Print the battery change rate with 2 decimal places
-  // Serial.print("%/hr");
-
-  // Serial.print(" Alert: ");
-  // Serial.print(lipo.getAlert()); // Print the generic alert flag
-
-  // Serial.print(" Voltage High Alert: ");
-  // Serial.print(lipo.isVoltageHigh()); // Print the alert flag
-
-  // Serial.print(" Voltage Low Alert: ");
-  // Serial.print(lipo.isVoltageLow()); // Print the alert flag
-
-  // Serial.print(" Empty Alert: ");
-  // Serial.print(lipo.isLow()); // Print the alert flag
-
-  // Serial.print(" SOC 1% Change Alert: ");
-  // Serial.print(lipo.isChange()); // Print the alert flag
-  
-  // Serial.print(" Hibernating: ");
-  // Serial.print(lipo.isHibernating()); // Print the alert flag
-  
-  // Serial.println();
-
-  // Logic to check for battery State of Charge and disable the LiPo charger as desired per the calibration
-  // Requires Jumper on R64 to be soldered
-  // Need to modify this so the LED isn't kept on when the device isn't charging
-  if(enableBatterySOCCutoff) {
-    if ((batteryVoltagePercentage > batterySOCCutoff) && (lipo.getChangeRate() > sleepChargingChangeThreshold)) {
-      pinMode(CHRG_ENA, OUTPUT);
-      digitalWrite(CHRG_ENA, HIGH);
-      //Serial.println("Charging Disabled, SOC Cutoff Reached");
-    }
-    else {
-      pinMode(CHRG_ENA, OUTPUT);
-      digitalWrite(CHRG_ENA, LOW);
-      //Serial.println("Charging Enabled, SOC Cutoff Not Reached");
-    }
-  }
 }
 
 // New clock drawing function
@@ -1399,18 +959,6 @@ void decreaseMinute(struct tm *currentTime) {
   updateTime(currentTime);
 }
 
-// if(clockScreenEnabled) {
-//   if (getLocalTime(&currentTime)) {
-//     updateTime(&currentTime);
-// }
-
-// if(buttonCounter[2]) { // Assuming button_MiddleLeft decrements time
-//   decreaseMinute(&currentTime);
-// }
-
-// if(buttonCounter[3]) { // Assuming button_MiddleRight increments time
-//   increaseMinute(&currentTime);
-// }
 
 // Function to connect to WiFi
 void connectToWiFi() {
@@ -1424,38 +972,6 @@ void connectToWiFi() {
   Serial.println(" Connected!");
 }
 
-void startWebServer() {
-  if (!isWebServerRunning) {
-    disableWatchdog();
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-      request->send(200, "text/html", "<h1>Cyber Fidget Config Portal</h1>");
-    });
-
-    wifiManager.setConfigPortalTimeout(60);
-    wifiManager.setConfigPortalBlocking(wifimanager_nonblocking);
-    server.begin(); // Start the web server
-    isWebServerRunning = true;
-    Serial.println("Web Server Started");
-  }
-}
-
-void stopWebServer() {
-  if (isWebServerRunning) {
-    server.end(); // Stop the web server
-    isWebServerRunning = false;
-    Serial.println("Web Server Stopped");
-    enableWatchdog();
-  }
-}
-
-void startWiFiManager() {
-  if (!wifiManager.startConfigPortal(wifiAP_SSID)) {
-    Serial.println("Failed to connect to WiFi");
-  } else {
-    Serial.println("WiFi Connected");
-    startWebServer(); // Start server after successful WiFi connection
-  }
-}
 
 void drawWifiConfig() {
   display.clear();
@@ -1473,60 +989,8 @@ void drawWifiConfig() {
     display.drawString(64, 12, wifiAP_SSID);
     display.drawString(64, 22, "Started...192.168.4.1");
     display.display();
-    startWiFiManager();
+    WiFiManagerCFObject.startWiFiPortal();
   }
-}
-
-void drawSerialDataScreenWrapper() {
-    newDataReceived = false;
-
-    while (Serial.available() > 0) {
-        char incomingChar = Serial.read();
-        newDataReceived = true;
-
-        if (incomingChar == '\n') {
-            // Parse incoming data and determine the number of lines
-            String parsedData[10];
-            int parsedLineCount = 0;
-            int startIndex = 0;
-            int commaIndex;
-            while ((commaIndex = incomingData.indexOf(",", startIndex)) != -1 && parsedLineCount < 10) {
-                String segment = incomingData.substring(startIndex, commaIndex); // Extract substring
-                segment.trim(); // Trim whitespace in-place
-                parsedData[parsedLineCount++] = segment; // Store trimmed segment in parsedData
-                startIndex = commaIndex + 1;
-            }
-            String lastSegment = incomingData.substring(startIndex);
-            lastSegment.trim();
-            parsedData[parsedLineCount++] = lastSegment; 
-
-            // Check if the number of lines has changed
-            bool lineCountChanged = (parsedLineCount != lineCount);
-
-            // Update dataLines and reset scroll position only if line count changes
-            if (lineCountChanged) {
-                lineCount = parsedLineCount;
-                for (int i = 0; i < lineCount; i++) {
-                    dataLines[i] = parsedData[i];
-                }
-                currentLine = 0; // Reset scroll position only if line count changes
-                scrollOffset = 0; // Reset pixel offset
-            }
-
-            drawSerialDataScreen();
-            isScreenUpdated = true;
-            incomingData = ""; // Clear buffer for the next message
-            lastDataTime = millis();
-        } else {
-            incomingData += incomingChar;
-        }
-    }
-
-    // Handle the timeout scenario for default info screen
-    if (millis() - lastDataTime > dataTimeout && !newDataReceived && lineCount == 0) {
-        drawDefaultInfoScreen();
-        isScreenUpdated = true;
-    }
 }
 
 void drawSerialDataScreen() {
@@ -1542,14 +1006,18 @@ void drawSerialDataScreen() {
     } else if (currentScrollMode == PIXEL_SCROLL) {
         // Pixel-based scrolling: Apply pixel offset across all lines
         for (int i = 0; i < lineCount; i++) {
-            int yPos = i * 10 - scrollOffset; // Calculate pixel offset for each line
-            if (yPos >= -10 && yPos <= 64) {  // Only render lines within the display’s visible area
+            int yPos = i * lineHeight - scrollOffset;
+            // Render lines within the visible area:
+            if (yPos >= -lineHeight && yPos <= displayHeight) {
                 display.drawString(0, yPos, dataLines[i]);
             }
         }
     }
 
     display.display();
+
+    Serial.printf("scrollOffset=%d, maxScrollOffset=%d, lineCount=%d, lineHeight=%d\n", 
+              scrollOffset, maxScrollOffset, lineCount, lineHeight);
 }
 
 void drawDefaultInfoScreen() {
@@ -1560,142 +1028,10 @@ void drawDefaultInfoScreen() {
   display.display();
 }
 
-void handleScrollUp() {
-  if (currentScrollMode == LINE_SCROLL) {
-    // Line-based scrolling
-    if (currentLine > 0) {
-      currentLine--;
-      drawSerialDataScreen();
-    }
-  } else if (currentScrollMode == PIXEL_SCROLL) {
-    // Pixel-based scrolling
-    if (scrollOffset > 0) {
-      scrollOffset--;
-      drawSerialDataScreen();
-    } else if (currentLine > 0) {
-      currentLine--;
-      scrollOffset = maxScrollOffset;
-      drawSerialDataScreen();
-    }
-  }
-}
-
-void handleScrollDown() {
-    if (currentScrollMode == LINE_SCROLL) {
-        // Line-based scrolling
-        if (currentLine < lineCount - maxLinesOnScreen) {
-            currentLine++;
-            drawSerialDataScreen();
-        }
-    } else if (currentScrollMode == PIXEL_SCROLL) {
-        // Pixel-based scrolling
-        if (scrollOffset < maxScrollOffset) {
-            scrollOffset++;
-            drawSerialDataScreen();
-        } else if (currentLine < lineCount - 1) {
-            currentLine++;
-            scrollOffset = 0;
-            drawSerialDataScreen();
-        }
-    }
-}
-
-void updateScrollPositionFromSlider() {
-    if (currentScrollMode == LINE_SCROLL) {
-        // Line-based scrolling: Map slider to line count
-        int newLine = map(sliderPosition_12Bits, 0, 4095, 0, max(lineCount - maxLinesOnScreen, 0));
-        
-        if (newLine != previousLine) { // Only update if there's a change
-            currentLine = newLine;
-            drawSerialDataScreen();
-            isScreenUpdated = true;
-            previousLine = newLine;
-        }
-
-    } else if (currentScrollMode == PIXEL_SCROLL) {
-        // Pixel-based scrolling: Map slider to total scrollable height across all lines
-        int totalScrollablePixels = max(0, (lineCount * 10) - 64); // 64 is the height of the display
-        int scrollPosition = map(sliderPosition_12Bits, 0, 4095, 0, totalScrollablePixels);
-
-        // Calculate new line and offset from scrollPosition
-        int newLine = scrollPosition / 10;
-        int newScrollOffset = scrollPosition % 10;
-
-        // Update screen only if there's a change in line or offset
-        if (newLine != previousLine || newScrollOffset != previousScrollOffset) {
-            currentLine = newLine;
-            scrollOffset = newScrollOffset;
-            drawSerialDataScreen();
-            isScreenUpdated = true;
-            previousLine = newLine;
-            previousScrollOffset = newScrollOffset;
-        }
-    }
-}
-
-void toggleScrollMode() {
-    if (currentScrollMode == LINE_SCROLL) {
-        currentScrollMode = PIXEL_SCROLL;
-    } else {
-        currentScrollMode = LINE_SCROLL;
-        scrollOffset = 0; // Reset pixel offset when switching to line scroll mode
-    }
-    drawSerialDataScreen(); // Update screen to reflect new scroll mode
-}
-
 
 /*
 Audio Boops with Buttons
 */
-void actionKeyOn(bool active, int pin, void* ptr){
-  if (audioPlayerRunning){
-    float freq = *((float*)ptr);
-    sine.setFrequency(freq);
-    in.begin();
-  }
-}
-
-
-void actionKeyOff(bool active, int pin, void* ptr){
-  in.end();
-}
-
-// We want to play some notes on the Audioi2s keys 
-void setupActions(){
-  // assign buttons to notes
-  auto act_low = AudioActions::ActiveLow;
-  static float note[] = {N_C3, N_D3, N_E3, N_F3, N_G3, N_A3}; // frequencies
-  action.add(button_TopLeft, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[0])); // C3
-  action.add(button_TopRight, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[1])); // D3
-  action.add(button_MiddleLeft, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[2])); // E3
-  action.add(button_MiddleRight, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[3])); // F3
-  action.add(button_BottomLeft, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[4])); // G3
-  action.add(button_BottomRight, actionKeyOn, actionKeyOff, AudioActions::ActiveLow, &(note[5])); // A3
-}
-
-void beepOnBounce() {
-  // Start the beep if not already playing
-  if (!playingBeep) {
-    //float freq = random(220, 880); // to randomize frequency
-    sine.setFrequency(440.0f);  // A4 note, for example
-    in.begin();                 // Start generating the sine wave
-    playingBeep = true;
-    beepStart = millis();
-  }
-}
-
-void loopAudio() {
-  // Copy audio data from 'in' -> 'volume' -> 'i2s'
-  copier.copy();
-
-  // If beep is playing, check if time is up
-  if (playingBeep) {
-    if (millis() - beepStart >= beepDuration) {
-      in.end();          // Stop the wave generator
-      playingBeep = false;
-    }
-  }
-}
 
 int readWhichButton() {
   int pressedIndex = -1;

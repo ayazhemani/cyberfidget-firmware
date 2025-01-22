@@ -1,52 +1,39 @@
 #include "ReactionTimeGame.h"
-#include <esp_task_wdt.h>  // Include the header for the watchdog functions
-
-extern volatile bool buttonPressed;  // Reference to global variable
-//volatile int buttonStateReaction;
-//int buttonPin;
 
 ReactionTimeGame* ReactionTimeGame::instance = nullptr;
-const unsigned long ReactionTimeGame::debounceDelay;
 
-ReactionTimeGame::ReactionTimeGame(SSD1306Wire& disp, int btnPin)
-    : display(disp), buttonPin(btnPin), gameStarted(false), waitingForReaction(false),
-      delayActive(false), messageDisplayed(false), lastDebounceTime(0) {
-    pinMode(buttonPin, INPUT_PULLUP);
-    instance = this;
+// Implement the callback
+void ReactionTimeGame::reactionButtonPressedCallback(const ButtonEvent& ev) {
+    // The button has been pressed; delegate to the instance's handler
+    // This assumes you store a reference or pointer to the active ReactionTimeGame instance
+    if (ReactionTimeGame::instance) {
+        ReactionTimeGame::instance->handleButtonPress();
+    }
 }
 
-void ReactionTimeGame::handleButtonPressISR() {
-    unsigned long currentTime = millis();
-    if (instance && (currentTime - instance->lastDebounceTime) > debounceDelay) {
-        int buttonStateReaction = digitalRead(instance->buttonPin);
-        if (buttonStateReaction == LOW) { // Assuming active LOW buttons
-            buttonPressed = true;
-        }
-        instance->lastDebounceTime = currentTime;
-    }
+ReactionTimeGame::ReactionTimeGame(SSD1306Wire& disp, int btnIndex, ButtonManager& btnManager)
+    : display(disp), buttonIndex(btnIndex), buttonManager(btnManager), 
+      gameStarted(false), waitingForReaction(false), delayActive(false), messageDisplayed(false) {
+    
+    // Register the callback for the specific button
+    buttonManager.registerCallback(buttonIndex, ReactionTimeGame::reactionButtonPressedCallback);
+    // Optionally store a static instance pointer for callback access
+    ReactionTimeGame::instance = this;
 }
 
 void ReactionTimeGame::update(unsigned long millisNow) {
-    esp_task_wdt_reset(); // Reset the watchdog during potentially long operations
-
-    if (buttonPressed) {
-        buttonPressed = false;
-        handleButtonPress();
+    // Check for button events
+    ButtonEvent ev;
+    while (buttonManager.getNextEvent(ev)) {
+        if (ev.buttonIndex == buttonIndex) { // Ensure it's the correct button
+            if (ev.eventType == ButtonEvent_Pressed) {
+                handleButtonPress();
+            }
+        }
     }
 
-    if (!gameStarted && !messageDisplayed) {
-        display.clear();
-        display.setTextAlignment(TEXT_ALIGN_LEFT);
-        display.setFont(ArialMT_Plain_16);
-        
-        display.drawString(0, 0, "Press to start");
-        display.display();
-        messageDisplayed = true;
-    }
-
+    // Handle the delay logic
     if (delayActive && millisNow >= randomDelayEnd) {
-        esp_task_wdt_reset();
-
         display.clear();
         display.drawString(0, 0, "GO!");
         display.display();
@@ -54,6 +41,17 @@ void ReactionTimeGame::update(unsigned long millisNow) {
         startTime = millisNow;
         waitingForReaction = true;
         delayActive = false;
+    }
+
+    // Initial screen prompt
+    if (!gameStarted && !messageDisplayed) {
+        display.clear();
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.setFont(ArialMT_Plain_16);
+
+        display.drawString(0, 0, "Press to start");
+        display.display();
+        messageDisplayed = true;
     }
 }
 
@@ -67,7 +65,6 @@ void ReactionTimeGame::handleButtonPress() {
     } else if (gameStarted && !waitingForReaction) {
         resetGame();
     } else {
-        // Optional: Handle case where button press happens when it's not expected
         Serial.println("Unexpected button press.");
     }
 }
@@ -77,13 +74,11 @@ void ReactionTimeGame::startGame(unsigned long millisNow) {
     display.clear();
     display.drawString(0, 0, "Get Ready...");
     display.display();
-    
+
     unsigned long randomDelay = random(1000, 5000);
     randomDelayEnd = millisNow + randomDelay;
     delayActive = true;
     messageDisplayed = false;
-
-    esp_task_wdt_reset();
 }
 
 void ReactionTimeGame::displayReactionTime() {
@@ -97,16 +92,8 @@ void ReactionTimeGame::resetGame() {
     waitingForReaction = false;
     delayActive = false;
     messageDisplayed = false;
-    
+
     display.clear();
     display.drawString(0, 0, "Press to start");
     display.display();
-}
-
-void ReactionTimeGame::enableISR() {
-    attachInterrupt(digitalPinToInterrupt(buttonPin), handleButtonPressISR, FALLING);
-}
-
-void ReactionTimeGame::disableISR() {
-    detachInterrupt(digitalPinToInterrupt(buttonPin));
 }

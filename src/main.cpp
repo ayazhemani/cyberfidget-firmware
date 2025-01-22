@@ -1,32 +1,7 @@
 
 
 /**
-   The MIT License (MIT)
-
-   Copyright (c) 2018 by ThingPulse, Daniel Eichhorn
-   Copyright (c) 2018 by Fabrice Weinberg
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in all
-   copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-   SOFTWARE.
-
-   ThingPulse invests considerable time and money to develop these open source libraries.
-   Please support us by buying our products (and not the clones) from
-   https://thingpulse.com
+License Placeholder
 
 */
 
@@ -37,7 +12,7 @@
 
 #include "AudioManager.h"
 #include "BatteryManager.h"
-//buttonmanager
+#include "ButtonManager.h"
 //displayermanager
 #include "RGBController.h"
 #include "SliderPosition.h"
@@ -56,8 +31,12 @@
 // CPU Sleep stuff
 #include <esp_sleep.h>
 
-// Include the correct display library
+// Create one ButtonManager
+ButtonManager buttonManager(s_buttonPins, s_usePullups, 6 /* #buttons */, 
+                            20 /* debounce ms */, 
+                            1500 /* hold threshold ms, for example */);
 
+// Include the correct display library
 // For a connection via I2C using the Arduino Wire include:
 #include <Wire.h>               // Only needed for Arduino 1.6.5 and earlier
 #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
@@ -89,17 +68,15 @@ Preferences preferencesMainApp;
 static const char *TAG_MAIN = "mainApp";
 //static const char *TAG_SENSOR = "Sensor";
 
-// additional controls
-Debouncer nextButtonDebouncer(2000);
-
 
 /*
 Games
 Easiest to include these libraries by adding them to the OS's Arduino Library Folder to avoid c_cpp_properties.json mods
 */
 
-#include "ReactionTimeGame.h" 
-ReactionTimeGame reactionGame(display, button_BottomRight); // Display class name and button to use
+// ReactionTimeGame instance
+#include "ReactionTimeGame.h"
+ReactionTimeGame reactionGame(display, button_BottomRightIndex /* button index */, buttonManager);
 
 #include "PixelWaterFallGame.h"
 PixelWaterfallGame pixelGame(display);
@@ -150,38 +127,40 @@ Demo demos[] = {
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
 
-// Function prototypes
-void IRAM_ATTR debounceButton(int buttonIndex);
 
-// Interrupt service routines for each button
-void IRAM_ATTR handleButtonPress1() {
-  debounceButton(0);
-}
+// // Function prototypes
+// void IRAM_ATTR debounceButton(int buttonIndex);
 
-void IRAM_ATTR handleButtonPress2() {
-  debounceButton(1);
-}
+// // Interrupt service routines for each button
+// void IRAM_ATTR handleButtonPress1() {
+//   debounceButton(0);
+// }
 
-void IRAM_ATTR handleButtonPress3() {
-  debounceButton(2);
-  //handleScrollUp();
-}
+// void IRAM_ATTR handleButtonPress2() {
+//   debounceButton(1);
+// }
 
-void IRAM_ATTR handleButtonPress4() {
-  debounceButton(3);
-  //handleScrollDown();
-}
+// void IRAM_ATTR handleButtonPress3() {
+//   debounceButton(2);
+//   //handleScrollUp();
+// }
 
-void IRAM_ATTR handleButtonPress5() {
-  debounceButton(4);
-}
+// void IRAM_ATTR handleButtonPress4() {
+//   debounceButton(3);
+//   //handleScrollDown();
+// }
 
-void IRAM_ATTR handleButtonPress6() {
-  if(!reactionGameEnabled){
-    debounceButton(5);
-    //buttonPressed = true;  // Just set the flag
-  }
-}
+// void IRAM_ATTR handleButtonPress5() {
+//   debounceButton(4);
+// }
+
+// void IRAM_ATTR handleButtonPress6() {
+//   if(!reactionGameEnabled){
+//     debounceButton(5);
+//     //buttonPressed = true;  // Just set the flag
+//   }
+// }
+
 
 // Check if a button was pressed
 // Based on counters, which isn't a great way to do it
@@ -195,49 +174,49 @@ bool compareButtonCounters(volatile int* counter1, volatile int* counter2, int l
   return true;
 }
 
-void buttonPressedTap(int buttonIndex){
-  // Button 1 (Top Left)
-  if (buttonIndex == 0){
-    //Serial.println("ButtonTap: " + String(buttonIndex));
-    demoModePreviously = demoMode;
-    demoMode = (demoMode - 1 + demoLength) % demoLength;    
-  }
-  // Button 2 (Top Right)
-  if (buttonIndex == 1){
-    demoModePreviously = demoMode;
-    demoMode = (demoMode + 1)  % demoLength;
-    //Serial.println("ButtonTap: " + String(buttonIndex));
-  }
-  // // Button 6 (Bottom Right)
-  // if (buttonIndex == 5){
-  //   // if (demoMode == 10){ // Specific to Audio Player, fix/replace with enum
-  //   //   player.stop();
-  //   // }
-  // }
-}
+// void buttonPressedTap(int buttonIndex){
+//   // Button 1 (Top Left)
+//   if (buttonIndex == 0){
+//     //Serial.println("ButtonTap: " + String(buttonIndex));
+//     demoModePreviously = demoMode;
+//     demoMode = (demoMode - 1 + demoLength) % demoLength;    
+//   }
+//   // Button 2 (Top Right)
+//   if (buttonIndex == 1){
+//     demoModePreviously = demoMode;
+//     demoMode = (demoMode + 1)  % demoLength;
+//     //Serial.println("ButtonTap: " + String(buttonIndex));
+//   }
+//   // // Button 6 (Bottom Right)
+//   // if (buttonIndex == 5){
+//   //   // if (demoMode == 10){ // Specific to Audio Player, fix/replace with enum
+//   //   //   player.stop();
+//   //   // }
+//   // }
+// }
 
-// Debounce function to increment the button counter
-void IRAM_ATTR debounceButton(int buttonIndex) {
-  unsigned long currentTime = millis();
-  if ((currentTime - lastDebounceTime[buttonIndex]) > debounceDelay) {
-    int currentState = digitalRead(buttonPins[buttonIndex]);
+// // Debounce function to increment the button counter
+// void IRAM_ATTR debounceButton(int buttonIndex) {
+//   unsigned long currentTime = millis();
+//   if ((currentTime - lastDebounceTime[buttonIndex]) > debounceDelay) {
+//     int currentState = digitalRead(buttonPins[buttonIndex]);
 
-    // Check if the button state has changed
-    if (currentState != buttonState[buttonIndex]) {
-      lastDebounceTime[buttonIndex] = currentTime;
+//     // Check if the button state has changed
+//     if (currentState != buttonState[buttonIndex]) {
+//       lastDebounceTime[buttonIndex] = currentTime;
 
-      // Only increment the counter if the button was pressed (LOW state)
-      if (currentState == LOW && buttonState[buttonIndex] == HIGH) {
-        buttonCounter[buttonIndex]++;
-        millisLastInteraction = millisNow;
-        buttonPressedTap(buttonIndex);
-      }
+//       // Only increment the counter if the button was pressed (LOW state)
+//       if (currentState == LOW && buttonState[buttonIndex] == HIGH) {
+//         buttonCounter[buttonIndex]++;
+//         millisLastInteraction = millisNow;
+//         buttonPressedTap(buttonIndex);
+//       }
 
-      // Update the button state
-      buttonState[buttonIndex] = currentState;
-    }
-  }
-}
+//       // Update the button state
+//       buttonState[buttonIndex] = currentState;
+//     }
+//   }
+// }
 
 // Navigation Controls
 void loadButtonCounters() {
@@ -384,25 +363,28 @@ void setup() {
   initRGB();
   pinMode(VOLT_READ_PIN, INPUT); // Slider Input
 
-  // Set up the buttons as inputs with internal pull-up resistors if supported
-  // Only GPIO 15 supports pull up, the other buttons have external pull-ups
-  // for (int i = 0; i < numButtons; i++) {
-  //   pinMode(buttonPins[i], INPUT_PULLUP);
-  // }
-  pinMode(button_TopLeft, INPUT);
-  pinMode(button_TopRight, INPUT);
-  pinMode(button_MiddleLeft, INPUT);
-  pinMode(button_MiddleRight, INPUT);
-  pinMode(button_BottomLeft, INPUT);
-  pinMode(button_BottomRight, INPUT_PULLUP);
+  // Buttons
+   buttonManager.begin(); 
 
-  // Attach interrupts to the buttons
-  attachInterrupt(digitalPinToInterrupt(buttonPins[0]), handleButtonPress1, FALLING);
-  attachInterrupt(digitalPinToInterrupt(buttonPins[1]), handleButtonPress2, FALLING);
-  attachInterrupt(digitalPinToInterrupt(buttonPins[2]), handleButtonPress3, FALLING);
-  attachInterrupt(digitalPinToInterrupt(buttonPins[3]), handleButtonPress4, FALLING);
-  attachInterrupt(digitalPinToInterrupt(buttonPins[4]), handleButtonPress5, FALLING);
-  attachInterrupt(digitalPinToInterrupt(buttonPins[5]), handleButtonPress6, FALLING);
+  // // Set up the buttons as inputs with internal pull-up resistors if supported
+  // // Only GPIO 15 supports pull up, the other buttons have external pull-ups
+  // // for (int i = 0; i < numButtons; i++) {
+  // //   pinMode(buttonPins[i], INPUT_PULLUP);
+  // // }
+  // pinMode(button_TopLeft, INPUT);
+  // pinMode(button_TopRight, INPUT);
+  // pinMode(button_MiddleLeft, INPUT);
+  // pinMode(button_MiddleRight, INPUT);
+  // pinMode(button_BottomLeft, INPUT);
+  // pinMode(button_BottomRight, INPUT_PULLUP);
+
+  // // Attach interrupts to the buttons
+  // attachInterrupt(digitalPinToInterrupt(buttonPins[0]), handleButtonPress1, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(buttonPins[1]), handleButtonPress2, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(buttonPins[2]), handleButtonPress3, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(buttonPins[3]), handleButtonPress4, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(buttonPins[4]), handleButtonPress5, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(buttonPins[5]), handleButtonPress6, FALLING);
   
 
   if (accel.begin() == false)
@@ -529,19 +511,75 @@ void screenUpdate(){
 }
 
 void loop() {
-  WiFiManagerCFObject.process();  // Non-blocking WiFi processing if enabled
-
   esp_task_wdt_reset();
   millisNow = millis();
   
   // Handle audio streaming + beep logic
   loopAudio();
 
-  if(reactionGameEnabled){
-    Serial.println("reactionGameEnabled loop()");
-    reactionGame.update(millisNow);
+  // 1) Update the button states
+  buttonManager.update();
+
+  // 2) Fetch any new button events
+  ButtonEvent ev;
+  while (buttonManager.getNextEvent(ev)) {
+      // We have a new button event
+      Serial.print("Button #");
+      Serial.print(ev.buttonIndex);
+      Serial.print(" => ");
+
+      // Check if there's a registered callback for this button and a Pressed event
+      if (ev.eventType == ButtonEvent_Pressed && 
+          ev.buttonIndex >= 0 && ev.buttonIndex < ButtonManager::MAX_BUTTONS &&
+          buttonManager.getButtonCallback(ev.buttonIndex) != nullptr) {
+          
+          // Invoke the callback for this button
+          buttonManager.getButtonCallback(ev.buttonIndex)(ev);
+          // Optionally continue to skip further global processing for this event
+          continue;
+      }
+
+      switch (ev.eventType) {
+        case ButtonEvent_Pressed:
+            Serial.println("Pressed");
+            // For instance, if Button 0 = TopLeft cycles to the previous demo:
+            if (ev.buttonIndex == 0) {
+                demoModePreviously = demoMode;
+                demoMode = (demoMode - 1 + demoLength) % demoLength;
+            }
+            break;
+
+        case ButtonEvent_Released:
+            Serial.print("Released after ");
+            Serial.print(ev.duration);
+            Serial.println(" ms");
+            buttonCounter[ev.buttonIndex]++;
+            // Example: if Button #1 = TopRight cycles the next demo
+            if (ev.buttonIndex == 1) {
+                demoModePreviously = demoMode;
+                demoMode = (demoMode + 1) % demoLength;
+            }
+            break;
+
+        case ButtonEvent_Held:
+            Serial.print("Held for ");
+            Serial.print(ev.duration);
+            Serial.println(" ms (and still pressed)!");
+            // Maybe do some hold-specific action
+            break;
+
+        default:
+            // Shouldn’t happen, but just in case
+            break;
+      }
   }
-  else{    
+
+  WiFiManagerCFObject.process();  // Non-blocking WiFi processing if enabled
+
+  // if(reactionGameEnabled){
+  //   reactionGame.update(millisNow);
+  // }
+  // else{    
     if((millisNow - millisOld10) >= 20){
       millisOld10 = millisNow;
 
@@ -573,7 +611,7 @@ void loop() {
         saveButtonCounters();
       }  
     }
-  }
+  //}
 
   if((millisNow - millisLastInteraction) >= 30000){
     // Go to deep sleep
@@ -724,14 +762,12 @@ Reaction Time Game
 
 void drawReactionTimeGame() {
   //display.clear();
-  //reactionGame.update(millisNow);
+  reactionGame.update(millisNow);
   //display.display();
-  if(!reactionGameEnabled){
-    reactionGameEnabled = true;
-    Serial.println("drawReactionTimeGame fired");
-    detachInterrupt(digitalPinToInterrupt(button_BottomRight));
-    reactionGame.enableISR();
-  }
+  // if(!reactionGameEnabled){
+  //   reactionGameEnabled = true;
+  //   Serial.println("drawReactionTimeGame fired");
+  // }
 }
 
 void drawPixelWaterfallGame(){
@@ -939,6 +975,9 @@ void startBeep(float freq) {
   beepActive = true;
   beepStartTime = millis();
 }
+
+// additional audio controls
+Debouncer nextButtonDebouncer(2000);
 
 // ------------------- 4) Callback Functions for the Simon Game -------------------
 void beepForSquareFn(int sq) {

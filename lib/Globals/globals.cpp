@@ -29,17 +29,41 @@ volatile bool buttonPressed    = false;
 bool flashlightStatus          = false;
 
 // Buttons
-const int buttonPins[numButtons] = {36, 37, 38, 39, 34, 15};
-volatile unsigned long lastDebounceTime[numButtons] = {0};
-volatile int buttonState[numButtons] = {0};
-volatile int buttonCounter[numButtons] = {0};
-volatile int buttonCounterSaved[numButtons] = {0};
+// const int buttonPins[numButtons] = {36, 37, 38, 39, 34, 15};
+// volatile unsigned long lastDebounceTime[numButtons] = {0};
+// volatile int buttonState[numButtons] = {0};
+int buttonCounter[numButtons] = {0};
+int buttonCounterSaved[numButtons] = {0};
 const int button_TopLeft = 36;
 const int button_TopRight = 37;
 const int button_MiddleLeft = 38;
 const int button_MiddleRight = 39;
 const int button_BottomLeft = 34;
 const int button_BottomRight = 15;
+
+const int button_TopLeftIndex = 0;
+const int button_TopRightIndex = 1;
+const int button_MiddleLeftIndex = 2;
+const int button_MiddleRightIndex = 3;
+const int button_BottomLeftIndex = 4;
+const int button_BottomRightIndex = 5;
+
+// NOTE: The array positions must match your 6 buttons in the same order you want to handle them.
+const int s_buttonPins[numButtons] = {
+    button_TopLeft,
+    button_TopRight,
+    button_MiddleLeft,
+    button_MiddleRight,
+    button_BottomLeft,
+    button_BottomRight
+};
+// For the internal/external pull-ups: 
+// - If you have external pull-ups on the first 5, set false. 
+// - If you want to rely on the MCU’s internal pull-up for the last one, set true.
+// Only GPIO 15 supports pull up, the other buttons have external pull-ups
+const bool s_usePullups[numButtons] = {
+    false, false, false, false, false, true // Only BottomRight uses INPUT_PULLUP
+};
 
 // RGBW LEDS
 const uint16_t pixel_Front_Top    = 1;

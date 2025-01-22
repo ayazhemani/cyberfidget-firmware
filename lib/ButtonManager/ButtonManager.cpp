@@ -1,26 +1,131 @@
 #include "ButtonManager.h"
 
-static const int buttonPinsLocal[] = {36, 37, 38, 39, 34, 15};
+ButtonManager::ButtonManager(const int* pins,
+                             const bool* usePullups,
+                             int numButtons,
+                             unsigned long debounceMs,
+                             unsigned long holdThresholdMs)
+: _pins(pins),
+  _usePullups(usePullups),
+  _numButtons(numButtons),
+  _debounceMs(debounceMs),
+  _holdThresholdMs(holdThresholdMs),
+  _eventWriteIndex(0),
+  _eventReadIndex(0)
+{
+    // Allocate memory for state arrays
+    _currentState    = new bool[_numButtons];
+    _previousState   = new bool[_numButtons];
+    _lastChangeTime  = new unsigned long[_numButtons];
+    _pressStartTime  = new unsigned long[_numButtons];
+    _heldReported    = new bool[_numButtons];
 
-void ButtonManager::init() {
-  for(int i=0; i<6; i++){
-    pinMode(buttonPinsLocal[i], INPUT_PULLUP);
-    lastDebounceTime[i] = 0;
-    buttonCounter[i] = 0;
-  }
-  // attachInterrupts if you prefer
+    // Initialize them
+    for (int i = 0; i < _numButtons; i++) {
+        _currentState[i]   = false; // default to not pressed
+        _previousState[i]  = false;
+        _lastChangeTime[i] = 0;
+        _pressStartTime[i] = 0;
+        _heldReported[i]   = false;
+    }
+
+    // Clear event queue
+    for (int i = 0; i < MAX_EVENTS; i++) {
+        _events[i].buttonIndex = -1;
+        _events[i].eventType   = ButtonEvent_None;
+        _events[i].duration    = 0;
+    }
 }
 
-void ButtonManager::update(unsigned long now) {
-  // poll or do anything you need
-  for(int i=0; i<6; i++){
-    int reading = digitalRead(buttonPinsLocal[i]);
-    // Compare to lastDebounceTime, etc. 
-    // If pressed, handleButtonPress(i);
-  }
+void ButtonManager::begin() {
+    // Configure each pin as INPUT or INPUT_PULLUP
+    for (int i = 0; i < _numButtons; i++) {
+        if (_usePullups[i]) {
+            pinMode(_pins[i], INPUT_PULLUP);
+        } else {
+            pinMode(_pins[i], INPUT);
+        }
+    }
 }
 
-void ButtonManager::handleButtonPress(int index) {
-  buttonCounter[index]++;
-  // Could do callback or store press state for main to read
+void ButtonManager::update() {
+    unsigned long now = millis();
+
+    // For each button, read the raw input
+    //   Because some are active-low, the "pressed" state is (digitalRead(...) == LOW)
+    for (int i = 0; i < _numButtons; i++) {
+        bool rawPressed = (digitalRead(_pins[i]) == LOW);
+        // If using external pull-ups or internal pull-ups, the logic is the same:
+        // "pressed" means the pin reads LOW (assuming your hardware is wired that way).
+
+        // Compare with current stable state
+        if (rawPressed != _currentState[i]) {
+            // The reading has changed from the stable state, so start or check debounce
+            if ((now - _lastChangeTime[i]) > _debounceMs) {
+                // It's been longer than debounce time, so accept the new state
+                _currentState[i] = rawPressed;
+
+                // If the new state is pressed, record pressStartTime
+                if (_currentState[i]) {
+                    _pressStartTime[i] = now;
+                    _heldReported[i]   = false;
+                    // Generate "Pressed" event
+                    pushEvent(i, ButtonEvent_Pressed, 0 /*duration not relevant yet*/);
+                } else {
+                    // The button was just released
+                    unsigned long pressDuration = now - _pressStartTime[i];
+                    pushEvent(i, ButtonEvent_Released, pressDuration);
+                }
+
+                // Update the lastChangeTime
+                _lastChangeTime[i] = now;
+            }
+        } else {
+            // The raw reading matches the stable state; check if it's pressed long enough for "Held"
+            if (_currentState[i]) {
+                unsigned long pressDuration = now - _pressStartTime[i];
+                if (! _heldReported[i] && (pressDuration >= _holdThresholdMs)) {
+                    // Fire a Held event
+                    _heldReported[i] = true;
+                    pushEvent(i, ButtonEvent_Held, pressDuration);
+                }
+            }
+        }
+        // Save this reading as previous
+        _previousState[i] = _currentState[i];
+    }
+}
+
+bool ButtonManager::getNextEvent(ButtonEvent &event) {
+    // If read == write, queue is empty
+    if (_eventReadIndex == _eventWriteIndex) {
+        return false;
+    }
+
+    // Grab event
+    event = _events[_eventReadIndex];
+    // Advance read pointer
+    _eventReadIndex = (_eventReadIndex + 1) % MAX_EVENTS;
+    return true;
+}
+
+bool ButtonManager::isPressed(int buttonIndex) const {
+    if (buttonIndex < 0 || buttonIndex >= _numButtons) return false;
+    return _currentState[buttonIndex];
+}
+
+void ButtonManager::pushEvent(int buttonIndex, ButtonEventType type, unsigned long duration) {
+    // Create an event
+    ButtonEvent ev;
+    ev.buttonIndex = buttonIndex;
+    ev.eventType   = type;
+    ev.duration    = duration;
+
+    // Store it
+    _events[_eventWriteIndex] = ev;
+    // Move the index forward
+    _eventWriteIndex = (_eventWriteIndex + 1) % MAX_EVENTS;
+
+    // If the buffer is full, we essentially overwrite the oldest event
+    // (if _eventWriteIndex == _eventReadIndex again).
 }

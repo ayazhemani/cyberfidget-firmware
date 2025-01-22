@@ -15,7 +15,7 @@ constexpr unsigned long DEMO_DURATION = 3000;
 // Pin assignments — changed from #define to constexpr for clarity
 constexpr int POWER_PIN_OLED = 12;  // OLED VREG
 constexpr int POWER_PIN_AUX  = 2;   // RGB VREG
-//constexpr int LED_BUILTIN  = 13;// Declared in esp32-hal
+//constexpr int LED_BUILTIN  = 13;  // Declared in esp32-hal
 constexpr int CHRG_ENA       = 13;  // If truly the same as LED_BUILTIN, watch for conflicts
 constexpr int PIN            = 0;   // NeoPixel or LED data pin
 constexpr int OLED_RESET     = 7;   // Also RX pin
@@ -58,17 +58,30 @@ extern volatile bool buttonPressed;
 extern bool flashlightStatus;
 
 // Buttons
-extern const int buttonPins[numButtons];
-extern volatile unsigned long lastDebounceTime[numButtons];
-extern volatile int buttonState[numButtons];
-extern volatile int buttonCounter[numButtons];
-extern volatile int buttonCounterSaved[numButtons];
+// extern const int buttonPins[numButtons];
+// extern volatile unsigned long lastDebounceTime[numButtons];
+// extern volatile int buttonState[numButtons];
+extern int buttonCounter[numButtons];
+extern int buttonCounterSaved[numButtons];
 extern const int button_TopLeft;
 extern const int button_TopRight;
 extern const int button_MiddleLeft;
 extern const int button_MiddleRight;
 extern const int button_BottomLeft;
 extern const int button_BottomRight;
+
+extern const int button_TopLeftIndex;
+extern const int button_TopRightIndex;
+extern const int button_MiddleLeftIndex;
+extern const int button_MiddleRightIndex;
+extern const int button_BottomLeftIndex;
+extern const int button_BottomRightIndex;
+
+extern const int s_buttonPins[numButtons];    // Pin assignments for all buttons
+extern const bool s_usePullups[numButtons];   // Whether each button uses internal pull-up resistors
+constexpr unsigned long BUTTON_DEBOUNCE_MS = 20;       // Debounce time in ms
+constexpr unsigned long BUTTON_HOLD_THRESHOLD_MS = 1500; // Time in ms to trigger a "hold"
+
 
 // RGBW LEDS
 extern const uint16_t pixel_Front_Top;

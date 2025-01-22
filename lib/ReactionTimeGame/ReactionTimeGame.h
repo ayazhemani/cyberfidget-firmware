@@ -2,19 +2,23 @@
 #define REACTION_TIME_GAME_H
 
 #include "SSD1306Wire.h"
+#include "ButtonManager.h"
 
 class ReactionTimeGame {
 public:
-    ReactionTimeGame(SSD1306Wire& display, int buttonPin);
+    ReactionTimeGame(SSD1306Wire& display, int buttonIndex, ButtonManager& buttonManager);
 
     void update(unsigned long millisNow);
-    static void handleButtonPressISR();
-    void enableISR();
-    void disableISR();
+
+    static void reactionButtonPressedCallback(const ButtonEvent& ev);
+
+    static ReactionTimeGame* instance;
 
 private:
-    static ReactionTimeGame* instance;
     SSD1306Wire& display;
+    ButtonManager& buttonManager;
+    int buttonIndex; // Index of the button used for this game
+
     unsigned long startTime;
     unsigned long reactionTime;
     unsigned long randomDelayEnd;
@@ -22,10 +26,6 @@ private:
     bool waitingForReaction;
     bool delayActive;
     bool messageDisplayed;
-    int buttonPin;
-
-    unsigned long lastDebounceTime;  // For debouncing
-    static const unsigned long debounceDelay = 20;  // 50ms debounce delay
 
     void handleButtonPress();
     void startGame(unsigned long millisNow);

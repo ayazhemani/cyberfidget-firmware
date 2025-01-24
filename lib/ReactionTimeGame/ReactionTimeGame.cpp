@@ -1,11 +1,12 @@
+// ReactionTimeGame.cpp
 #include "ReactionTimeGame.h"
 
+// Initialize static instance pointer
 ReactionTimeGame* ReactionTimeGame::instance = nullptr;
 
 // Implement the callback
 void ReactionTimeGame::reactionButtonPressedCallback(const ButtonEvent& ev) {
     // The button has been pressed; delegate to the instance's handler
-    // This assumes you store a reference or pointer to the active ReactionTimeGame instance
     if (ReactionTimeGame::instance) {
         ReactionTimeGame::instance->handleButtonPress();
     }
@@ -17,19 +18,26 @@ ReactionTimeGame::ReactionTimeGame(SSD1306Wire& disp, int btnIndex, ButtonManage
     
     // Register the callback for the specific button
     buttonManager.registerCallback(buttonIndex, ReactionTimeGame::reactionButtonPressedCallback);
-    // Optionally store a static instance pointer for callback access
+    
+    // Store the instance pointer
     ReactionTimeGame::instance = this;
 }
 
 void ReactionTimeGame::update(unsigned long millisNow) {
-    // Check for button events
-    ButtonEvent ev;
-    while (buttonManager.getNextEvent(ev)) {
-        if (ev.buttonIndex == buttonIndex) { // Ensure it's the correct button
-            if (ev.eventType == ButtonEvent_Pressed) {
-                handleButtonPress();
-            }
-        }
+    // Only proceed if the game is active (callback is registered)
+    if (!buttonManager.hasCallback(buttonIndex)) {
+        return; // Skip update if the game isn't active
+    }
+
+    // Initial screen prompt
+    if (!gameStarted && !delayActive && !waitingForReaction && !messageDisplayed) {
+        display.clear();
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.setFont(ArialMT_Plain_16);
+
+        display.drawString(0, 0, "Press to start");
+        display.display();
+        messageDisplayed = true;
     }
 
     // Handle the delay logic
@@ -41,17 +49,6 @@ void ReactionTimeGame::update(unsigned long millisNow) {
         startTime = millisNow;
         waitingForReaction = true;
         delayActive = false;
-    }
-
-    // Initial screen prompt
-    if (!gameStarted && !messageDisplayed) {
-        display.clear();
-        display.setTextAlignment(TEXT_ALIGN_LEFT);
-        display.setFont(ArialMT_Plain_16);
-
-        display.drawString(0, 0, "Press to start");
-        display.display();
-        messageDisplayed = true;
     }
 }
 
@@ -75,7 +72,7 @@ void ReactionTimeGame::startGame(unsigned long millisNow) {
     display.drawString(0, 0, "Get Ready...");
     display.display();
 
-    unsigned long randomDelay = random(1000, 5000);
+    unsigned long randomDelay = random(1000, 5000); // Delay between 1s and 5s
     randomDelayEnd = millisNow + randomDelay;
     delayActive = true;
     messageDisplayed = false;

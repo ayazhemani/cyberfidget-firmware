@@ -35,6 +35,11 @@ ButtonManager::ButtonManager(const int* pins,
         _events[i].eventType   = ButtonEvent_None;
         _events[i].duration    = 0;
     }
+    
+    // Initialize callback array to nullptr
+    for (int i = 0; i < MAX_BUTTONS_SUPPORTED; i++) {
+        buttonCallbacks[i] = nullptr;
+    }
 }
 
 void ButtonManager::begin() {
@@ -84,7 +89,7 @@ void ButtonManager::update() {
             // The raw reading matches the stable state; check if it's pressed long enough for "Held"
             if (_currentState[i]) {
                 unsigned long pressDuration = now - _pressStartTime[i];
-                if (! _heldReported[i] && (pressDuration >= _holdThresholdMs)) {
+                if (!_heldReported[i] && (pressDuration >= _holdThresholdMs)) {
                     // Fire a Held event
                     _heldReported[i] = true;
                     pushEvent(i, ButtonEvent_Held, pressDuration);
@@ -93,6 +98,24 @@ void ButtonManager::update() {
         }
         // Save this reading as previous
         _previousState[i] = _currentState[i];
+    }
+    
+    // Dispatch callbacks for button events
+    ButtonEvent ev;
+    while (getNextEvent(ev)) {
+        if (ev.eventType == ButtonEvent_Pressed && 
+            ev.buttonIndex >= 0 && ev.buttonIndex < MAX_BUTTONS_SUPPORTED &&
+            buttonCallbacks[ev.buttonIndex] != nullptr) {
+            
+            // Invoke the callback for this button
+            buttonCallbacks[ev.buttonIndex](ev);
+            // Optionally skip global processing
+            continue;
+        }
+
+        // Global handling can be done here if necessary
+        // (e.g., logging or handling buttons without callbacks)
+        
     }
 }
 
@@ -112,6 +135,23 @@ bool ButtonManager::getNextEvent(ButtonEvent &event) {
 bool ButtonManager::isPressed(int buttonIndex) const {
     if (buttonIndex < 0 || buttonIndex >= _numButtons) return false;
     return _currentState[buttonIndex];
+}
+
+void ButtonManager::registerCallback(int buttonIndex, ButtonCallback callback) {
+    if (buttonIndex >= 0 && buttonIndex < _numButtons && buttonIndex < MAX_BUTTONS_SUPPORTED) {
+        buttonCallbacks[buttonIndex] = callback;
+    }
+}
+
+void ButtonManager::unregisterCallback(int buttonIndex) {
+    if (buttonIndex >= 0 && buttonIndex < _numButtons && buttonIndex < MAX_BUTTONS_SUPPORTED) {
+        buttonCallbacks[buttonIndex] = nullptr;
+    }
+}
+
+bool ButtonManager::hasCallback(int buttonIndex) const {
+    if (buttonIndex < 0 || buttonIndex >= _numButtons) return false;
+    return buttonCallbacks[buttonIndex] != nullptr;
 }
 
 void ButtonManager::pushEvent(int buttonIndex, ButtonEventType type, unsigned long duration) {

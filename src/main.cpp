@@ -366,27 +366,6 @@ void setup() {
   // Buttons
    buttonManager.begin(); 
 
-  // // Set up the buttons as inputs with internal pull-up resistors if supported
-  // // Only GPIO 15 supports pull up, the other buttons have external pull-ups
-  // // for (int i = 0; i < numButtons; i++) {
-  // //   pinMode(buttonPins[i], INPUT_PULLUP);
-  // // }
-  // pinMode(button_TopLeft, INPUT);
-  // pinMode(button_TopRight, INPUT);
-  // pinMode(button_MiddleLeft, INPUT);
-  // pinMode(button_MiddleRight, INPUT);
-  // pinMode(button_BottomLeft, INPUT);
-  // pinMode(button_BottomRight, INPUT_PULLUP);
-
-  // // Attach interrupts to the buttons
-  // attachInterrupt(digitalPinToInterrupt(buttonPins[0]), handleButtonPress1, FALLING);
-  // attachInterrupt(digitalPinToInterrupt(buttonPins[1]), handleButtonPress2, FALLING);
-  // attachInterrupt(digitalPinToInterrupt(buttonPins[2]), handleButtonPress3, FALLING);
-  // attachInterrupt(digitalPinToInterrupt(buttonPins[3]), handleButtonPress4, FALLING);
-  // attachInterrupt(digitalPinToInterrupt(buttonPins[4]), handleButtonPress5, FALLING);
-  // attachInterrupt(digitalPinToInterrupt(buttonPins[5]), handleButtonPress6, FALLING);
-  
-
   if (accel.begin() == false)
   {
     Serial.println("Accelerometer not detected. Check address jumper and wiring. Freezing...");
@@ -416,6 +395,9 @@ void setup() {
 
   // Initialize WiFi in low-power mode
   WiFiManagerCFObject.init();
+
+  // Initially, the reaction game is not active, so ensure its callback is unregistered
+  buttonManager.unregisterCallback(reactionGame.getButtonIndex());
 
   // Set inertia and damping using global variables
   pixelGame.setInertia(pixelGameInertia);
@@ -520,98 +502,105 @@ void loop() {
   // 1) Update the button states
   buttonManager.update();
 
-  // 2) Fetch any new button events
+  // Handle app switching logic
+  // Replace the following pseudo-code with your actual app management logic
+  // For example, you might have a variable that tracks the current active app
+  // Here, we'll assume a function `isReactionGameActive()` determines if the game should be active
+  bool isReactionGameActive = /* Your logic to determine if the Reaction Time Game is active */ false;
+
+  if (isReactionGameActive && !reactionGameEnabled) {
+      // Activate Reaction Time Game
+      reactionGameEnabled = true;
+      buttonManager.registerCallback(reactionGame.getButtonIndex(), ReactionTimeGame::reactionButtonPressedCallback);
+      Serial.println("Reaction Time Game Activated.");
+  } 
+  else if (!isReactionGameActive && reactionGameEnabled) {
+      // Deactivate Reaction Time Game
+      reactionGameEnabled = false;
+      buttonManager.unregisterCallback(reactionGame.getButtonIndex());
+      Serial.println("Reaction Time Game Deactivated.");
+  }
+
+  // Fetch and handle events
   ButtonEvent ev;
   while (buttonManager.getNextEvent(ev)) {
-      // We have a new button event
+      // Check if the event is for a button with a callback
+      if (ev.buttonIndex >= 0 && ev.buttonIndex < buttonManager.getNumButtons() &&
+          buttonManager.hasCallback(ev.buttonIndex)) {
+          // Callback has been handled within ButtonManager::update()
+          // So skip further processing for this event
+          continue;
+      }
+
+      // Global event handling for buttons without callbacks
       Serial.print("Button #");
       Serial.print(ev.buttonIndex);
       Serial.print(" => ");
 
-      // Check if there's a registered callback for this button and a Pressed event
-      if (ev.eventType == ButtonEvent_Pressed && 
-          ev.buttonIndex >= 0 && ev.buttonIndex < ButtonManager::MAX_BUTTONS &&
-          buttonManager.getButtonCallback(ev.buttonIndex) != nullptr) {
-          
-          // Invoke the callback for this button
-          buttonManager.getButtonCallback(ev.buttonIndex)(ev);
-          // Optionally continue to skip further global processing for this event
-          continue;
-      }
-
       switch (ev.eventType) {
-        case ButtonEvent_Pressed:
-            Serial.println("Pressed");
-            // For instance, if Button 0 = TopLeft cycles to the previous demo:
-            if (ev.buttonIndex == 0) {
-                demoModePreviously = demoMode;
-                demoMode = (demoMode - 1 + demoLength) % demoLength;
-            }
-            break;
+          case ButtonEvent_Pressed:
+              Serial.println("Pressed");
+              if (ev.buttonIndex == 0) {
+                  demoModePreviously = demoMode;
+                  demoMode = (demoMode - 1 + demoLength) % demoLength;
+              }
+              break;
 
-        case ButtonEvent_Released:
-            Serial.print("Released after ");
-            Serial.print(ev.duration);
-            Serial.println(" ms");
-            buttonCounter[ev.buttonIndex]++;
-            // Example: if Button #1 = TopRight cycles the next demo
-            if (ev.buttonIndex == 1) {
-                demoModePreviously = demoMode;
-                demoMode = (demoMode + 1) % demoLength;
-            }
-            break;
+          case ButtonEvent_Released:
+              Serial.print("Released after ");
+              Serial.print(ev.duration);
+              Serial.println(" ms");
+              buttonCounter[ev.buttonIndex]++;
+              if (ev.buttonIndex == 1) {
+                  demoModePreviously = demoMode;
+                  demoMode = (demoMode + 1) % demoLength;
+              }
+              break;
 
-        case ButtonEvent_Held:
-            Serial.print("Held for ");
-            Serial.print(ev.duration);
-            Serial.println(" ms (and still pressed)!");
-            // Maybe do some hold-specific action
-            break;
+          case ButtonEvent_Held:
+              Serial.print("Held for ");
+              Serial.print(ev.duration);
+              Serial.println(" ms (and still pressed)!");
+              break;
 
-        default:
-            // Shouldn’t happen, but just in case
-            break;
+          default:
+              break;
       }
   }
 
   WiFiManagerCFObject.process();  // Non-blocking WiFi processing if enabled
 
-  // if(reactionGameEnabled){
-  //   reactionGame.update(millisNow);
-  // }
-  // else{    
-    if((millisNow - millisOld10) >= 20){
-      millisOld10 = millisNow;
+  if((millisNow - millisOld10) >= 20){
+    millisOld10 = millisNow;
 
-      // Reset LEDs
-      if (demoModePreviously == 11 || demoModePreviously == 14 || demoModePreviously == 17) { 
-        setColorsOff();    
-      }
-
-      // Turn WiFi back off
-      if (demoModePreviously == 20) {
-        WiFiManagerCFObject.stopWebServer();
-      }
-
-      sliderPositionRead();
-      screenUpdate();
+    // Reset LEDs
+    if (demoModePreviously == 11 || demoModePreviously == 14 || demoModePreviously == 17) { 
+      setColorsOff();    
     }
 
-    if((millisNow - millisOld50) >= 50){
-      millisOld50 = millisNow;
-      accelerometer();
+    // Turn WiFi back off
+    if (demoModePreviously == 20) {
+      WiFiManagerCFObject.stopWebServer();
     }
 
-    if((millisNow - millisOld200) >= 200){
-      millisOld200 = millisNow;
-      batteryManager.update();
-      
-      // Slow NVM write cycle, only check every
-      if((millisNow - millisLastInteraction) >= 3000){
-        saveButtonCounters();
-      }  
-    }
-  //}
+    sliderPositionRead();
+    screenUpdate();
+  }
+
+  if((millisNow - millisOld50) >= 50){
+    millisOld50 = millisNow;
+    accelerometer();
+  }
+
+  if((millisNow - millisOld200) >= 200){
+    millisOld200 = millisNow;
+    batteryManager.update();
+    
+    // Slow NVM write cycle, only check every
+    if((millisNow - millisLastInteraction) >= 3000){
+      saveButtonCounters();
+    }  
+  }
 
   if((millisNow - millisLastInteraction) >= 30000){
     // Go to deep sleep

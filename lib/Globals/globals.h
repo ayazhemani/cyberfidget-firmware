@@ -22,11 +22,15 @@ constexpr int OLED_RESET     = 7;   // Also RX pin
 constexpr int VOLT_READ_PIN  = 35;  // Battery voltage divider pin
 constexpr int RGB_COUNT      = 4;   // Number of RGB LEDs
 
+// Debounce and hold thresholds
+constexpr unsigned long BUTTON_DEBOUNCE_MS = 20;       // Debounce time in ms
+constexpr unsigned long BUTTON_HOLD_THRESHOLD_MS = 1500; // Time in ms to trigger a "hold"
+
 // Number of buttons
 constexpr int numButtons = 6;
 
 // Debounce delay
-constexpr unsigned long debounceDelay = 20;
+//constexpr unsigned long debounceDelay = 20;
 
 //
 // 2) Extern global variables (runtime values)
@@ -41,6 +45,12 @@ extern unsigned long millisOld50;
 extern unsigned long millisOld10;
 extern unsigned long millisDemoMode;
 extern unsigned long millisLastInteraction;
+
+// // Memory Management
+// extern Preferences preferencesMainApp;
+
+// // Logging Management
+// extern const char* TAG_MAIN;
 
 // You had this variable but it’s unused in your sample main.cpp. Keep or remove as needed:
 extern unsigned long masterWatchdogTimer; 
@@ -79,9 +89,6 @@ extern const int button_BottomRightIndex;
 
 extern const int s_buttonPins[numButtons];    // Pin assignments for all buttons
 extern const bool s_usePullups[numButtons];   // Whether each button uses internal pull-up resistors
-constexpr unsigned long BUTTON_DEBOUNCE_MS = 20;       // Debounce time in ms
-constexpr unsigned long BUTTON_HOLD_THRESHOLD_MS = 1500; // Time in ms to trigger a "hold"
-
 
 // RGBW LEDS
 extern const uint16_t pixel_Front_Top;

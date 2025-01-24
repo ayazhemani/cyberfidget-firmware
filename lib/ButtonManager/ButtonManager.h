@@ -81,19 +81,13 @@ public:
      * @param buttonIndex The index of the button to register the callback for.
      * @param callback The callback function to be called when an event occurs for the specified button.
      */
-    void registerCallback(int buttonIndex, ButtonCallback callback) {
-        if (buttonIndex >= 0 && buttonIndex < _numButtons) {
-            buttonCallbacks[buttonIndex] = callback;
-        }
-    }
-
+    void registerCallback(int buttonIndex, ButtonCallback callback);
+    void unregisterCallback(int buttonIndex);
     
-    ButtonCallback getButtonCallback(int index) const {
-        return buttonCallbacks[index];
-    }
+    // Getter methods
+    int getNumButtons() const { return _numButtons; }
+    bool hasCallback(int buttonIndex) const;
     
-    static const int MAX_BUTTONS = numButtons;
-
 private:
     // --- Configuration ---
     const int* _pins;            ///< Array of button pins
@@ -116,7 +110,8 @@ private:
     int _eventReadIndex;  // Where the main code reads events
 
     // --- Callbacks ---
-    ButtonCallback buttonCallbacks[MAX_BUTTONS] = { nullptr };
+    static const int MAX_BUTTONS_SUPPORTED = numButtons;
+    ButtonCallback buttonCallbacks[MAX_BUTTONS_SUPPORTED] = { nullptr };
 
     /**
      * @brief Helper to push a new event into the ring buffer.

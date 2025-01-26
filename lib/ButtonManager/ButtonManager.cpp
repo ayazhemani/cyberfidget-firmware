@@ -42,6 +42,11 @@ ButtonManager::ButtonManager(const int* pins,
     }
 }
 
+ButtonCallback ButtonManager::getCallback(int buttonIndex) const {
+    if (buttonIndex < 0 || buttonIndex >= _numButtons) return nullptr;
+    return buttonCallbacks[buttonIndex];
+}
+
 void ButtonManager::begin() {
     // Configure each pin as INPUT or INPUT_PULLUP
     for (int i = 0; i < _numButtons; i++) {
@@ -98,24 +103,6 @@ void ButtonManager::update() {
         }
         // Save this reading as previous
         _previousState[i] = _currentState[i];
-    }
-    
-    // Dispatch callbacks for button events
-    ButtonEvent ev;
-    while (getNextEvent(ev)) {
-        if (ev.eventType == ButtonEvent_Pressed && 
-            ev.buttonIndex >= 0 && ev.buttonIndex < MAX_BUTTONS_SUPPORTED &&
-            buttonCallbacks[ev.buttonIndex] != nullptr) {
-            
-            // Invoke the callback for this button
-            buttonCallbacks[ev.buttonIndex](ev);
-            // Optionally skip global processing
-            continue;
-        }
-
-        // Global handling can be done here if necessary
-        // (e.g., logging or handling buttons without callbacks)
-        
     }
 }
 

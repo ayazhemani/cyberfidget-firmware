@@ -50,6 +50,14 @@ public:
                   unsigned long holdThresholdMs = 1000);
 
     /**
+     * @brief Retrieve the callback function for a specific button.
+     * 
+     * @param buttonIndex The index of the button.
+     * @return ButtonCallback The callback function pointer, or nullptr if none.
+     */
+    ButtonCallback getCallback(int buttonIndex) const;
+
+    /**
      * @brief Call in setup() to configure pinModes, etc.
      */
     void begin();

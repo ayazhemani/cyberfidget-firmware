@@ -26,7 +26,6 @@ bool ledSequencerEnabled       = false;
 bool accelerometerScreenEnabled= false;
 bool reactionGameEnabled       = false;
 volatile bool buttonPressed    = false;
-bool flashlightStatus          = false;
 
 // Buttons
 // const int buttonPins[numButtons] = {36, 37, 38, 39, 34, 15};

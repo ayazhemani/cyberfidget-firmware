@@ -65,7 +65,6 @@ extern bool ledSequencerEnabled;
 extern bool accelerometerScreenEnabled;
 extern bool reactionGameEnabled;
 extern volatile bool buttonPressed;
-extern bool flashlightStatus;
 
 // Buttons
 // extern const int buttonPins[numButtons];

@@ -5,24 +5,23 @@
 
 extern SSD1306Wire display;  // Global display object
 
-void flashlightSwitch(bool flashlightEnable) {
-    if (flashlightEnable) {
-        // Use brightness derived from sliderPosition_8Bits for consistency
-        uint8_t brightness = sliderPosition_8Bits;
+bool flashlightStatus = false;  // Whether the flashlight is on or off
 
-        // Set specific pixels for flashlight mode using RGBController's strip and pixel definitions
-        strip.setPixelColor(pixel_Back, strip.Color(brightness, brightness, brightness, brightness));
-        strip.setPixelColor(pixel_Front_Top, strip.Color(brightness, brightness, brightness, brightness));
-        strip.setPixelColor(pixel_Front_Middle, strip.Color(brightness, brightness, brightness, brightness));
-        strip.setPixelColor(pixel_Front_Bottom, strip.Color(brightness, brightness, brightness, brightness));
-        strip.show();
-        flashlightStatus = true;
-    }
-    else if (flashlightStatus) {
-        // Turn off LEDs using RGBController's setColorsOff for consistency
-        setColorsOff();
-        flashlightStatus = false;
-    }
+void flashlightController() {
+
+    // Use brightness derived from sliderPosition_8Bits for consistency
+    uint8_t brightness = sliderPosition_8Bits;
+
+    // Set specific pixels for flashlight mode using RGBController's strip and pixel definitions
+    // strip.setPixelColor(pixel_Back, strip.Color(brightness, brightness, brightness, brightness));
+    // strip.setPixelColor(pixel_Front_Top, strip.Color(brightness, brightness, brightness, brightness));
+    // strip.setPixelColor(pixel_Front_Middle, strip.Color(brightness, brightness, brightness, brightness));
+    // strip.setPixelColor(pixel_Front_Bottom, strip.Color(brightness, brightness, brightness, brightness));
+    // strip.show();
+    setDeterminedColorsAll(0, 0, 0, brightness);
+    
+    flashlightStatus = true;
+
 }
 
 void drawFlashlight() {
@@ -34,5 +33,5 @@ void drawFlashlight() {
     display.display();
     
     // Enable the flashlight
-    flashlightSwitch(true);
+    flashlightController();
 }

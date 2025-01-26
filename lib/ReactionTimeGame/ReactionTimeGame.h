@@ -42,6 +42,11 @@ public:
      */
     int getButtonIndex() const { return buttonIndex; }
 
+    /**
+     * @brief Reset the game to its initial state
+     */
+    void resetGame();
+
 private:
     SSD1306Wire& display;
     ButtonManager& buttonManager;
@@ -71,11 +76,6 @@ private:
      * @brief Display the reaction time to the user
      */
     void displayReactionTime();
-
-    /**
-     * @brief Reset the game to its initial state
-     */
-    void resetGame();
 };
 
 #endif

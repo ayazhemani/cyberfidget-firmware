@@ -127,41 +127,6 @@ Demo demos[] = {
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
 
-
-// // Function prototypes
-// void IRAM_ATTR debounceButton(int buttonIndex);
-
-// // Interrupt service routines for each button
-// void IRAM_ATTR handleButtonPress1() {
-//   debounceButton(0);
-// }
-
-// void IRAM_ATTR handleButtonPress2() {
-//   debounceButton(1);
-// }
-
-// void IRAM_ATTR handleButtonPress3() {
-//   debounceButton(2);
-//   //handleScrollUp();
-// }
-
-// void IRAM_ATTR handleButtonPress4() {
-//   debounceButton(3);
-//   //handleScrollDown();
-// }
-
-// void IRAM_ATTR handleButtonPress5() {
-//   debounceButton(4);
-// }
-
-// void IRAM_ATTR handleButtonPress6() {
-//   if(!reactionGameEnabled){
-//     debounceButton(5);
-//     //buttonPressed = true;  // Just set the flag
-//   }
-// }
-
-
 // Check if a button was pressed
 // Based on counters, which isn't a great way to do it
 // these types of events should be triggered via state handshake so holds and releases can be accomodated
@@ -173,50 +138,6 @@ bool compareButtonCounters(volatile int* counter1, volatile int* counter2, int l
   }
   return true;
 }
-
-// void buttonPressedTap(int buttonIndex){
-//   // Button 1 (Top Left)
-//   if (buttonIndex == 0){
-//     //Serial.println("ButtonTap: " + String(buttonIndex));
-//     demoModePreviously = demoMode;
-//     demoMode = (demoMode - 1 + demoLength) % demoLength;    
-//   }
-//   // Button 2 (Top Right)
-//   if (buttonIndex == 1){
-//     demoModePreviously = demoMode;
-//     demoMode = (demoMode + 1)  % demoLength;
-//     //Serial.println("ButtonTap: " + String(buttonIndex));
-//   }
-//   // // Button 6 (Bottom Right)
-//   // if (buttonIndex == 5){
-//   //   // if (demoMode == 10){ // Specific to Audio Player, fix/replace with enum
-//   //   //   player.stop();
-//   //   // }
-//   // }
-// }
-
-// // Debounce function to increment the button counter
-// void IRAM_ATTR debounceButton(int buttonIndex) {
-//   unsigned long currentTime = millis();
-//   if ((currentTime - lastDebounceTime[buttonIndex]) > debounceDelay) {
-//     int currentState = digitalRead(buttonPins[buttonIndex]);
-
-//     // Check if the button state has changed
-//     if (currentState != buttonState[buttonIndex]) {
-//       lastDebounceTime[buttonIndex] = currentTime;
-
-//       // Only increment the counter if the button was pressed (LOW state)
-//       if (currentState == LOW && buttonState[buttonIndex] == HIGH) {
-//         buttonCounter[buttonIndex]++;
-//         millisLastInteraction = millisNow;
-//         buttonPressedTap(buttonIndex);
-//       }
-
-//       // Update the button state
-//       buttonState[buttonIndex] = currentState;
-//     }
-//   }
-// }
 
 // Navigation Controls
 void loadButtonCounters() {
@@ -295,25 +216,8 @@ void enableWatchdog() {
 }
 
 void setup() {
-  // Initialize the task watchdog timer
-  // esp_task_wdt_config_t wdt_config = {
-  //     .timeout_ms = 15000,     // Timeout period in milliseconds (5 seconds)
-  //     .idle_core_mask = 0,    // Idle core mask
-  //     .trigger_panic = true,  // Trigger panic on timeout
-  // };
-  
-
-  // Apply the watchdog timer configuration
-  //esp_task_wdt_init(&wdt_config);
-  esp_err_t result = esp_task_wdt_init(15, true); // Set a 15-second timeout
-
-  // Add current task to the watchdog timer
-  //esp_task_wdt_add(NULL);
-
   // Configure the wakeup pins
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_15, LOW); // For Active LOW button, ext0 single pin lowest power
-
-
 
   // Set the global log level to INFO (can be ESP_LOG_NONE, ESP_LOG_ERROR, etc.)
   esp_log_level_set("*", ESP_LOG_VERBOSE);
@@ -327,14 +231,6 @@ void setup() {
   //SP_LOGI(TAG_SENSOR, "Setup complete");
   //ESP_LOGD(TAG, "This is a debug message");
 
-
-
-  // Configure the wakeup pins using ext1 and the required bitmask
-  // uint64_t bitmask = 0;
-  // for (int i = 0; i < numButtons; i++) {
-  //   bitmask |= (1ULL << buttonPins[i]);
-  // }
-  // esp_sleep_enable_ext1_wakeup(bitmask, ESP_EXT1_WAKEUP_ALL_LOW); // Wake up on all LOW
   pinMode(OLED_RESET, OUTPUT);
   digitalWrite(OLED_RESET, LOW); 
 
@@ -469,26 +365,49 @@ void screenUpdate(){
   // draw the current demo method
   demos[demoMode]();
 
-  if (demoMode == 11) {
-      accelerometerScreenEnabled = true;
-  } else {
-      accelerometerScreenEnabled = false;
-  }
+  if (demoMode != demoModePreviously){
+    if (demoMode == 11){
+        accelerometerScreenEnabled = true;
+    } 
+    else if (demoModePreviously == 11){
+        accelerometerScreenEnabled = false;
+    }
 
-  if (demoMode == 15) {
-      reactionGameEnabled = true;
-  } else {
-      reactionGameEnabled = false;
-  }
-  
-  if (demoMode == 18) {
-      clockScreenEnabled = true;
-  } else {
-      clockScreenEnabled = false;
-  }
+    if (demoMode == 14) {
+      flashlightStatus = true;
+    } 
+    else if (demoModePreviously == 14) {
+      flashlightStatus = false;
+      setColorsOff(); 
+    }
 
-  if (demoMode != 13){
-    audioPlayerRunning = false;
+    if (demoMode == 15) {
+      //reactionGameEnabled = true;
+      buttonManager.registerCallback(
+        reactionGame.getButtonIndex(),
+        ReactionTimeGame::reactionButtonPressedCallback
+      );
+      Serial.println("ReactionTimeGame callback registered: " + String(reactionGame.getButtonIndex()));
+    } 
+    else if (demoModePreviously == 15) {
+        //reactionGameEnabled = false;
+        buttonManager.unregisterCallback(reactionGame.getButtonIndex());
+        Serial.println("ReactionTimeGame callback unregistered.");
+        reactionGame.resetGame(); // Reset the game state
+    }
+    
+    if (demoMode == 18) {
+        clockScreenEnabled = true;
+    } 
+    else if (demoModePreviously == 18) {
+        clockScreenEnabled = false;
+    }
+
+    // if (demoMode != 13){
+    //   audioPlayerRunning = false;
+    // }
+
+    demoModePreviously = demoMode; 
   }
 }
 
@@ -502,70 +421,53 @@ void loop() {
   // 1) Update the button states
   buttonManager.update();
 
-  // Handle app switching logic
-  // Replace the following pseudo-code with your actual app management logic
-  // For example, you might have a variable that tracks the current active app
-  // Here, we'll assume a function `isReactionGameActive()` determines if the game should be active
-  bool isReactionGameActive = /* Your logic to determine if the Reaction Time Game is active */ false;
-
-  if (isReactionGameActive && !reactionGameEnabled) {
-      // Activate Reaction Time Game
-      reactionGameEnabled = true;
-      buttonManager.registerCallback(reactionGame.getButtonIndex(), ReactionTimeGame::reactionButtonPressedCallback);
-      Serial.println("Reaction Time Game Activated.");
-  } 
-  else if (!isReactionGameActive && reactionGameEnabled) {
-      // Deactivate Reaction Time Game
-      reactionGameEnabled = false;
-      buttonManager.unregisterCallback(reactionGame.getButtonIndex());
-      Serial.println("Reaction Time Game Deactivated.");
-  }
-
   // Fetch and handle events
   ButtonEvent ev;
   while (buttonManager.getNextEvent(ev)) {
-      // Check if the event is for a button with a callback
-      if (ev.buttonIndex >= 0 && ev.buttonIndex < buttonManager.getNumButtons() &&
-          buttonManager.hasCallback(ev.buttonIndex)) {
-          // Callback has been handled within ButtonManager::update()
-          // So skip further processing for this event
-          continue;
+    // Check if the event is for a button with a callback
+    if (buttonManager.hasCallback(ev.buttonIndex)) {
+      // Retrieve and invoke the callback
+      ButtonCallback cb = buttonManager.getCallback(ev.buttonIndex);
+      if (cb != nullptr) {
+          cb(ev);  // Invoke the callback with the event
       }
+    } 
+    else {
+    // Global event handling for buttons without callbacks
+    Serial.print("Button #");
+    Serial.print(ev.buttonIndex);
+    Serial.print(" => ");
 
-      // Global event handling for buttons without callbacks
-      Serial.print("Button #");
-      Serial.print(ev.buttonIndex);
-      Serial.print(" => ");
+    switch (ev.eventType) {
+      case ButtonEvent_Pressed:
+        Serial.println("Pressed");
+        if (ev.buttonIndex == 0) {
+            demoModePreviously = demoMode;
+            demoMode = (demoMode - 1 + demoLength) % demoLength;
+        }
+        break;
 
-      switch (ev.eventType) {
-          case ButtonEvent_Pressed:
-              Serial.println("Pressed");
-              if (ev.buttonIndex == 0) {
-                  demoModePreviously = demoMode;
-                  demoMode = (demoMode - 1 + demoLength) % demoLength;
-              }
-              break;
+      case ButtonEvent_Released:
+        Serial.print("Released after ");
+        Serial.print(ev.duration);
+        Serial.println(" ms");
+        buttonCounter[ev.buttonIndex]++;
+        if (ev.buttonIndex == 1) {
+            demoModePreviously = demoMode;
+            demoMode = (demoMode + 1) % demoLength;
+        }
+        break;
 
-          case ButtonEvent_Released:
-              Serial.print("Released after ");
-              Serial.print(ev.duration);
-              Serial.println(" ms");
-              buttonCounter[ev.buttonIndex]++;
-              if (ev.buttonIndex == 1) {
-                  demoModePreviously = demoMode;
-                  demoMode = (demoMode + 1) % demoLength;
-              }
-              break;
+      case ButtonEvent_Held:
+        Serial.print("Held for ");
+        Serial.print(ev.duration);
+        Serial.println(" ms (and still pressed)!");
+        break;
 
-          case ButtonEvent_Held:
-              Serial.print("Held for ");
-              Serial.print(ev.duration);
-              Serial.println(" ms (and still pressed)!");
-              break;
-
-          default:
-              break;
+      default:
+        break;
       }
+    }
   }
 
   WiFiManagerCFObject.process();  // Non-blocking WiFi processing if enabled
@@ -574,7 +476,7 @@ void loop() {
     millisOld10 = millisNow;
 
     // Reset LEDs
-    if (demoModePreviously == 11 || demoModePreviously == 14 || demoModePreviously == 17) { 
+    if (demoModePreviously == 11 || demoModePreviously == 17) { 
       setColorsOff();    
     }
 
@@ -701,7 +603,7 @@ void drawAccelerometerScreen() {
     uint8_t greenMap = map(accelY, -1030, 1030, 0, 255);
     uint8_t blueMap = map(accelZ, -1030, 1030, 0, 255);
 
-    setDeterminedColors(redMap, greenMap, blueMap, 0); 
+    setDeterminedColorsFront(redMap, greenMap, blueMap, 0); 
     ESP_LOGV(TAG_MAIN, "Accel RGB Values x=%d, y=%d z=%d", redMap, greenMap, blueMap);
 
     display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -723,16 +625,6 @@ void drawButtonCounters() {
     ", 3=" + String(buttonCounter[3])
     + ", 4=" + String(buttonCounter[4])
     + ", 5=" + String(buttonCounter[5]));
-
-  // display.setFont(ArialMT_Plain_10);
-  // display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  // // Print the button counters in a 3x2 grid
-  // const int xOffset = 20; // Shift the grid to the right
-  // for (int i = 0; i < numButtons; i++) {
-  //   int x = xOffset + (i % 3) * 40; // Adjust the x position for each column
-  //   int y = (i / 3) * 20; // Adjust the y position for each row
-  //   display.drawString(x, y, "Btn " + String(i + 1) + ": " + String(buttonCounter[i]));
-  // }
   display.display();
 }
 
@@ -750,13 +642,7 @@ Reaction Time Game
 */
 
 void drawReactionTimeGame() {
-  //display.clear();
   reactionGame.update(millisNow);
-  //display.display();
-  // if(!reactionGameEnabled){
-  //   reactionGameEnabled = true;
-  //   Serial.println("drawReactionTimeGame fired");
-  // }
 }
 
 void drawPixelWaterfallGame(){
@@ -889,7 +775,6 @@ void drawDefaultInfoScreen() {
   display.drawString(64, 22, "Waiting for Data...");
   display.display();
 }
-
 
 /*
 Audio Boops with Buttons

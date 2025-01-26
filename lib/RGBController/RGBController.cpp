@@ -38,8 +38,31 @@ void setRandomColors() {
   updateStrip();
 }
 
-void setDeterminedColors(uint8_t colorR, uint8_t colorG, uint8_t colorB, uint8_t colorW) {
+/**
+ * @brief Update front-only RGB LEDs to a determined color
+ * 
+ * @param colorR uint8_t Red
+ * @param colorG uint8_t Green
+ * @param colorB uint8_t Blue
+ * @param colorW uint8_t White
+ */
+void setDeterminedColorsFront(uint8_t colorR, uint8_t colorG, uint8_t colorB, uint8_t colorW) {
   for (int i = 1; i < strip.numPixels(); i++) {
+    strip.setPixelColor(i, strip.Color(colorR, colorG, colorB, colorW));
+  }
+  updateStrip();
+}
+
+/**
+ * @brief Update all RGB LEDs to a determined color
+ * 
+ * @param colorR uint8_t Red
+ * @param colorG uint8_t Green
+ * @param colorB uint8_t Blue
+ * @param colorW uint8_t White
+ */
+void setDeterminedColorsAll(uint8_t colorR, uint8_t colorG, uint8_t colorB, uint8_t colorW) {
+  for (int i = 0; i < strip.numPixels(); i++) {
     strip.setPixelColor(i, strip.Color(colorR, colorG, colorB, colorW));
   }
   updateStrip();

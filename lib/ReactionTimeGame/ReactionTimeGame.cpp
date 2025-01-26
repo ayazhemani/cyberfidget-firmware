@@ -4,11 +4,15 @@
 // Initialize static instance pointer
 ReactionTimeGame* ReactionTimeGame::instance = nullptr;
 
-// Implement the callback
+// Implement the callback with event type filtering
 void ReactionTimeGame::reactionButtonPressedCallback(const ButtonEvent& ev) {
-    // The button has been pressed; delegate to the instance's handler
-    if (ReactionTimeGame::instance) {
-        ReactionTimeGame::instance->handleButtonPress();
+    Serial.println("ReactionTimeGame callback fired for button " + String(ev.buttonIndex) + " with event type " + String(ev.eventType));
+    
+    // Handle only the Pressed event
+    if (ev.eventType == ButtonEvent_Pressed) {
+        if (ReactionTimeGame::instance) {
+            ReactionTimeGame::instance->handleButtonPress();
+        }
     }
 }
 
@@ -17,7 +21,8 @@ ReactionTimeGame::ReactionTimeGame(SSD1306Wire& disp, int btnIndex, ButtonManage
       gameStarted(false), waitingForReaction(false), delayActive(false), messageDisplayed(false) {
     
     // Register the callback for the specific button
-    buttonManager.registerCallback(buttonIndex, ReactionTimeGame::reactionButtonPressedCallback);
+    // Do NOT register the callback here
+    //buttonManager.registerCallback(buttonIndex, ReactionTimeGame::reactionButtonPressedCallback);
     
     // Store the instance pointer
     ReactionTimeGame::instance = this;
@@ -31,6 +36,7 @@ void ReactionTimeGame::update(unsigned long millisNow) {
 
     // Initial screen prompt
     if (!gameStarted && !delayActive && !waitingForReaction && !messageDisplayed) {
+        Serial.println("Displaying 'Press to start...' screen.");
         display.clear();
         display.setTextAlignment(TEXT_ALIGN_LEFT);
         display.setFont(ArialMT_Plain_16);
@@ -42,6 +48,7 @@ void ReactionTimeGame::update(unsigned long millisNow) {
 
     // Handle the delay logic
     if (delayActive && millisNow >= randomDelayEnd) {
+        Serial.println("Displaying 'GO!' screen.");
         display.clear();
         display.drawString(0, 0, "GO!");
         display.display();
@@ -53,13 +60,17 @@ void ReactionTimeGame::update(unsigned long millisNow) {
 }
 
 void ReactionTimeGame::handleButtonPress() {
+    Serial.println("handleButtonPress called.");
     if (!gameStarted) {
+        Serial.println("Starting game...");
         startGame(millis());
     } else if (waitingForReaction) {
+        Serial.println("Reaction time measured.");
         reactionTime = millis() - startTime;
         waitingForReaction = false;
         displayReactionTime();
     } else if (gameStarted && !waitingForReaction) {
+        Serial.println("Resetting game...");
         resetGame();
     } else {
         Serial.println("Unexpected button press.");
@@ -67,6 +78,7 @@ void ReactionTimeGame::handleButtonPress() {
 }
 
 void ReactionTimeGame::startGame(unsigned long millisNow) {
+    Serial.println("Starting Reaction Time Game.");
     gameStarted = true;
     display.clear();
     display.drawString(0, 0, "Get Ready...");
@@ -79,12 +91,14 @@ void ReactionTimeGame::startGame(unsigned long millisNow) {
 }
 
 void ReactionTimeGame::displayReactionTime() {
+    Serial.println("Displaying reaction time.");
     display.clear();
     display.drawString(0, 0, "Time: " + String(reactionTime) + " ms");
     display.display();
 }
 
 void ReactionTimeGame::resetGame() {
+    Serial.println("Resetting Reaction Time Game.");
     gameStarted = false;
     waitingForReaction = false;
     delayActive = false;

@@ -216,5 +216,6 @@ void updateBeep();
 void startBeep();
 void beepForSquareFn(int sq);
 void beepOnUserPressFn(int sq);
+void updateClockDisplay();
 
 #endif // GLOBALS_H

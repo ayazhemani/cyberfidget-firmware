@@ -18,7 +18,6 @@ License Placeholder
 #include "SliderPosition.h"
 #include "WiFiManagerCF.h"
 
-#include "ClockDisplay.h"
 #include "Flashlight.h"
 #include "SerialDisplay.h"
 #include "ExampleScreens.h"
@@ -78,6 +77,9 @@ Easiest to include these libraries by adding them to the OS's Arduino Library Fo
 #include "ReactionTimeGame.h"
 ReactionTimeGame reactionGame(display, button_BottomRightIndex /* button index */, buttonManager);
 
+#include "ClockDisplay.h"
+ClockDisplay clockDisplay(display);
+
 #include "PixelWaterFallGame.h"
 PixelWaterfallGame pixelGame(display);
 
@@ -115,7 +117,7 @@ Demo demos[] = {
   drawTimeOnCounter, // 16
   //startSimonSaysGame, // 
   drawSliderProgressBar, // 17
-  drawClockDemo,          // 18 - Add the new screen for clock
+  updateClockDisplay,          // 18 - Add the new screen for clock
   drawSerialDataScreen, // 19
   drawWifiConfig, // 20
   drawPixelWaterfallGame, // 21
@@ -390,18 +392,19 @@ void screenUpdate(){
       Serial.println("ReactionTimeGame callback registered: " + String(reactionGame.getButtonIndex()));
     } 
     else if (demoModePreviously == 15) {
-        //reactionGameEnabled = false;
-        buttonManager.unregisterCallback(reactionGame.getButtonIndex());
-        Serial.println("ReactionTimeGame callback unregistered.");
-        reactionGame.resetGame(); // Reset the game state
+      //reactionGameEnabled = false;
+      buttonManager.unregisterCallback(reactionGame.getButtonIndex());
+      Serial.println("ReactionTimeGame callback unregistered.");
+      reactionGame.resetGame(); // Reset the game state
     }
     
-    if (demoMode == 18) {
-        clockScreenEnabled = true;
-    } 
-    else if (demoModePreviously == 18) {
-        clockScreenEnabled = false;
-    }
+  if (demoMode == 18) {
+    clockDisplay.begin(); // Inside the module, begin() will only do initialization once.
+  } 
+  else if (demoModePreviously == 18) {
+    // If desired, you can call clockDisplay.reset() when leaving demo mode 18.
+    clockDisplay.reset();
+  }
 
     // if (demoMode != 13){
     //   audioPlayerRunning = false;
@@ -508,6 +511,7 @@ void loop() {
     // Go to deep sleep
     if(preventSleepWhileCharging){
       if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
+        clockDisplay.saveTime(); // Save the current clock time to Preferences so that it can be recovered later.
         Serial.println("Going to sleep now...");
         delay(1000);
         esp_deep_sleep_start();
@@ -570,6 +574,7 @@ void drawBatteryProgressBar() {
 void drawSliderProgressBar() {
   display.clear();
   // draw the progress bar
+  display.setFont(ArialMT_Plain_10);
   display.drawProgressBar(9, 28, 108, 10, sliderPosition_Percentage);
 
   // draw the percentage as String
@@ -577,7 +582,6 @@ void drawSliderProgressBar() {
   display.drawString(64, 14, "Slider: " + String(sliderPosition_Percentage) + "%");
 
   // Battery Voltage
-  display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 40, "Slider (mV): " + String(sliderPosition_Millivolts));
   display.drawString(64, 50, "Slider (bits): " + String(sliderPosition_12Bits));
@@ -672,66 +676,8 @@ void drawBreakoutGame(){
 }
 
 // New clock drawing function
-void drawClockDemo() {
-  //struct tm currentTime;
-  if (!clockScreenEnabled){
-    clockScreenEnabled = true;
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(suiGenerisRg_20);
-    display.drawString(64, 22, "--:--:--");
-    display.display();
-    
-    // WiFi
-    connectToWiFi();
-
-    // Initialize RTC with the current time if needed
-    // Set timezone if needed
-    configTzTime("EST5EDT,M3.2.0,M11.1.0", "pool.ntp.org", "time.nist.gov");
-    
-    
-    // Attempt to get time with multiple retries
-    for (int i = 0; i < 5; i++) {  // Try up to 10 times
-      if (getLocalTime(&currentTime)) {
-        Serial.println("Successfully obtained time.");
-        break;
-      } else {
-        Serial.println("Failed to obtain time, retrying...");
-        delay(1000);  // Wait a bit before retrying
-      }
-    }
-
-    // if (!getLocalTime(&currentTime)) {
-    //   Serial.println("Failed to obtain time from NTP, setting default time.");
-      
-    //   // Manually set the default time (e.g., January 1, 2024, at 12:00 PM)
-    //   currentTime.tm_year = 2024 - 1900; // Years since 1900
-    //   currentTime.tm_mon = 0;            // January is 0
-    //   currentTime.tm_mday = 1;           // First day of the month
-    //   currentTime.tm_hour = 12;
-    //   currentTime.tm_min = 0;
-    //   currentTime.tm_sec = 0;
-    //   time_t defaultTime = mktime(&currentTime);
-    //   struct timeval tv = { .tv_sec = defaultTime };
-    //   settimeofday(&tv, NULL);  // Set the ESP32's internal clock to this time
-
-    //   Serial.println("Default time set.");
-    // } else {
-    //   Serial.println("Successfully obtained time.");
-    // }
-  }
-
-  if (getLocalTime(&currentTime)) {
-    char timeString[9];
-    strftime(timeString, sizeof(timeString), "%I:%M:%S", &currentTime);
-
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(suiGenerisRg_20);
-    display.drawString(64, 22, String(timeString));
-    display.display();
-  }
-
+void updateClockDisplay() {
+  clockDisplay.update();
 }
 
 // Function to connect to WiFi
@@ -813,7 +759,6 @@ void drawSimonSaysGame2(){
 
   // 2) Update the Simon game
   simonGame.update(pressed);
-
   // 3) Manage beep timing (non-blocking)
   updateBeep();
 

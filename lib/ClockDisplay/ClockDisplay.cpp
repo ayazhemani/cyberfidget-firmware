@@ -136,7 +136,7 @@ void ClockDisplay::attemptTimeSync() {
 // ---------------------------------------------------------------------
 void ClockDisplay::displayTime() {
     // Format the time as HH:MM:SS
-    char buffer[10];  // Enough for "HH:MM:SS" + null
+    char buffer[10];  // Enough for "HH:MM:SS" + null terminator
     struct tm timeInfo;
     localtime_r(&m_currentTime, &timeInfo);
     strftime(buffer, sizeof(buffer), "%I:%M:%S", &timeInfo);
@@ -144,21 +144,34 @@ void ClockDisplay::displayTime() {
     // Clear the display before drawing
     m_display.clear();
     
-    // Set the main font (using your preferred style; note that suiGenerisRg_20 should be defined elsewhere)
+    // Set the main font (using your preferred style; ensure suiGenerisRg_20 is defined)
     m_display.setFont(suiGenerisRg_20);
     m_display.setTextAlignment(TEXT_ALIGN_CENTER);
     // Draw the time string (positioned roughly centered)
     m_display.drawString(64, 22, String(buffer));
     
-    // If our time isn’t accurate, add a small “Low Accuracy” notice.
-    if (!m_accurateTime) {
-        m_display.setFont(ArialMT_Plain_10);
-        m_display.drawString(64, 45, "Low Accuracy");
+    // Determine the time source message
+    String sourceMessage;
+    if (m_accurateTime) {
+        // If we have an accurate time (system time updated via NTP)
+        if (WiFi.status() == WL_CONNECTED) {
+            sourceMessage = "Src: Internet (NTP)";
+        } else {
+            sourceMessage = "Src: Cached NTP";
+
+        }
+    } else {
+        sourceMessage = "Src: Internal (Low Accuracy)";
     }
+    
+    // Draw the time source message in a smaller font below the main time.
+    m_display.setFont(ArialMT_Plain_10);
+    m_display.drawString(64, 45, sourceMessage);
     
     // Finally, push the buffer to the display.
     m_display.display();
 }
+
 
 // ---------------------------------------------------------------------
 // isSystemTimeValid()

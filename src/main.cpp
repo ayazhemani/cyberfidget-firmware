@@ -373,6 +373,7 @@ void screenUpdate(){
     } 
     else if (demoModePreviously == 11){
         accelerometerScreenEnabled = false;
+        setColorsOff();
     }
 
     if (demoMode == 14) {
@@ -397,14 +398,14 @@ void screenUpdate(){
       Serial.println("ReactionTimeGame callback unregistered.");
       reactionGame.resetGame(); // Reset the game state
     }
-    
-  if (demoMode == 18) {
-    clockDisplay.begin(); // Inside the module, begin() will only do initialization once.
-  } 
-  else if (demoModePreviously == 18) {
-    // If desired, you can call clockDisplay.reset() when leaving demo mode 18.
-    clockDisplay.reset();
-  }
+      
+    if (demoMode == 18) {
+      clockDisplay.begin(); // Inside the module, begin() will only do initialization once.
+    } 
+    else if (demoModePreviously == 18) {
+      // If desired, you can call clockDisplay.reset() when leaving demo mode 18.
+      clockDisplay.reset();
+    }
 
     // if (demoMode != 13){
     //   audioPlayerRunning = false;
@@ -697,8 +698,9 @@ void drawWifiConfig() {
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-  display.drawString(64, 12, "Press Button to Start");
-  display.drawString(64, 22, "WiFi Portal");
+  display.drawString(64, 12, "WiFi Controls");
+  display.drawString(64, 22, "Bottom Right - Start Portal");
+  display.drawString(64, 32, "Bottom Left - Connect WiFi");
   display.display();
 
   // Check if button_BottomRight is pressed
@@ -710,6 +712,21 @@ void drawWifiConfig() {
     display.drawString(64, 22, "Started...192.168.4.1");
     display.display();
     WiFiManagerCFObject.startWiFiPortal();
+  }
+  // Check if button_BottomLeft is pressed
+  if (digitalRead(button_BottomLeft) == LOW) {
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.setFont(ArialMT_Plain_10); // Use an appropriate font size
+    display.drawString(64, 12, "Connecting...");
+    display.display();
+    connectToWiFi();
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+    }
+    display.drawString(64, 22, "Connected!");
+    display.display();
   }
 }
 

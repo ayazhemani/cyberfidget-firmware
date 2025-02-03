@@ -459,7 +459,7 @@ void loop() {
   millisNow = millis();
   
   // Handle audio streaming + beep logic
-  loopAudio();
+  //loopAudio();
 
   // 1) Update the button states
   buttonManager.update();

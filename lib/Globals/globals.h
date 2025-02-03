@@ -217,5 +217,6 @@ void startBeep();
 void beepForSquareFn(int sq);
 void beepOnUserPressFn(int sq);
 void updateClockDisplay();
+void drawDinoGame();
 
 #endif // GLOBALS_H

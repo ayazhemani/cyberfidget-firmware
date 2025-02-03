@@ -22,7 +22,6 @@ License Placeholder
 #include "SerialDisplay.h"
 #include "ExampleScreens.h"
 
-
 // Include watchdog timer library
 #include <esp_system.h>
 #include <esp_task_wdt.h>
@@ -75,7 +74,11 @@ Easiest to include these libraries by adding them to the OS's Arduino Library Fo
 
 // ReactionTimeGame instance
 #include "ReactionTimeGame.h"
-ReactionTimeGame reactionGame(display, button_BottomRightIndex /* button index */, buttonManager);
+ReactionTimeGame reactionGame(
+  display, 
+  button_BottomRightIndex /* button index */, 
+  buttonManager
+  );
 
 #include "ClockDisplay.h"
 ClockDisplay clockDisplay(display);
@@ -94,6 +97,15 @@ SimonSaysGame simonGame(display, beepForSquareFn, beepOnUserPressFn);
 
 #include "MatrixScreensaver.h"
 MatrixScreensaver matrixScreensaver(display);
+
+#include "DinoGame.h"
+DinoGame dinoGame(
+  display,
+  buttonManager, 
+  /*jumpBtnIndex=*/button_MiddleLeftIndex, 
+  /*duckBtnIndex=*/button_MiddleRightIndex,
+  /*resetBtnIndex*/button_BottomRightIndex
+  );
 
 // Demo Config
 typedef void (*Demo)(void);
@@ -124,7 +136,8 @@ Demo demos[] = {
   drawSPHFluidGame, // 22
   drawBreakoutGame, // 23
   drawSimonSaysGame2, // 24
-  drawMatrixScreensaver // 25
+  drawMatrixScreensaver, // 25
+  drawDinoGame // 26
   };
 
 int demoLength = (sizeof(demos) / sizeof(Demo));
@@ -411,6 +424,32 @@ void screenUpdate(){
     //   audioPlayerRunning = false;
     // }
 
+    if (demoMode == 26) {
+      //dinoGameEnabled = true;
+      buttonManager.registerCallback(
+        dinoGame.getJumpButtonIndex(),
+        DinoGame::jumpButtonCallback
+      );
+      buttonManager.registerCallback(
+        dinoGame.getDuckButtonIndex(),
+        DinoGame::duckButtonCallback
+      );
+      buttonManager.registerCallback(
+        dinoGame.getResetButtonIndex(), 
+        DinoGame::resetButtonCallback
+      );
+  
+      Serial.println("DinoGame callbacks registered.");
+    } 
+    else if (demoModePreviously == 26) {
+      //dinoGameEnabled = false;
+      buttonManager.unregisterCallback(dinoGame.getJumpButtonIndex());
+      buttonManager.unregisterCallback(dinoGame.getDuckButtonIndex());
+      buttonManager.unregisterCallback(dinoGame.getResetButtonIndex());
+      Serial.println("DinoGame callbacks unregistered.");
+      dinoGame.resetGame(); // Reset the game state
+    }
+
     demoModePreviously = demoMode; 
   }
 }
@@ -679,6 +718,18 @@ void drawBreakoutGame(){
 // New clock drawing function
 void updateClockDisplay() {
   clockDisplay.update();
+}
+
+// Dino Game
+void drawDinoGame() {
+   // Set speed from slider
+  dinoGame.setSpeedBySlider(sliderPosition_Percentage);
+
+  // Update game logic if it's active
+  dinoGame.update();
+
+  // Draw game state
+  dinoGame.draw();
 }
 
 // Function to connect to WiFi

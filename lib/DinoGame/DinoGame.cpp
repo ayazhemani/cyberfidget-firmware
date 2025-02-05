@@ -132,7 +132,7 @@ void DinoGame::draw() {
         int ox = (int)obstacles[i].x;
         if(obstacles[i].isHigh){
             // must duck => higher, so you can't jump over
-            display.drawXbm(ox, 24, 16, 16, Pterodactyl_16x16);
+            display.drawXbm(ox, 20, 16, 16, Pterodactyl_16x16);
         } else {
             display.drawXbm(ox, 32, 8, 16, Cactus_8x16);
         }
@@ -342,9 +342,9 @@ void DinoGame::checkCollisions() {
     for(int i=0; i<obstacleCount; i++){
         int ox = (int)obstacles[i].x;
         if(obstacles[i].isHigh){
-            // pterodactyl => must duck => y=24
+            // pterodactyl => must duck => y=16
             if(pixelCollides(dinoSprite, dinoW, dinoH, dinoX, dinoTopY,
-                             Pterodactyl_16x16, 16,16, ox,24))
+                             Pterodactyl_16x16, 16,16, ox,20))
             {
                 gameOver=true;
                 Serial.println("Collision with Pterodactyl!");

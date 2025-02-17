@@ -49,9 +49,9 @@ private:
 
     // -- Bricks --
     static constexpr int BRICK_ROWS   = 3;
-    static constexpr int BRICK_COLS   = 6;
+    static constexpr int BRICK_COLS   = 8;
     static constexpr int BRICK_WIDTH  = 16; 
-    static constexpr int BRICK_HEIGHT = 5;
+    static constexpr int BRICK_HEIGHT = 4;
     bool bricks[BRICK_ROWS][BRICK_COLS]; // true if brick is active
 
     // -- Game state --

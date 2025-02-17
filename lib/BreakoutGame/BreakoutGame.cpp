@@ -241,24 +241,25 @@ void BreakoutGame::checkVictory() {
 //----------------------------------------------------------------------------------------
 void BreakoutGame::drawGame() {
     display.clear();
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.setFont(ArialMT_Plain_10);
 
     // If the user has won, display a "YOU WIN" message, death count, and time
     if (gameWon) {
-        display.drawString(32, 24, "YOU WIN!");
+        display.drawString(64, 4, "YOU WIN!");
 
         String deathMsg = "Deaths: ";
         deathMsg += deathCount;
-        display.drawString(32, 34, deathMsg);
+        display.drawString(64, 14, deathMsg);
 
         // Show how many seconds it took
         float seconds = totalTime / 1000.0f;
         String timeMsg = "Time: ";
         timeMsg += String(seconds, 2); // 2 decimal places
         timeMsg += "s";
-        display.drawString(32, 44, timeMsg);
+        display.drawString(64, 24, timeMsg);
 
-        display.drawString(8, 54, "Press Btn to Reset");
+        display.drawString(64, 34, "Press Btn to Reset");
         display.display();
         return;
     }
@@ -294,7 +295,7 @@ void BreakoutGame::drawGame() {
     // Show current death count
     String deathMsg = "Deaths: ";
     deathMsg += deathCount;
-    display.drawString(0, 0, deathMsg);
+    display.drawString(64, 24, deathMsg);
 
     display.display();
 }

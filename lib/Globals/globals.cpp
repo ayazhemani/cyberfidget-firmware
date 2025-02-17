@@ -97,7 +97,8 @@ uint8_t  sliderPosition_8Bits_Inverted = 0;
 
 // WiFi
 char wifiAP_SSID[] = "CyberFidget_AP";
-bool wifimanager_nonblocking = false;
+bool wifimanager_nonblocking = false;\
+bool isTryingToConnect = false;    // Tracks if we're attempting to connect to WiFi
 
 // Clock
 bool      clockScreenEnabled = false;
@@ -154,3 +155,20 @@ float pixelGameDamping = 0.95f;
 //
 // But typically, you'd keep the actual function bodies in main.cpp
 // or in a dedicated .cpp for each manager or class.
+
+// Define the function pointer array
+Demo demos[DEMO_COUNT] = {
+    #define X(func, id, name) func,
+        DEMO_LIST
+    #undef X
+};
+
+// Define the string array for names
+const char* demoNames[DEMO_COUNT] = {
+    #define X(func, id, name) name,
+        DEMO_LIST
+    #undef X
+};
+
+// Ensure everything is in sync
+static_assert(sizeof(demos) / sizeof(demos[0]) == DEMO_COUNT, "Mismatch between demo array size and enum count");

@@ -21,9 +21,6 @@ int maxScrollOffset =  0;            // Maximum pixel offset for scrolling
 const int lineHeight = 13;            // Height of each line in pixels 13px = AerialMT_Plain_10
 const int displayHeight = 64;         // Height of your display in pixel
 
-extern void drawSerialDataScreen();
-extern void drawDefaultInfoScreen();
-
 void serialDataScreenProcessor() {
     newDataReceived = false;
 
@@ -180,3 +177,11 @@ void drawSerialDataScreen() {
               scrollOffset, maxScrollOffset, lineCount, lineHeight);
 }
 
+void drawDefaultInfoScreen() {
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.setFont(ArialMT_Plain_10); // Use an appropriate font size
+    display.drawString(64, 12, "Serial Data Display");
+    display.drawString(64, 22, "Waiting for Data...");
+    display.display();
+  }

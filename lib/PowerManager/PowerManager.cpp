@@ -1,0 +1,64 @@
+// PowerManager.cpp
+#include "PowerManager.h"
+
+// Initialize the static instance reference
+PowerManager* PowerManager::instance = nullptr;
+
+PowerManager::PowerManager(SSD1306Wire& disp, ButtonManager& btnMgr, ClockDisplay& clkDsply)
+    : display(disp), buttonManager(btnMgr), clockDisplay(clkDsply), lastTapTime(0) {
+    // Set the static instance to this object
+    instance = this;
+}
+
+void PowerManager::begin() {
+    registerShutdownCallback();
+}
+
+void PowerManager::update() {
+    drawShutdownScreen();
+}
+
+void PowerManager::registerShutdownCallback() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonPressCallback);
+}
+
+void PowerManager::unregisterShutdownCallback() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void PowerManager::drawShutdownScreen() {
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(64, 10, "Shutdown");
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(64, 30, "Double-tap Bottom Left");
+    display.drawString(64, 40, "to power off");
+    display.display();
+}
+
+void PowerManager::onButtonPressCallback(const ButtonEvent &event) {
+    if (instance) {
+        if (event.eventType == ButtonEvent_Pressed) {
+            unsigned long currentTime = millis();
+            if (currentTime - instance->lastTapTime <= DOUBLE_TAP_THRESHOLD_MS) {
+                // Detected a double-tap
+                instance->display.clear();
+                instance->display.setTextAlignment(TEXT_ALIGN_CENTER);
+                instance->display.setFont(ArialMT_Plain_10);
+                instance->display.drawString(64, 30, "Powering off...");
+                instance->display.display();
+                
+                // Optional: save state before sleep
+                instance->clockDisplay.saveTime();  // Commented out if using external display manager call
+
+                delay(500);
+                Serial.println("Entering deep sleep...");
+                esp_deep_sleep_start();
+            } else {
+                // Update last tap time
+                instance->lastTapTime = currentTime;
+            }
+        }
+    }
+}

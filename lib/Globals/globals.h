@@ -123,6 +123,7 @@ extern uint8_t  sliderPosition_8Bits_Inverted;
 // WiFi
 extern char wifiAP_SSID[];
 extern bool wifimanager_nonblocking;
+extern bool isTryingToConnect;
 
 // Clock
 extern bool     clockScreenEnabled;
@@ -185,7 +186,14 @@ void enableWatchdog();
 void beepOnBounce();
 void loopAudio();
 void connectToWiFi();
+void beepOn();
+void beepOff();
+void updateBeep();
+void startBeep();
+void beepForSquareFn(int sq);
+void beepOnUserPressFn(int sq);
 
+// Step 1: Declare function prototypes (so globals.cpp knows they exist)
 void drawFontFaceDemo();
 void drawProgressBarDemo();
 void drawImageDemo_1();
@@ -204,19 +212,59 @@ void drawFlashlight();
 void drawReactionTimeGame();
 void drawTimeOnCounter();
 void drawSliderProgressBar();
+void updateClockDisplay();
+void drawSerialDataScreen();
 void drawWifiConfig();
 void drawPixelWaterfallGame();
 void drawSPHFluidGame();
 void drawBreakoutGame();
 void drawSimonSaysGame2();
 void drawMatrixScreensaver();
-void beepOn();
-void beepOff();
-void updateBeep();
-void startBeep();
-void beepForSquareFn(int sq);
-void beepOnUserPressFn(int sq);
-void updateClockDisplay();
 void drawDinoGame();
+void drawPowerManager();
+
+// Step 2: Define the X-Macro List
+#define DEMO_LIST \
+    X(drawFontFaceDemo, FONT_FACE, "Font Face") \
+    X(drawProgressBarDemo, PROGRESS_BAR, "Progress Bar") \
+    X(drawImageDemo_1, IMAGE_1, "Image 1") \
+    X(drawImageDemo_2, IMAGE_2, "Image 2") \
+    X(drawImageDemo_3, IMAGE_3, "Image 3") \
+    X(drawImageDemo_4, IMAGE_4, "Image 4") \
+    X(drawTextFlowDemo, TEXT_FLOW, "Text Flow") \
+    X(drawTextAlignmentDemo, TEXT_ALIGNMENT, "Text Alignment") \
+    X(drawRectDemo, RECT, "Rectangle") \
+    X(drawCircleDemo, CIRCLE, "Circle") \
+    X(drawBatteryProgressBar, BATTERY, "Battery Progress") \
+    X(drawAccelerometerScreen, ACCELEROMETER, "Accelerometer") \
+    X(drawButtonCounters, BUTTON_COUNTERS, "Button Counters") \
+    /* X(drawAudioPlayer, AUDIO_PLAYER, "Audio Player") */ \
+    X(drawFlashlight, FLASHLIGHT, "Flashlight") \
+    X(drawReactionTimeGame, REACTION, "Reaction Time") \
+    X(drawTimeOnCounter, TIME_ON_COUNTER, "Time Counter") \
+    X(drawSliderProgressBar, SLIDER_PROGRESS_BAR, "Slider Progress") \
+    X(updateClockDisplay, CLOCK_DISPLAY, "Clock Display") \
+    X(drawSerialDataScreen, SERIAL_DATA, "Serial Data") \
+    X(drawWifiConfig, WIFI_CONFIG, "WiFi Config") \
+    X(drawPixelWaterfallGame, PIXEL_WATERFALL, "Pixel Waterfall") \
+    X(drawSPHFluidGame, SPH_FLUID, "SPH Fluid") \
+    X(drawBreakoutGame, BREAKOUT, "Breakout") \
+    X(drawSimonSaysGame2, SIMON_SAYS, "Simon Says") \
+    X(drawMatrixScreensaver, MATRIX_SCREENSAVER, "Matrix Screensaver") \
+    X(drawDinoGame, DINO_GAME, "Dino Game") \
+    X(drawPowerManager, POWER_MANAGER, "Power Manager")
+
+// Step 3: Define the Enum
+enum DemoIndex {
+    #define X(func, id, name) DEMO_##id,
+        DEMO_LIST
+    #undef X
+    DEMO_COUNT
+};
+
+// Step 4: Declare function pointer and name arrays
+typedef void (*Demo)(void);
+extern Demo demos[DEMO_COUNT];
+extern const char* demoNames[DEMO_COUNT];
 
 #endif // GLOBALS_H

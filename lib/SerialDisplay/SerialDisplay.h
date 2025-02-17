@@ -11,5 +11,6 @@ void handleScrollDown();
 void toggleScrollMode();
 void updateScrollPositionFromSlider();
 void drawSerialDataScreen();
+void drawDefaultInfoScreen();
 
 #endif

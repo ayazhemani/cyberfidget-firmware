@@ -16,7 +16,9 @@ License Placeholder
 //displayermanager
 #include "RGBController.h"
 #include "SliderPosition.h"
+
 #include "WiFiManagerCF.h"
+WiFiManagerCF WiFiManagerCFObject;
 
 #include "Flashlight.h"
 #include "SerialDisplay.h"
@@ -107,40 +109,8 @@ DinoGame dinoGame(
   /*resetBtnIndex*/button_BottomRightIndex
   );
 
-// Demo Config
-typedef void (*Demo)(void);
-Demo demos[] = {
-  drawFontFaceDemo, // 0
-  drawProgressBarDemo, 
-  drawImageDemo_1,
-  drawImageDemo_2,
-  drawImageDemo_3,
-  drawImageDemo_4,
-  drawTextFlowDemo,
-  drawTextAlignmentDemo,
-  drawRectDemo,
-  drawCircleDemo,
-  drawBatteryProgressBar,
-  drawAccelerometerScreen, // 11
-  drawButtonCounters, // 12
-  drawAudioPlayer, // 13
-  drawFlashlight, // 14
-  drawReactionTimeGame, // 15
-  drawTimeOnCounter, // 16
-  //startSimonSaysGame, // 
-  drawSliderProgressBar, // 17
-  updateClockDisplay,          // 18 - Add the new screen for clock
-  drawSerialDataScreen, // 19
-  drawWifiConfig, // 20
-  drawPixelWaterfallGame, // 21
-  drawSPHFluidGame, // 22
-  drawBreakoutGame, // 23
-  drawSimonSaysGame2, // 24
-  drawMatrixScreensaver, // 25
-  drawDinoGame // 26
-  };
-
-int demoLength = (sizeof(demos) / sizeof(Demo));
+#include "PowerManager.h"  // Include the new PowerManager
+PowerManager powerManager(display, buttonManager, clockDisplay);
 
 // Check if a button was pressed
 // Based on counters, which isn't a great way to do it
@@ -304,8 +274,8 @@ void setup() {
   initAudio();  // Initialize the audio system
   batteryManager.init(); // Initialize fuel gauge and battery management
 
-  // Initialize WiFi in low-power mode
   WiFiManagerCFObject.init();
+  WiFiManagerCFObject.setDisplay(display); // Pass the display reference if needed
 
   // Initially, the reaction game is not active, so ensure its callback is unregistered
   buttonManager.unregisterCallback(reactionGame.getButtonIndex());
@@ -334,6 +304,9 @@ void setup() {
 
   // Matrix Screensaver
   matrixScreensaver.begin();
+
+  // Initialize the PowerManager
+  powerManager.begin();
 
   esp_task_wdt_reset();
 }
@@ -381,23 +354,23 @@ void screenUpdate(){
   demos[demoMode]();
 
   if (demoMode != demoModePreviously){
-    if (demoMode == 11){
+    if (demoMode == DEMO_ACCELEROMETER){
         accelerometerScreenEnabled = true;
     } 
-    else if (demoModePreviously == 11){
+    else if (demoModePreviously == DEMO_ACCELEROMETER){
         accelerometerScreenEnabled = false;
         setColorsOff();
     }
 
-    if (demoMode == 14) {
+    if (demoMode == DEMO_FLASHLIGHT) {
       flashlightStatus = true;
     } 
-    else if (demoModePreviously == 14) {
+    else if (demoModePreviously == DEMO_FLASHLIGHT) {
       flashlightStatus = false;
       setColorsOff(); 
     }
 
-    if (demoMode == 15) {
+    if (demoMode == DEMO_REACTION) {
       //reactionGameEnabled = true;
       buttonManager.registerCallback(
         reactionGame.getButtonIndex(),
@@ -405,26 +378,22 @@ void screenUpdate(){
       );
       Serial.println("ReactionTimeGame callback registered: " + String(reactionGame.getButtonIndex()));
     } 
-    else if (demoModePreviously == 15) {
+    else if (demoModePreviously == DEMO_REACTION) {
       //reactionGameEnabled = false;
       buttonManager.unregisterCallback(reactionGame.getButtonIndex());
       Serial.println("ReactionTimeGame callback unregistered.");
       reactionGame.resetGame(); // Reset the game state
     }
       
-    if (demoMode == 18) {
+    if (demoMode == DEMO_CLOCK_DISPLAY) {
       clockDisplay.begin(); // Inside the module, begin() will only do initialization once.
     } 
-    else if (demoModePreviously == 18) {
+    else if (demoModePreviously == DEMO_CLOCK_DISPLAY) {
       // If desired, you can call clockDisplay.reset() when leaving demo mode 18.
       clockDisplay.reset();
     }
 
-    // if (demoMode != 13){
-    //   audioPlayerRunning = false;
-    // }
-
-    if (demoMode == 26) {
+    if (demoMode == DEMO_DINO_GAME) {
       //dinoGameEnabled = true;
       buttonManager.registerCallback(
         dinoGame.getJumpButtonIndex(),
@@ -441,7 +410,7 @@ void screenUpdate(){
   
       Serial.println("DinoGame callbacks registered.");
     } 
-    else if (demoModePreviously == 26) {
+    else if (demoModePreviously == DEMO_DINO_GAME) {
       //dinoGameEnabled = false;
       buttonManager.unregisterCallback(dinoGame.getJumpButtonIndex());
       buttonManager.unregisterCallback(dinoGame.getDuckButtonIndex());
@@ -449,6 +418,30 @@ void screenUpdate(){
       Serial.println("DinoGame callbacks unregistered.");
       dinoGame.resetGame(); // Reset the game state
     }
+
+    if (demoMode == DEMO_POWER_MANAGER) {
+      powerManager.registerShutdownCallback();
+    }
+    else if (demoModePreviously == DEMO_POWER_MANAGER) {
+      powerManager.unregisterShutdownCallback();
+    }
+
+    if (demoMode == DEMO_WIFI_CONFIG) {
+      // Register WiFiManagerCF callbacks
+      buttonManager.registerCallback(
+        button_BottomLeftIndex,
+        WiFiManagerCF::bottomLeftButtonCallback
+      );
+      buttonManager.registerCallback(
+        button_BottomRightIndex,
+        WiFiManagerCF::bottomRightButtonCallback
+      );
+    }
+    else if (demoModePreviously == DEMO_WIFI_CONFIG) {
+      buttonManager.unregisterCallback(button_BottomLeftIndex);
+      buttonManager.unregisterCallback(button_BottomRightIndex);
+    }
+
 
     demoModePreviously = demoMode; 
   }
@@ -486,7 +479,7 @@ void loop() {
         Serial.println("Pressed");
         if (ev.buttonIndex == 0) {
             demoModePreviously = demoMode;
-            demoMode = (demoMode - 1 + demoLength) % demoLength;
+            demoMode = (demoMode - 1 + DEMO_COUNT) % DEMO_COUNT;
         }
         break;
 
@@ -497,7 +490,7 @@ void loop() {
         buttonCounter[ev.buttonIndex]++;
         if (ev.buttonIndex == 1) {
             demoModePreviously = demoMode;
-            demoMode = (demoMode + 1) % demoLength;
+            demoMode = (demoMode + 1) % DEMO_COUNT;
         }
         break;
 
@@ -513,7 +506,6 @@ void loop() {
     }
   }
 
-  WiFiManagerCFObject.process();  // Non-blocking WiFi processing if enabled
 
   if((millisNow - millisOld10) >= 20){
     millisOld10 = millisNow;
@@ -523,10 +515,10 @@ void loop() {
       setColorsOff();    
     }
 
-    // Turn WiFi back off
-    if (demoModePreviously == 20) {
-      WiFiManagerCFObject.stopWebServer();
-    }
+    // // Turn WiFi back off
+    // if (demoModePreviously == 20) {
+    //   WiFiManagerCFObject.stopWebServer();
+    // }
 
     sliderPositionRead();
     screenUpdate();
@@ -540,28 +532,29 @@ void loop() {
   if((millisNow - millisOld200) >= 200){
     millisOld200 = millisNow;
     batteryManager.update();
+    saveButtonCounters();
     
-    // Slow NVM write cycle, only check every
-    if((millisNow - millisLastInteraction) >= 3000){
-      saveButtonCounters();
-    }  
+    // // Slow NVM write cycle, only check every
+    // if((millisNow - millisLastInteraction) >= 3000){
+    //   saveButtonCounters();
+    // }  
   }
 
-  if((millisNow - millisLastInteraction) >= 30000){
-    // Go to deep sleep
-    if(preventSleepWhileCharging){
-      if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
-        clockDisplay.saveTime(); // Save the current clock time to Preferences so that it can be recovered later.
-        Serial.println("Going to sleep now...");
-        delay(1000);
-        esp_deep_sleep_start();
-      }
-    } else {
-      Serial.println("Going to sleep now...");
-      delay(1000);
-      esp_deep_sleep_start();
-    }
-  }
+  // if((millisNow - millisLastInteraction) >= 1800000){
+  //   // Go to deep sleep
+  //   if(preventSleepWhileCharging){
+  //     if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
+  //       clockDisplay.saveTime(); // Save the current clock time to Preferences so that it can be recovered later.
+  //       Serial.println("Going to sleep now...");
+  //       delay(1000);
+  //       esp_deep_sleep_start();
+  //     }
+  //   } else {
+  //     Serial.println("Going to sleep now...");
+  //     delay(1000);
+  //     esp_deep_sleep_start();
+  //   }
+  // }
 
   if((millisNow - millisOldHeartbeat) >= 600000){
     //Calculate cycle time roughly from millis measurement
@@ -732,63 +725,61 @@ void drawDinoGame() {
   dinoGame.draw();
 }
 
-// Function to connect to WiFi
-void connectToWiFi() {
-  Serial.print("Connecting to WiFi");
-  //WiFi.begin(wifi_ssid, wifi_password);
-  WiFi.begin();
-  // while (WiFi.status() != WL_CONNECTED) {
-  //   //delay(500);
-  //   Serial.print(".");
-  // }
-  Serial.println(" Connected!");
+// Power Manager
+void drawPowerManager() {
+  powerManager.update();
 }
+
+// // Function to connect to WiFi
+// void connectToWiFi() {
+//   Serial.print("Connecting to WiFi");
+//   //WiFi.begin(wifi_ssid, wifi_password);
+//   WiFi.begin();
+//   // while (WiFi.status() != WL_CONNECTED) {
+//   //   //delay(500);
+//   //   Serial.print(".");
+//   // }
+//   Serial.println(" Connected!");
+// }
 
 
 void drawWifiConfig() {
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-  display.drawString(64, 12, "WiFi Controls");
-  display.drawString(64, 22, "Bottom Right - Start Portal");
-  display.drawString(64, 32, "Bottom Left - Connect WiFi");
-  display.display();
+  WiFiManagerCFObject.process();
+  // display.clear();
+  // display.setTextAlignment(TEXT_ALIGN_CENTER);
+  // display.setFont(ArialMT_Plain_10); // Use an appropriate font size
+  // display.drawString(64, 12, "WiFi Controls");
+  // display.drawString(64, 22, "Bottom Right - Start Portal");
+  // display.drawString(64, 32, "Bottom Left - Connect WiFi");
+  // display.display();
 
-  // Check if button_BottomRight is pressed
-  if (digitalRead(button_BottomRight) == LOW) {
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-    display.drawString(64, 12, wifiAP_SSID);
-    display.drawString(64, 22, "Started...192.168.4.1");
-    display.display();
-    WiFiManagerCFObject.startWiFiPortal();
-  }
+  // // Check if button_BottomRight is pressed
+  // if (digitalRead(button_BottomRight) == LOW) {
+  //   display.clear();
+  //   display.setTextAlignment(TEXT_ALIGN_CENTER);
+  //   display.setFont(ArialMT_Plain_10); // Use an appropriate font size
+  //   display.drawString(64, 12, wifiAP_SSID);
+  //   display.drawString(64, 22, "Started...192.168.4.1");
+  //   display.display();
+  //   WiFiManagerCFObject.startWiFiPortal();
+  // }
   // Check if button_BottomLeft is pressed
-  if (digitalRead(button_BottomLeft) == LOW) {
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-    display.drawString(64, 12, "Connecting...");
-    display.display();
-    connectToWiFi();
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
-    }
-    display.drawString(64, 22, "Connected!");
-    display.display();
-  }
+  // if (digitalRead(button_BottomLeft) == LOW) {
+  //   display.clear();
+  //   display.setTextAlignment(TEXT_ALIGN_CENTER);
+  //   display.setFont(ArialMT_Plain_10); // Use an appropriate font size
+  //   display.drawString(64, 12, "Connecting...");
+  //   display.display();
+  //   connectToWiFi();
+  //   while (WiFi.status() != WL_CONNECTED) {
+  //     delay(500);
+  //     Serial.print(".");
+  //   }
+  //   display.drawString(64, 22, "Connected!");
+  //   display.display();
+  // }
 }
 
-
-void drawDefaultInfoScreen() {
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-  display.drawString(64, 22, "Waiting for Data...");
-  display.display();
-}
 
 /*
 Audio Boops with Buttons

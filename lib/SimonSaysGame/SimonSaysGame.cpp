@@ -170,7 +170,7 @@ void SimonSaysGame::drawGameOver() {
 
     // You can use display.drawString(...) calls if your library supports text.
     // For example, with SSD1306Wire, you might do:
-
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.setFont(ArialMT_Plain_10); // or your chosen font
     display.drawString(30, 20, "GAME OVER");
 

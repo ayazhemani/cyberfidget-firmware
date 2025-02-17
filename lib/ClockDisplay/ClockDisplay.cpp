@@ -193,6 +193,7 @@ void ClockDisplay::saveTime() {
     m_preferences.putULong("lastTime", m_currentTime);
     m_preferences.putULong("lastMillis", millis());
     m_preferences.end();
+    Serial.println("ClockDisplay: Time saved to Preferences.");
 }
 
 // ---------------------------------------------------------------------

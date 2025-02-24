@@ -38,10 +38,10 @@ void ReactionTimeGame::update(unsigned long millisNow) {
     if (!gameStarted && !delayActive && !waitingForReaction && !messageDisplayed) {
         Serial.println("Displaying 'Press to start...' screen.");
         display.clear();
-        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.setTextAlignment(TEXT_ALIGN_CENTER);
         display.setFont(ArialMT_Plain_16);
 
-        display.drawString(0, 0, "Press to start");
+        display.drawString(64, 22, "Press to start");
         display.display();
         messageDisplayed = true;
     }
@@ -50,7 +50,7 @@ void ReactionTimeGame::update(unsigned long millisNow) {
     if (delayActive && millisNow >= randomDelayEnd) {
         Serial.println("Displaying 'GO!' screen.");
         display.clear();
-        display.drawString(0, 0, "GO!");
+        display.drawString(64, 22, "GO!");
         display.display();
 
         startTime = millisNow;
@@ -81,7 +81,7 @@ void ReactionTimeGame::startGame(unsigned long millisNow) {
     Serial.println("Starting Reaction Time Game.");
     gameStarted = true;
     display.clear();
-    display.drawString(0, 0, "Get Ready...");
+    display.drawString(64, 22, "Get Ready...");
     display.display();
 
     unsigned long randomDelay = random(1000, 5000); // Delay between 1s and 5s
@@ -93,7 +93,7 @@ void ReactionTimeGame::startGame(unsigned long millisNow) {
 void ReactionTimeGame::displayReactionTime() {
     Serial.println("Displaying reaction time.");
     display.clear();
-    display.drawString(0, 0, "Time: " + String(reactionTime) + " ms");
+    display.drawString(64, 22, "Time: " + String(reactionTime) + " ms");
     display.display();
 }
 
@@ -105,6 +105,6 @@ void ReactionTimeGame::resetGame() {
     messageDisplayed = false;
 
     display.clear();
-    display.drawString(0, 0, "Press to start");
+    display.drawString(64, 22, "Press to start");
     display.display();
 }

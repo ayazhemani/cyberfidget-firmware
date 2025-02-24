@@ -38,7 +38,7 @@ void ReactionTimeGame::update(unsigned long millisNow) {
     if (!gameStarted && !delayActive && !waitingForReaction && !messageDisplayed) {
         Serial.println("Displaying 'Press to start...' screen.");
         display.clear();
-        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.setTextAlignment(TEXT_ALIGN_LEFT);  // Let's change this to be centered, remember to offset strings properly
         display.setFont(ArialMT_Plain_16);
 
         display.drawString(0, 0, "Press to start");

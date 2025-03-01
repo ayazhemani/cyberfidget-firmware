@@ -2,6 +2,7 @@
 #include "SSD1306Wire.h"
 #include "ExampleScreens.h"
 #include "images.h"
+#include "RGBController.h"
 
 extern SSD1306Wire display;
 
@@ -105,5 +106,106 @@ void drawImageDemo_3() {
 void drawImageDemo_4() {
   display.clear();
   display.drawXbm(0, 0, 128, 64, epd_bitmap_retro_car_sunset);
+  display.display();
+}
+
+void drawBatteryProgressBar() {
+  display.clear();
+  // draw the progress bar
+  display.drawProgressBar(0, 30, 120, 10, batteryVoltagePercentage);
+
+  // draw the percentage as String
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 15, "Battery: " + String(batteryVoltagePercentage) + "%");
+
+  // Battery Voltage
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(70, 40, "Battery (V): " + String(batteryVoltage));
+
+  display.display();
+}
+
+void drawSliderProgressBar() {
+  display.clear();
+  display.setFont(ArialMT_Plain_10);
+
+  // draw the percentage as String
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 4, "Slider: " + String(sliderPosition_Percentage_Inverted_Filtered) + "%");
+
+  // draw the progress bar
+  display.setFont(ArialMT_Plain_10);
+  display.drawProgressBar(9, 18, 108, 10, sliderPosition_Percentage_Inverted_Filtered);
+
+  // Battery Voltage
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 30, "Slider (mV): " + String(sliderPosition_Millivolts));
+  display.drawString(64, 40, "Slider (bits): " + String(sliderPosition_12Bits));
+  display.drawString(64, 50, "Slider Filt (bits): " + String(sliderPosition_12Bits_Filtered));
+  display.display();
+
+  uint8_t red, green, blue;
+  mapToRainbow(sliderPosition_12Bits_Filtered, 8, red, green, blue);
+  strip.setPixelColor(pixel_Front_Top, strip.Color(red, green, blue, 0));
+  strip.setPixelColor(pixel_Front_Middle, strip.Color(8 - red, 8 - green, 8 - blue, 0));
+  strip.setPixelColor(pixel_Front_Bottom, strip.Color(red, green, blue, 0));
+
+  updateStrip();
+}
+
+void drawAccelerometerScreen() {
+  if (accelerometerScreenEnabled) {
+    display.clear();
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.drawString(0, 20, "X: " + String(accelX) + " Y: " + String(accelY) + " Z: " + String(accelZ));
+
+    uint8_t redMap = map(accelX, -1030, 1030, 0, 255);
+    uint8_t greenMap = map(accelY, -1030, 1030, 0, 255);
+    uint8_t blueMap = map(accelZ, -1030, 1030, 0, 255);
+
+    setDeterminedColorsFront(redMap, greenMap, blueMap, 0); 
+
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.drawString(0, 10, "R: " + String(redMap) + " G: " + String(greenMap) + " B: " + String(blueMap));
+    display.display();
+  }
+}
+
+void drawButtonCounters() {
+  display.clear();
+  // Button Counters
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, 10, 
+    "Btns: 0="  + String(buttonCounter[0])
+    + ", 1=" + String(buttonCounter[1])
+    + ", 2=" + String(buttonCounter[2]));
+  display.drawString(0, 20, 
+    ", 3=" + String(buttonCounter[3])
+    + ", 4=" + String(buttonCounter[4])
+    + ", 5=" + String(buttonCounter[5]));
+  display.display();
+}
+
+void drawTimeOnCounter() {
+  display.clear();
+  // Time On Counter
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.drawString(128, 20, String(millis()));
+  display.display();
+}
+
+void drawProgressBarDemo() {
+  display.clear();
+  int progress = (buttonCounter[5] / 5) % 100;
+  // draw the progress bar
+  display.drawProgressBar(0, 30, 120, 10, progress);
+
+  // draw the percentage as String
+  display.setTextAlignment(TEXT_ALIGN_CENTER);
+  display.drawString(64, 15, String(progress) + "%");
   display.display();
 }

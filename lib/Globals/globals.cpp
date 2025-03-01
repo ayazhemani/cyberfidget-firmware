@@ -95,6 +95,13 @@ uint16_t sliderPosition_12Bits_Inverted= 0;
 uint8_t  sliderPosition_8Bits          = 0;
 uint8_t  sliderPosition_8Bits_Inverted = 0;
 
+int sliderPosition_12Bits_Filtered = 0;
+int sliderPosition_12Bits_Inverted_Filtered = 0;
+int sliderPosition_8Bits_Filtered = 0;
+int sliderPosition_8Bits_Inverted_Filtered = 0;
+int sliderPosition_Percentage_Filtered = 0;
+int sliderPosition_Percentage_Inverted_Filtered = 0;
+
 // WiFi
 char wifiAP_SSID[] = "CyberFidget_AP";
 bool wifimanager_nonblocking = false;\
@@ -138,10 +145,6 @@ ButtonDebounce btns[4] = {
     { false, true, 0UL, false },
     { false, true, 0UL, false }
 };
-
-// PixelWaterfall config
-float pixelGameInertia = 1.2f;
-float pixelGameDamping = 0.95f;
 
 // --------------------------------------------------------------------
 // 2) (Optional) If you want to define any of the prototypes from

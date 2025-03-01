@@ -119,6 +119,13 @@ extern uint16_t sliderPosition_12Bits;
 extern uint16_t sliderPosition_12Bits_Inverted;
 extern uint8_t  sliderPosition_8Bits;
 extern uint8_t  sliderPosition_8Bits_Inverted;
+// Filtered slider readings (use float for precision during filtering)
+extern int sliderPosition_12Bits_Filtered;
+extern int sliderPosition_12Bits_Inverted_Filtered;
+extern int sliderPosition_8Bits_Filtered;
+extern int sliderPosition_8Bits_Inverted_Filtered;
+extern int sliderPosition_Percentage_Filtered;
+extern int sliderPosition_Percentage_Inverted_Filtered;
 
 // WiFi
 extern char wifiAP_SSID[];
@@ -170,19 +177,6 @@ struct ButtonDebounce {
 };
 extern ButtonDebounce btns[4];
 
-//
-// 3) Additional shared variables for PixelWaterfallGame (if needed):
-//
-extern float pixelGameInertia;
-extern float pixelGameDamping;
-
-//
-// 4) Global function prototypes that main.cpp references
-//    (If you have them defined in main.cpp or elsewhere.)
-//
-
-void disableWatchdog();
-void enableWatchdog();
 void beepOnBounce();
 void loopAudio();
 void connectToWiFi();
@@ -215,10 +209,9 @@ void drawSliderProgressBar();
 void updateClockDisplay();
 void drawSerialDataScreen();
 void drawWifiConfig();
-void drawPixelWaterfallGame();
 void drawSPHFluidGame();
 void drawBreakoutGame();
-void drawSimonSaysGame2();
+void drawSimonSaysGame();
 void drawMatrixScreensaver();
 void drawDinoGame();
 void drawPowerManager();
@@ -246,10 +239,9 @@ void drawPowerManager();
     X(updateClockDisplay, CLOCK_DISPLAY, "Clock Display") \
     X(drawSerialDataScreen, SERIAL_DATA, "Serial Data") \
     X(drawWifiConfig, WIFI_CONFIG, "WiFi Config") \
-    X(drawPixelWaterfallGame, PIXEL_WATERFALL, "Pixel Waterfall") \
     X(drawSPHFluidGame, SPH_FLUID, "SPH Fluid") \
     X(drawBreakoutGame, BREAKOUT, "Breakout") \
-    X(drawSimonSaysGame2, SIMON_SAYS, "Simon Says") \
+    X(drawSimonSaysGame, SIMON_SAYS, "Simon Says") \
     X(drawMatrixScreensaver, MATRIX_SCREENSAVER, "Matrix Screensaver") \
     X(drawDinoGame, DINO_GAME, "Dino Game") \
     X(drawPowerManager, POWER_MANAGER, "Power Manager")

@@ -95,6 +95,16 @@ public:
     // Getter methods
     int getNumButtons() const { return _numButtons; }
     bool hasCallback(int buttonIndex) const;
+
+    /**
+     * @brief Call to save button counters.
+     */
+    void saveButtonCounters();
+
+    /**
+     * @brief Call to load button counters.
+     */
+    void loadButtonCounters();
     
 private:
     // --- Configuration ---

@@ -48,20 +48,7 @@ SSD1306Wire display(0x3c, SDA, SCL);
 #include "SparkFun_LIS2DH12.h" //Click here to get the library: http://librarymanager/All#SparkFun_LIS2DH12
 SPARKFUN_LIS2DH12 accel;       //Create instance
 
-/*
-Clock/RTC
-*/
-// Include libraries for time manipulation
-#include <time.h>
-
-// Memory Management
-/* 
-Open Preferences with a namespace name.
-Each application module, library, etc. has to use a namespace name
-to prevent key name collisions.
-*/
-#include <Preferences.h>
-Preferences preferencesMainApp;
+#include <time.h> // Clock/RTC for time manipulation
 
 // Logging Management
 #include "esp_log.h"
@@ -85,9 +72,6 @@ ReactionTimeGame reactionGame(
 #include "ClockDisplay.h"
 ClockDisplay clockDisplay(display);
 
-#include "PixelWaterFallGame.h"
-PixelWaterfallGame pixelGame(display);
-
 #include "SPHFluidGame.h"
 SPHFluidGame sphGame(display);
 
@@ -95,7 +79,7 @@ SPHFluidGame sphGame(display);
 BreakoutGame breakout(display);
 
 #include "SimonSaysGame.h"
-SimonSaysGame simonGame(display, beepForSquareFn, beepOnUserPressFn);
+SimonSaysGame simonGame(display, buttonManager, beepForSquareFn, beepOnUserPressFn);
 
 #include "MatrixScreensaver.h"
 MatrixScreensaver matrixScreensaver(display);
@@ -111,58 +95,6 @@ DinoGame dinoGame(
 
 #include "PowerManager.h"  // Include the new PowerManager
 PowerManager powerManager(display, buttonManager, clockDisplay);
-
-// Check if a button was pressed
-// Based on counters, which isn't a great way to do it
-// these types of events should be triggered via state handshake so holds and releases can be accomodated
-bool compareButtonCounters(volatile int* counter1, volatile int* counter2, int length) {
-  for (int i = 0; i < length; i++) {
-    if (counter1[i] != counter2[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// Navigation Controls
-void loadButtonCounters() {
-  preferencesMainApp.begin("mainApp", true);
-
-  // Retrieve each button counter value
-  for (int i = 0; i < numButtons; i++) {
-    buttonCounterSaved[i] = preferencesMainApp.getInt((String("button") + i).c_str(), 0); // Read the count back
-    buttonCounter[i] = buttonCounterSaved[i]; // Keep the saved and lived counts synced
-  }
-
-  demoModeSaved = preferencesMainApp.getInt("demoMode", 0);
-  demoMode = demoModeSaved;
-
-  preferencesMainApp.end();
-}
-
-void saveButtonCounters() {
-  // Compare button counters
-  if (compareButtonCounters(buttonCounter, buttonCounterSaved, numButtons) == false){
-    Serial.println("Button counters are not equal.");
-
-    preferencesMainApp.begin("mainApp", false);
-
-    // Store each button counter value
-    for (int i = 0; i < numButtons; i++) {
-      preferencesMainApp.putInt((String("button") + i).c_str(), buttonCounter[i]); // Write the live count
-      buttonCounterSaved[i] = buttonCounter[i]; // Keep the saved and lived counts synced
-    }
-
-    preferencesMainApp.end();
-  }
-
-  if (demoMode != demoModeSaved){
-    preferencesMainApp.begin("mainApp", false);
-    preferencesMainApp.putInt("demoMode", demoMode);
-    preferencesMainApp.end();
-  }
-
-}
 
 void printWakeupReason() {
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
@@ -187,17 +119,6 @@ void printWakeupReason() {
       Serial.println("Wakeup was not caused by deep sleep");
       break;
   }
-}
-
-
-void disableWatchdog() {
-    esp_task_wdt_delete(NULL); // Remove the current task from the watchdog
-    Serial.println("Watchdog disabled");
-}
-
-void enableWatchdog() {
-    esp_task_wdt_add(NULL); // Re-add the current task to the watchdog
-    Serial.println("Watchdog enabled");
 }
 
 void setup() {
@@ -231,8 +152,6 @@ void setup() {
   digitalWrite(POWER_PIN_AUX, HIGH); // Turn on the aux power regulator
 
   Serial.begin(115200);
-  Serial.println();
-  Serial.println();
 
   // Initialising the UI will init the display too.
   display.init();
@@ -242,20 +161,23 @@ void setup() {
 
   // RGBW LEDs
   initRGB();
+
+  // Slider
   pinMode(VOLT_READ_PIN, INPUT); // Slider Input
+  sliderPositionFilterInit();
 
   // Buttons
    buttonManager.begin(); 
 
   if (accel.begin() == false)
   {
-    Serial.println("Accelerometer not detected. Check address jumper and wiring. Freezing...");
+    ESP_LOGE(TAG_MAIN, "Accelerometer not detected. Check address config and power regulator state. Freezing...");
     while (1)
       ;
   }
 
   // Memory Management
-  loadButtonCounters();
+  buttonManager.loadButtonCounters();
 
   // Print wakeup reason
   printWakeupReason();
@@ -280,35 +202,20 @@ void setup() {
   // Initially, the reaction game is not active, so ensure its callback is unregistered
   buttonManager.unregisterCallback(reactionGame.getButtonIndex());
 
-  // Set inertia and damping using global variables
-  pixelGame.setInertia(pixelGameInertia);
-  pixelGame.setDamping(pixelGameInertia);
+  // Initialize the PowerManager
+  powerManager.begin();
 
-  // Reset pixel positions
-  pixelGame.resetPixels();
 
+
+
+  // To be removed from setup()
   // Initialize the breakout game
   breakout.reset();
   breakout.setResetButton(button_BottomRight, /* activeLow = */ true); // Specify which pin to monitor for game resets
   breakout.setBounceCallback(beepOnBounce); // **Attach the bounce callback** so BreakoutGame calls beepOnBounce
 
-  // Start the Simon game
-  simonGame.begin();
-  for (int i = 0; i < 4; i++) { // Initialize button states
-    //pinMode(buttonPins[i], INPUT_PULLUP); // Done Already
-    btns[i].stableState    = false;
-    btns[i].lastReading    = true;  
-    btns[i].lastChangeTime = 0;
-  }
-  // randomSeed(analogRead(A0)); // If you want truly random patterns each reset
-
   // Matrix Screensaver
   matrixScreensaver.begin();
-
-  // Initialize the PowerManager
-  powerManager.begin();
-
-  esp_task_wdt_reset();
 }
 
 void accelerometer(){
@@ -371,17 +278,14 @@ void screenUpdate(){
     }
 
     if (demoMode == DEMO_REACTION) {
-      //reactionGameEnabled = true;
       buttonManager.registerCallback(
         reactionGame.getButtonIndex(),
         ReactionTimeGame::reactionButtonPressedCallback
       );
-      Serial.println("ReactionTimeGame callback registered: " + String(reactionGame.getButtonIndex()));
     } 
     else if (demoModePreviously == DEMO_REACTION) {
       //reactionGameEnabled = false;
       buttonManager.unregisterCallback(reactionGame.getButtonIndex());
-      Serial.println("ReactionTimeGame callback unregistered.");
       reactionGame.resetGame(); // Reset the game state
     }
       
@@ -391,6 +295,21 @@ void screenUpdate(){
     else if (demoModePreviously == DEMO_CLOCK_DISPLAY) {
       // If desired, you can call clockDisplay.reset() when leaving demo mode 18.
       clockDisplay.reset();
+    }
+
+    // TO BE ADDED WHEN REMOVED FROM SETUP()
+    // if (demoMode == DEMO_BREAKOUT) {
+    //   breakout.begin();
+    // } 
+    // else if (demoModePreviously == DEMO_BREAKOUT) {
+    //   breakout.end();
+    // }
+
+    if (demoMode == DEMO_SIMON_SAYS) {
+      simonGame.begin(); // Inside the module, begin() will only do initialization once.
+    } 
+    else if (demoModePreviously == DEMO_SIMON_SAYS) {
+      simonGame.end(); // Unregister button callbacks
     }
 
     if (demoMode == DEMO_DINO_GAME) {
@@ -407,15 +326,12 @@ void screenUpdate(){
         dinoGame.getResetButtonIndex(), 
         DinoGame::resetButtonCallback
       );
-  
-      Serial.println("DinoGame callbacks registered.");
     } 
     else if (demoModePreviously == DEMO_DINO_GAME) {
       //dinoGameEnabled = false;
       buttonManager.unregisterCallback(dinoGame.getJumpButtonIndex());
       buttonManager.unregisterCallback(dinoGame.getDuckButtonIndex());
       buttonManager.unregisterCallback(dinoGame.getResetButtonIndex());
-      Serial.println("DinoGame callbacks unregistered.");
       dinoGame.resetGame(); // Reset the game state
     }
 
@@ -442,7 +358,6 @@ void screenUpdate(){
       buttonManager.unregisterCallback(button_BottomRightIndex);
     }
 
-
     demoModePreviously = demoMode; 
   }
 }
@@ -467,16 +382,13 @@ void loop() {
       if (cb != nullptr) {
           cb(ev);  // Invoke the callback with the event
       }
-    } 
+    }
     else {
     // Global event handling for buttons without callbacks
-    Serial.print("Button #");
-    Serial.print(ev.buttonIndex);
-    Serial.print(" => ");
-
+    ESP_LOGV(TAG_MAIN, "Button #%d => ", ev.buttonIndex);
     switch (ev.eventType) {
       case ButtonEvent_Pressed:
-        Serial.println("Pressed");
+        ESP_LOGV(TAG_MAIN, "Pressed");
         if (ev.buttonIndex == 0) {
             demoModePreviously = demoMode;
             demoMode = (demoMode - 1 + DEMO_COUNT) % DEMO_COUNT;
@@ -484,9 +396,7 @@ void loop() {
         break;
 
       case ButtonEvent_Released:
-        Serial.print("Released after ");
-        Serial.print(ev.duration);
-        Serial.println(" ms");
+        ESP_LOGV(TAG_MAIN, "Released after %d ms", ev.duration);
         buttonCounter[ev.buttonIndex]++;
         if (ev.buttonIndex == 1) {
             demoModePreviously = demoMode;
@@ -495,9 +405,7 @@ void loop() {
         break;
 
       case ButtonEvent_Held:
-        Serial.print("Held for ");
-        Serial.print(ev.duration);
-        Serial.println(" ms (and still pressed)!");
+        ESP_LOGV(TAG_MAIN, "Held for %d ms (and still pressed)!", ev.duration);
         break;
 
       default:
@@ -506,7 +414,6 @@ void loop() {
     }
   }
 
-
   if((millisNow - millisOld10) >= 20){
     millisOld10 = millisNow;
 
@@ -514,11 +421,6 @@ void loop() {
     if (demoModePreviously == 11 || demoModePreviously == 17) { 
       setColorsOff();    
     }
-
-    // // Turn WiFi back off
-    // if (demoModePreviously == 20) {
-    //   WiFiManagerCFObject.stopWebServer();
-    // }
 
     sliderPositionRead();
     screenUpdate();
@@ -532,7 +434,7 @@ void loop() {
   if((millisNow - millisOld200) >= 200){
     millisOld200 = millisNow;
     batteryManager.update();
-    saveButtonCounters();
+    buttonManager.saveButtonCounters();
     
     // // Slow NVM write cycle, only check every
     // if((millisNow - millisLastInteraction) >= 3000){
@@ -569,138 +471,23 @@ void loop() {
   }
 }
 
-
-
-void drawProgressBarDemo() {
-  display.clear();
-  int progress = (buttonCounter[5] / 5) % 100;
-  // draw the progress bar
-  display.drawProgressBar(0, 30, 120, 10, progress);
-
-  // draw the percentage as String
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(64, 15, String(progress) + "%");
-  display.display();
-}
-
-void drawBatteryProgressBar() {
-  display.clear();
-  // draw the progress bar
-  display.drawProgressBar(0, 30, 120, 10, batteryVoltagePercentage);
-
-  // draw the percentage as String
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(64, 15, "Battery: " + String(batteryVoltagePercentage) + "%");
-
-  // Battery Voltage
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(70, 40, "Battery (V): " + String(batteryVoltage));
-
-  // // Battery Voltage Percentage
-  // display.setFont(ArialMT_Plain_10);
-  // display.setTextAlignment(TEXT_ALIGN_CENTER);
-  // display.drawString(70, 30, "Bat %: " + String(pinVoltagePercentage));
-  display.display();
-}
-
-void drawSliderProgressBar() {
-  display.clear();
-  // draw the progress bar
-  display.setFont(ArialMT_Plain_10);
-  display.drawProgressBar(9, 28, 108, 10, sliderPosition_Percentage);
-
-  // draw the percentage as String
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(64, 14, "Slider: " + String(sliderPosition_Percentage) + "%");
-
-  // Battery Voltage
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.drawString(64, 40, "Slider (mV): " + String(sliderPosition_Millivolts));
-  display.drawString(64, 50, "Slider (bits): " + String(sliderPosition_12Bits));
-  display.display();
-
-  uint8_t red, green, blue;
-  mapToRainbow(sliderPosition_12Bits, 8, red, green, blue);
-  strip.setPixelColor(pixel_Front_Top, strip.Color(red, green, blue, 0));
-  strip.setPixelColor(pixel_Front_Middle, strip.Color(8 - red, 8 - green, 8 - blue, 0));
-  strip.setPixelColor(pixel_Front_Bottom, strip.Color(red, green, blue, 0));
-
-  updateStrip();
-}
-
-void drawAccelerometerScreen() {
-  if (accelerometerScreenEnabled) {
-    display.clear();
-    display.setFont(ArialMT_Plain_10);
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 20, "X: " + String(accelX) + " Y: " + String(accelY) + " Z: " + String(accelZ));
-
-    uint8_t redMap = map(accelX, -1030, 1030, 0, 255);
-    uint8_t greenMap = map(accelY, -1030, 1030, 0, 255);
-    uint8_t blueMap = map(accelZ, -1030, 1030, 0, 255);
-
-    setDeterminedColorsFront(redMap, greenMap, blueMap, 0); 
-    ESP_LOGV(TAG_MAIN, "Accel RGB Values x=%d, y=%d z=%d", redMap, greenMap, blueMap);
-
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 10, "R: " + String(redMap) + " G: " + String(greenMap) + " B: " + String(blueMap));
-    display.display();
-  }
-}
-
-void drawButtonCounters() {
-  display.clear();
-  // Button Counters
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawString(0, 10, 
-    "Btns: 0="  + String(buttonCounter[0])
-    + ", 1=" + String(buttonCounter[1])
-    + ", 2=" + String(buttonCounter[2]));
-  display.drawString(0, 20, 
-    ", 3=" + String(buttonCounter[3])
-    + ", 4=" + String(buttonCounter[4])
-    + ", 5=" + String(buttonCounter[5]));
-  display.display();
-}
-
-void drawTimeOnCounter() {
-  display.clear();
-  // Time On Counter
-  display.setFont(ArialMT_Plain_10);
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.drawString(128, 20, String(millis()));
-  display.display();
-}
-
-/*
-Reaction Time Game
-*/
-
 void drawReactionTimeGame() {
   reactionGame.update(millisNow);
 }
 
-void drawPixelWaterfallGame(){
-    // Update the game with new accelerometer data
-    pixelGame.update(accelX, accelY);
-}
-
 void drawSPHFluidGame(){
+  // Map to 1–100
+  int targetParticleCount = map(sliderPosition_12Bits_Inverted_Filtered, 0, 4095, 1, 100);
 
-    // Map to 1–100
-    int targetParticleCount = map(sliderPosition_12Bits_Inverted, 0, 4095, 1, 100);
-
-    // If you want to prevent re-randomizing the fluid on every tiny pot change,
-    // check if the count has actually changed.
-    static int currentCount = 100; // or whatever you start with
-    if (targetParticleCount != currentCount) {
-        sphGame.setParticleCount(targetParticleCount);
-        currentCount = targetParticleCount;
-    }
-    // Update the game with new accelerometer data
-    sphGame.update(accelX, accelY);
+  // If you want to prevent re-randomizing the fluid on every tiny pot change,
+  // check if the count has actually changed.
+  static int currentCount = 100; // or whatever you start with
+  if (targetParticleCount != currentCount) {
+      sphGame.setParticleCount(targetParticleCount);
+      currentCount = targetParticleCount;
+  }
+  // Update the game with new accelerometer data
+  sphGame.update(accelX, accelY);
 }
 
 void drawBreakoutGame(){
@@ -715,13 +502,8 @@ void updateClockDisplay() {
 
 // Dino Game
 void drawDinoGame() {
-   // Set speed from slider
-  dinoGame.setSpeedBySlider(sliderPosition_Percentage);
-
-  // Update game logic if it's active
+  dinoGame.setSpeedBySlider(sliderPosition_Percentage_Inverted_Filtered);
   dinoGame.update();
-
-  // Draw game state
   dinoGame.draw();
 }
 
@@ -730,55 +512,30 @@ void drawPowerManager() {
   powerManager.update();
 }
 
-// // Function to connect to WiFi
-// void connectToWiFi() {
-//   Serial.print("Connecting to WiFi");
-//   //WiFi.begin(wifi_ssid, wifi_password);
-//   WiFi.begin();
-//   // while (WiFi.status() != WL_CONNECTED) {
-//   //   //delay(500);
-//   //   Serial.print(".");
-//   // }
-//   Serial.println(" Connected!");
-// }
-
-
 void drawWifiConfig() {
   WiFiManagerCFObject.process();
-  // display.clear();
-  // display.setTextAlignment(TEXT_ALIGN_CENTER);
-  // display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-  // display.drawString(64, 12, "WiFi Controls");
-  // display.drawString(64, 22, "Bottom Right - Start Portal");
-  // display.drawString(64, 32, "Bottom Left - Connect WiFi");
-  // display.display();
-
-  // // Check if button_BottomRight is pressed
-  // if (digitalRead(button_BottomRight) == LOW) {
-  //   display.clear();
-  //   display.setTextAlignment(TEXT_ALIGN_CENTER);
-  //   display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-  //   display.drawString(64, 12, wifiAP_SSID);
-  //   display.drawString(64, 22, "Started...192.168.4.1");
-  //   display.display();
-  //   WiFiManagerCFObject.startWiFiPortal();
-  // }
-  // Check if button_BottomLeft is pressed
-  // if (digitalRead(button_BottomLeft) == LOW) {
-  //   display.clear();
-  //   display.setTextAlignment(TEXT_ALIGN_CENTER);
-  //   display.setFont(ArialMT_Plain_10); // Use an appropriate font size
-  //   display.drawString(64, 12, "Connecting...");
-  //   display.display();
-  //   connectToWiFi();
-  //   while (WiFi.status() != WL_CONNECTED) {
-  //     delay(500);
-  //     Serial.print(".");
-  //   }
-  //   display.drawString(64, 22, "Connected!");
-  //   display.display();
-  // }
 }
+
+void drawSimonSaysGame(){
+  simonGame.update();
+}
+
+void drawMatrixScreensaver(){
+  // Update the screensaver
+  matrixScreensaver.update();
+  matrixScreensaver.draw();
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*
@@ -810,24 +567,6 @@ int readWhichButton() {
     }
   }
   return pressedIndex;
-}
-
-void drawSimonSaysGame2(){
-  // 1) Read debounced button
-  int pressed = readWhichButton();
-
-  // 2) Update the Simon game
-  simonGame.update(pressed);
-  // 3) Manage beep timing (non-blocking)
-  updateBeep();
-
-  // If using AudioTools, call your copier.copy() here
-}
-
-void drawMatrixScreensaver(){
-  // Update the screensaver
-  matrixScreensaver.update();
-  matrixScreensaver.draw();
 }
 
 void beepOn(float freq) {

@@ -1,12 +1,25 @@
 #include "SimonSaysGame.h"
-#include <SSD1306Wire.h>  // or your specific OLED library
+#include "globals.h"  // Include this to use the global button indices
+
+// Initialize static instance pointer
+SimonSaysGame* SimonSaysGame::instance = nullptr;
+
+// Define the button mappings using the global indices
+const int SimonSaysGame::buttonMappings[4] = {
+    button_MiddleLeftIndex,  // Map logical button 0 to actual button index
+    button_MiddleRightIndex, // Map logical button 1 to actual button index
+    button_BottomLeftIndex,  // Map logical button 2 to actual button index
+    button_BottomRightIndex  // Map logical button 3 to actual button index
+};
 
 SimonSaysGame::SimonSaysGame(
     SSD1306Wire &disp,
+    ButtonManager &buttonMgr,
     void (*beepForSq)(int),
     void (*beepOnUserPressSq)(int)
 )
     : display(disp),
+      buttonManager(buttonMgr),
       beepForSquare(beepForSq),
       beepOnUserPress(beepOnUserPressSq),
       patternLength(0),
@@ -17,26 +30,38 @@ SimonSaysGame::SimonSaysGame(
       showStepTime(0),
       showingSquare(false),
       gapPhase(false),
-      gameOverStartTime(0)
+      gameOverStartTime(0),
+      currentlyPressedButton(-1) // Initialize with no button pressed
 {
     for (int i = 0; i < MAX_PATTERN; i++) {
         pattern[i] = -1;
     }
+
+    // Set the static instance pointer to this instance
+    SimonSaysGame::instance = this;
 }
 
 void SimonSaysGame::begin() {
+    // Register button callbacks with defined button mappings
+    for (int i = 0; i < 4; i++) {
+        buttonManager.registerCallback(buttonMappings[i], SimonSaysGame::onButtonEvent);
+    }
+
+    // Reset the game state
     resetGame();
 }
 
-void SimonSaysGame::update(int pressedButton) {
+void SimonSaysGame::end() {
+    // Unregister button callbacks
+    for (int i = 0; i < 4; i++) {
+        buttonManager.unregisterCallback(buttonMappings[i]);
+    }
+}
+
+void SimonSaysGame::update() {
     switch (currentState) {
     case WAIT_START:
-        // Press any button to start
-        if (pressedButton != -1) {
-            startRound();
-        } else {
-            drawGrid(-1); // idle grid
-        }
+        drawGrid(-1); // No highlight
         break;
 
     case SHOW_PATTERN:
@@ -44,15 +69,10 @@ void SimonSaysGame::update(int pressedButton) {
         break;
 
     case WAIT_USER:
-        if (pressedButton != -1) {
-            checkUserInput(pressedButton);
-        } else {
-            drawGrid(-1); // no highlight
-        }
+        drawGrid(currentlyPressedButton); // Highlight button if pressed
         break;
 
     case GAME_OVER:
-        // Display "Game Over" with final score for 2s, then reset
         if (millis() - gameOverStartTime > 2000) {
             resetGame();
         } else {
@@ -62,12 +82,45 @@ void SimonSaysGame::update(int pressedButton) {
     }
 }
 
+void SimonSaysGame::onButtonEvent(const ButtonEvent& event) {
+    if (instance) {
+        int pressedButtonIndex = event.buttonIndex;
+
+        // Map the button index to 0..3 for the game logic
+        int gameButtonIndex = -1;
+        for (int i = 0; i < 4; i++) {
+            if (pressedButtonIndex == buttonMappings[i]) {
+                gameButtonIndex = i;
+                break;
+            }
+        }
+
+        if (gameButtonIndex == -1) {
+            return; // Button not relevant to SimonSaysGame
+        }
+
+        if (event.eventType == ButtonEvent_Pressed) {
+            if (instance->currentState == WAIT_START) {
+                instance->startRound();
+            } else if (instance->currentState == WAIT_USER) {
+                instance->currentlyPressedButton = gameButtonIndex;
+                instance->checkUserInput(gameButtonIndex);
+            }
+        } else if (event.eventType == ButtonEvent_Released) {
+            if (instance->currentlyPressedButton == gameButtonIndex) {
+                instance->currentlyPressedButton = -1;
+            }
+        }
+    }
+}
+
+// Ensure resetGame() is declared in the header file
 void SimonSaysGame::resetGame() {
     patternLength = 0;
-    patternIndex  = 0;
-    score         = 0;
-    currentState  = WAIT_START;
-
+    patternIndex = 0;
+    score = 0;
+    currentState = WAIT_START;
+    currentlyPressedButton = -1; // No button is pressed
     for (int i = 0; i < MAX_PATTERN; i++) {
         pattern[i] = -1;
     }
@@ -75,12 +128,12 @@ void SimonSaysGame::resetGame() {
 
 void SimonSaysGame::startRound() {
     extendPattern();
-    patternIndex  = 0;
+    patternIndex = 0;
     showingSquare = false;
-    gapPhase      = false;
+    gapPhase = false;
     showStartTime = millis();
-    showStepTime  = showStartTime;
-    currentState  = SHOW_PATTERN;
+    showStepTime = showStartTime;
+    currentState = SHOW_PATTERN;
 }
 
 void SimonSaysGame::extendPattern() {
@@ -88,13 +141,11 @@ void SimonSaysGame::extendPattern() {
         pattern[patternLength] = random(0, 4); // 0..3
         patternLength++;
     }
-    // Otherwise the user might have “won” everything
 }
 
 void SimonSaysGame::showPattern() {
     unsigned long now = millis();
 
-    // Done showing? Move to WAIT_USER
     if (patternIndex >= patternLength) {
         currentState = WAIT_USER;
         patternIndex = 0;
@@ -103,56 +154,39 @@ void SimonSaysGame::showPattern() {
     }
 
     if (!showingSquare && !gapPhase) {
-        // Turn on the current square
         int sq = pattern[patternIndex];
         drawGrid(sq);
         showingSquare = true;
-        showStepTime  = now;
+        showStepTime = now;
 
-        // Call beep callback for pattern step
         if (beepForSquare) {
             beepForSquare(sq);
         }
-    }
-    else if (showingSquare && (now - showStepTime > SHOW_STEP_ON)) {
-        // Turn off
+    } else if (showingSquare && (now - showStepTime > SHOW_STEP_ON)) {
         drawGrid(-1);
         showingSquare = false;
-        gapPhase      = true;
-        showStepTime  = now;
-    }
-    else if (gapPhase && (now - showStepTime > SHOW_STEP_OFF)) {
-        // Move to next step
+        gapPhase = true;
+        showStepTime = now;
+    } else if (gapPhase && (now - showStepTime > SHOW_STEP_OFF)) {
         gapPhase = false;
         patternIndex++;
     }
 }
 
 void SimonSaysGame::checkUserInput(int pressedButton) {
-    // Check if correct button
     if (pressedButton == pattern[patternIndex]) {
         patternIndex++;
 
-        // (Optional) beep for correct user press
         if (beepOnUserPress) {
             beepOnUserPress(pressedButton);
         }
 
-        // If the user matched the full pattern
         if (patternIndex >= patternLength) {
-            // They completed this entire round
-            score = patternLength; 
-            // Start next round
+            score = patternLength;
             startRound();
         }
-        else {
-            // Optionally flash their press
-            drawGrid(pressedButton);
-            delay(100);
-            drawGrid(-1);
-        }
+        // No need to handle button highlight here; it's managed in update()
     } else {
-        // Wrong press => game over
         gameOver();
     }
 }
@@ -160,43 +194,28 @@ void SimonSaysGame::checkUserInput(int pressedButton) {
 void SimonSaysGame::gameOver() {
     currentState = GAME_OVER;
     gameOverStartTime = millis();
+    currentlyPressedButton = -1; // Ensure no button is shown as pressed
 }
 
-// -----------------------------------------------------------------------------
-// Draw "Game Over" with final score
-// -----------------------------------------------------------------------------
 void SimonSaysGame::drawGameOver() {
     display.clear();
-
-    // You can use display.drawString(...) calls if your library supports text.
-    // For example, with SSD1306Wire, you might do:
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(ArialMT_Plain_10); // or your chosen font
-    display.drawString(30, 20, "GAME OVER");
-
-    // Show the final 'score'
+    display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(64, 20, "GAME OVER");
     String msg = "Score: ";
     msg += score;
-    display.drawString(30, 35, msg);
-
+    display.drawString(64, 40, msg);
     display.display();
 }
 
-// -----------------------------------------------------------------------------
-// Draw a 2×2 grid, highlightIndex = which square to fill (-1 if none)
-// -----------------------------------------------------------------------------
 void SimonSaysGame::drawGrid(int highlightIndex) {
     display.clear();
 
-    // Draw horizontal line at y=31, vertical line at x=63
-    for (int x = 0; x < 128; x++) {
-        display.setPixel(x, 31);
-    }
-    for (int y = 0; y < 64; y++) {
-        display.setPixel(63, y);
-    }
+    // Draw grid lines
+    display.drawLine(0, 31, 127, 31);  // Horizontal line
+    display.drawLine(63, 0, 63, 63);   // Vertical line
 
-    // Fill highlight if requested
+    // Highlight a square if specified
     if (highlightIndex != -1) {
         fillSquare(highlightIndex);
     }
@@ -205,34 +224,25 @@ void SimonSaysGame::drawGrid(int highlightIndex) {
 }
 
 void SimonSaysGame::fillSquare(int sq) {
-    // 0: top-left, 1: top-right, 2: bottom-left, 3: bottom-right
-    int xStart = 0, xEnd = 63;
-    int yStart = 0, yEnd = 31;
+    int xStart = 0, yStart = 0, width = 63, height = 31;
 
     switch (sq) {
-        case 0:
-            xStart = 0;   xEnd = 63;
-            yStart = 0;   yEnd = 31;
+        case 0: // Top-left
+            xStart = 0;    yStart = 0;
             break;
-        case 1:
-            xStart = 64;  xEnd = 127;
-            yStart = 0;   yEnd = 31;
+        case 1: // Top-right
+            xStart = 64;   yStart = 0;
             break;
-        case 2:
-            xStart = 0;   xEnd = 63;
-            yStart = 32;  yEnd = 63;
+        case 2: // Bottom-left
+            xStart = 0;    yStart = 32;
             break;
-        case 3:
-            xStart = 64;  xEnd = 127;
-            yStart = 32;  yEnd = 63;
+        case 3: // Bottom-right
+            xStart = 64;   yStart = 32;
             break;
         default:
-            return;
+            return; // Invalid index
     }
 
-    for (int x = xStart; x <= xEnd; x++) {
-        for (int y = yStart; y <= yEnd; y++) {
-            display.setPixel(x, y);
-        }
-    }
+    // Fill the specified square
+    display.fillRect(xStart, yStart, width, height);
 }

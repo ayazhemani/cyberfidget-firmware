@@ -2,14 +2,15 @@
 #define SIMON_SAYS_GAME_H
 
 #include <Arduino.h>
-
-class SSD1306Wire;
+#include <SSD1306Wire.h>     // Include your OLED library
+#include "ButtonManager.h"   // Include the ButtonManager
 
 /**
- * Simon Says with:
- *  - 4 buttons (0..3) mapped to a 2×2 grid
- *  - Score display when user loses (how many patterns were completed)
- *  - No dynamic memory
+ * @brief Simon Says Game Class
+ * 
+ * Manages the Simon Says game logic, including displaying patterns,
+ * handling user input, and updating the game state. Integrates with the
+ * ButtonManager to handle button events efficiently.
  */
 class SimonSaysGame {
 public:
@@ -23,46 +24,64 @@ public:
     };
 
     /**
-     * @param display Reference to SSD1306 display
-     * @param beepForSquareFn Called when the game shows a pattern step
-     * @param beepOnUserPressFn Called when user presses a correct button
+     * @brief Constructor for SimonSaysGame
+     * 
+     * @param display Reference to the OLED display
+     * @param buttonMgr Reference to the ButtonManager
+     * @param beepForSquareFn Callback for beeping when showing a pattern square
+     * @param beepOnUserPressFn Callback for beeping when the user presses a button
      */
     SimonSaysGame(
         SSD1306Wire &display,
+        ButtonManager &buttonMgr,
         void (*beepForSquareFn)(int),
         void (*beepOnUserPressFn)(int)
     );
 
-    // Initialize the game (call in setup())
+    /**
+     * @brief Initialize the game and register button callbacks
+     */
     void begin();
 
-    // Update the game logic (call in loop()). 
-    //  pressedButton = 0..3 if pressed, or -1 if no button pressed.
-    void update(int pressedButton);
+    /**
+     * @brief Update the game logic (call in loop())
+     */
+    void update();
 
-    // Resets the entire game
-    void resetGame();
+    /**
+     * @brief Cleanup and unregister button callbacks
+     */
+    void end();
+
+    /**
+     * @brief Handle button events from the ButtonManager
+     * 
+     * @param event The button event to process
+     */
+    static void onButtonEvent(const ButtonEvent& event);
 
 private:
-    // Reference to the OLED
+    // Reference to the OLED display
     SSD1306Wire &display;
 
-    // Audio callbacks (function pointers)
+    // Reference to the ButtonManager
+    ButtonManager &buttonManager;
+
+    // Audio callbacks
     void (*beepForSquare)(int);
     void (*beepOnUserPress)(int);
 
     // Pattern data
     int  pattern[MAX_PATTERN];
-    int  patternLength;  // how many steps in the current pattern
-    int  patternIndex;   // which step we’re currently showing or checking
-
-    // Keep track of how many full patterns the user has matched
+    int  patternLength;
+    int  patternIndex;
     int  score;
 
-    // Game flow state
+    // Game state
     State currentState;
+    int currentlyPressedButton;
 
-    // SHOW_PATTERN timing
+    // Timing variables for pattern display
     unsigned long showStartTime; 
     unsigned long showStepTime;  
     static const unsigned long SHOW_STEP_ON  = 500; 
@@ -70,8 +89,14 @@ private:
     bool showingSquare;  
     bool gapPhase;       
 
-    // GAME_OVER timing
+    // Timing for game over display
     unsigned long gameOverStartTime;
+
+    // Static instance pointer for callbacks
+    static SimonSaysGame* instance;
+
+    // Button indices for the Simon Says game
+    static const int buttonMappings[4];
 
     // Private methods
     void startRound();
@@ -79,12 +104,11 @@ private:
     void showPattern();
     void checkUserInput(int pressedButton);
     void gameOver();
+    void resetGame();
 
-    // Helpers to draw the 2×2 grid
+    // Display helpers
     void drawGrid(int highlightIndex);
     void fillSquare(int sq);
-
-    // Display a “Game Over” message and the final score
     void drawGameOver();
 };
 

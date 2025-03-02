@@ -88,19 +88,18 @@ float    sleepChargingChangeThreshold = -10.0f;
 float    batteryChangeRate          = 0.0f;
 
 // Slider
-uint8_t  sliderPosition_Percentage     = 0;
-uint16_t sliderPosition_Millivolts     = 0;
-uint16_t sliderPosition_12Bits         = 0;
+int sliderPosition_Millivolts     = 0;
+int sliderPosition_12Bits         = 0;
 uint16_t sliderPosition_12Bits_Inverted= 0;
 uint8_t  sliderPosition_8Bits          = 0;
 uint8_t  sliderPosition_8Bits_Inverted = 0;
-
-int sliderPosition_12Bits_Filtered = 0;
-int sliderPosition_12Bits_Inverted_Filtered = 0;
+// Filtered slider positions
+float sliderPosition_12Bits_Filtered = 0.0f;
+float sliderPosition_12Bits_Inverted_Filtered = 0.0f;
 int sliderPosition_8Bits_Filtered = 0;
 int sliderPosition_8Bits_Inverted_Filtered = 0;
-int sliderPosition_Percentage_Filtered = 0;
-int sliderPosition_Percentage_Inverted_Filtered = 0;
+float sliderPosition_Percentage_Filtered = 0.0f;
+float sliderPosition_Percentage_Inverted_Filtered = 0.0f;
 
 // WiFi
 char wifiAP_SSID[] = "CyberFidget_AP";

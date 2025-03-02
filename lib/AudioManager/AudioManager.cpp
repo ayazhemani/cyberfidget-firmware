@@ -70,7 +70,7 @@ void beepOnBounce() {
 }
 
 void drawAudioPlayer() {
-    float volumeSlider = float(sliderPosition_Percentage) / 100.0f;
+    float volumeSlider = float(sliderPosition_Percentage_Filtered) / 100.0f;
     volume.setVolume(volumeSlider);
 
     if (!audioPlayerRunning) {

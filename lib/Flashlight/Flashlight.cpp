@@ -10,7 +10,7 @@ bool flashlightStatus = false;  // Whether the flashlight is on or off
 void flashlightController() {
 
     // Use brightness derived from sliderPosition_8Bits for consistency
-    uint8_t brightness = sliderPosition_8Bits_Filtered;
+    uint8_t brightness = sliderPosition_8Bits_Inverted_Filtered;
 
     // Set specific pixels for flashlight mode using RGBController's strip and pixel definitions
     // strip.setPixelColor(pixel_Back, strip.Color(brightness, brightness, brightness, brightness));

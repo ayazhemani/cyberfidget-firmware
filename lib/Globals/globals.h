@@ -113,19 +113,15 @@ extern float sleepChargingChangeThreshold;
 extern float batteryChangeRate;
 
 // Slider
-extern uint8_t  sliderPosition_Percentage;
-extern uint16_t sliderPosition_Millivolts;
-extern uint16_t sliderPosition_12Bits;
-extern uint16_t sliderPosition_12Bits_Inverted;
-extern uint8_t  sliderPosition_8Bits;
-extern uint8_t  sliderPosition_8Bits_Inverted;
-// Filtered slider readings (use float for precision during filtering)
-extern int sliderPosition_12Bits_Filtered;
-extern int sliderPosition_12Bits_Inverted_Filtered;
+extern int sliderPosition_Millivolts;
+extern int sliderPosition_12Bits;
+// Filtered slider positions
+extern float sliderPosition_12Bits_Filtered;
+extern float sliderPosition_12Bits_Inverted_Filtered;
 extern int sliderPosition_8Bits_Filtered;
 extern int sliderPosition_8Bits_Inverted_Filtered;
-extern int sliderPosition_Percentage_Filtered;
-extern int sliderPosition_Percentage_Inverted_Filtered;
+extern float sliderPosition_Percentage_Filtered;
+extern float sliderPosition_Percentage_Inverted_Filtered;
 
 // WiFi
 extern char wifiAP_SSID[];

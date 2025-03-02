@@ -477,7 +477,7 @@ void drawReactionTimeGame() {
 
 void drawSPHFluidGame(){
   // Map to 1–100
-  int targetParticleCount = map(sliderPosition_12Bits_Inverted_Filtered, 0, 4095, 1, 100);
+  int targetParticleCount = sliderPosition_Percentage_Inverted_Filtered;
 
   // If you want to prevent re-randomizing the fluid on every tiny pot change,
   // check if the count has actually changed.

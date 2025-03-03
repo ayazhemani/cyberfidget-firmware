@@ -25,6 +25,9 @@ public:
     // Unregister button callback
     void unregisterShutdownCallback();
 
+    // Call for Deep Sleep
+    void deepSleep();
+
 private:
     // The function to display the shutdown screen
     void drawShutdownScreen();

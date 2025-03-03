@@ -1,4 +1,5 @@
 #include "ButtonManager.h"
+#include "globals.h" 
 #include <Preferences.h>
 Preferences preferencesMainApp;
 
@@ -181,8 +182,8 @@ void ButtonManager::loadButtonCounters() {
         buttonCounter[i] = buttonCounterSaved[i]; // Keep the saved and lived counts synced
     }
 
-    demoModeSaved = preferencesMainApp.getInt("demoMode", 0);
-    demoMode = demoModeSaved;
+    appActiveSaved = preferencesMainApp.getInt("appActive", 0);
+    appActive = appActiveSaved;
 
     preferencesMainApp.end();
 }
@@ -190,7 +191,7 @@ void ButtonManager::loadButtonCounters() {
 void ButtonManager::saveButtonCounters() {
     // Compare button counters
     if (compareButtonCounters(buttonCounter, buttonCounterSaved, numButtons) == false){
-        Serial.println("Button counters are not equal.");
+        ESP_LOGV(TAG_MAIN, "Button counters are not equal. Updating Saved Counters.");
 
         preferencesMainApp.begin("mainApp", false);
 
@@ -203,9 +204,9 @@ void ButtonManager::saveButtonCounters() {
     preferencesMainApp.end();
     }
 
-    if (demoMode != demoModeSaved){
+    if (appActive != appActiveSaved){
         preferencesMainApp.begin("mainApp", false);
-        preferencesMainApp.putInt("demoMode", demoMode);
+        preferencesMainApp.putInt("appActive", appActive);
         preferencesMainApp.end();
     }
 }

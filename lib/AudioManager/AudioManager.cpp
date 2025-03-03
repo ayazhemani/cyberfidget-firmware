@@ -15,6 +15,8 @@ AudioManager::AudioManager()
 }
 
 void AudioManager::init() {
+    //AudioLogger::instance().begin(Serial, AudioLogger::Info);
+
     // Configure I2S for audio output
     auto cfg = i2s.defaultConfig(TX_MODE);
     cfg.i2s_format = I2S_LSB_FORMAT; // Use standard I2S format

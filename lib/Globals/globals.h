@@ -5,12 +5,11 @@
 #include <time.h> // For struct tm
 #include "fontSuiGenerisRg.h" 
 
+#include "esp_log.h" // Logging Management
+
 //
 // 1) Compile-time constants
 //
-
-// If you want the demo duration globally available
-constexpr unsigned long DEMO_DURATION = 3000;
 
 // Pin assignments — changed from #define to constexpr for clarity
 constexpr int POWER_PIN_OLED = 12;  // OLED VREG
@@ -29,9 +28,6 @@ constexpr unsigned long BUTTON_HOLD_THRESHOLD_MS = 1500; // Time in ms to trigge
 // Number of buttons
 constexpr int numButtons = 6;
 
-// Debounce delay
-//constexpr unsigned long debounceDelay = 20;
-
 //
 // 2) Extern global variables (runtime values)
 //   These are defined exactly once in globals.cpp
@@ -43,22 +39,23 @@ extern unsigned long millisOldHeartbeat;
 extern unsigned long millisOld200;
 extern unsigned long millisOld50;
 extern unsigned long millisOld10;
-extern unsigned long millisDemoMode;
+extern unsigned long millisApp;
 extern unsigned long millisLastInteraction;
 
 // // Memory Management
 // extern Preferences preferencesMainApp;
 
-// // Logging Management
-// extern const char* TAG_MAIN;
+// Logging Management
+// Audio logging specifically handled in AudioManager::init()
+extern const char *TAG_MAIN;
 
 // You had this variable but it’s unused in your sample main.cpp. Keep or remove as needed:
 extern unsigned long masterWatchdogTimer; 
 
-// Demo modes
-extern int  demoMode;
-extern int  demoModeSaved;
-extern int  demoModePreviously;
+// App modes
+extern int  appActive;
+extern int  appActiveSaved;
+extern int  appPreviously;
 
 // LED Sequencer & games
 extern bool ledSequencerEnabled;
@@ -214,7 +211,7 @@ void drawPowerManager();
 void drawBooper();
 
 // Step 2: Define the X-Macro List
-#define DEMO_LIST \
+#define APP_LIST \
     X(drawFontFaceDemo, FONT_FACE, "Font Face") \
     X(drawProgressBarDemo, PROGRESS_BAR, "Progress Bar") \
     X(drawImageDemo_1, IMAGE_1, "Image 1") \
@@ -245,16 +242,16 @@ void drawBooper();
     X(drawPowerManager, POWER_MANAGER, "Power Manager")
 
 // Step 3: Define the Enum
-enum DemoIndex {
-    #define X(func, id, name) DEMO_##id,
-        DEMO_LIST
+enum AppIndex {
+    #define X(func, id, name) APP_##id,
+        APP_LIST
     #undef X
-    DEMO_COUNT
+    APP_COUNT
 };
 
 // Step 4: Declare function pointer and name arrays
-typedef void (*Demo)(void);
-extern Demo demos[DEMO_COUNT];
-extern const char* demoNames[DEMO_COUNT];
+typedef void (*App)(void);
+extern App apps[APP_COUNT];
+extern const char* appNames[APP_COUNT];
 
 #endif // GLOBALS_H

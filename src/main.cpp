@@ -10,6 +10,7 @@ License Placeholder
 #include "globals.h"
 
 
+
 // Include AudioManager
 #include "AudioManager.h"
 AudioManager audioManager;
@@ -54,8 +55,8 @@ SPARKFUN_LIS2DH12 accel;       //Create instance
 #include <time.h> // Clock/RTC for time manipulation
 
 // Logging Management
-#include "esp_log.h"
-static const char *TAG_MAIN = "mainApp";
+// #include "esp_log.h"
+// static const char *TAG_MAIN = "mainApp";
 //static const char *TAG_SENSOR = "Sensor";
 
 
@@ -138,10 +139,15 @@ void setup() {
   esp_log_level_set(TAG_MAIN, ESP_LOG_VERBOSE);
   //esp_log_level_set(TAG_SENSOR, ESP_LOG_DEBUG); // Debug level for Sensor
 
-  // Example logging
+  // Logging
+  // ESP_LOGE - error (lowest)
+  // ESP_LOGW - warning
+  // ESP_LOGI - info
+  // ESP_LOGD - debug
+  // ESP_LOGV - verbose (highest)
   ESP_LOGI(TAG_MAIN, "Setup complete");
-  //SP_LOGI(TAG_SENSOR, "Setup complete");
-  //ESP_LOGD(TAG, "This is a debug message");
+  //ESP_LOGI(TAG_SENSOR, "Setup complete");
+
 
   pinMode(OLED_RESET, OUTPUT);
   digitalWrite(OLED_RESET, LOW); 
@@ -207,14 +213,8 @@ void setup() {
   WiFiManagerCFObject.init();
   WiFiManagerCFObject.setDisplay(display); // Pass the display reference if needed
 
-  // Initially, the reaction game is not active, so ensure its callback is unregistered
-  buttonManager.unregisterCallback(reactionGame.getButtonIndex());
-
   // Initialize the PowerManager
   powerManager.begin();
-
-  // Matrix Screensaver
-  matrixScreensaver.begin();
 }
 
 void accelerometer(){
@@ -256,74 +256,80 @@ void accelerometer(){
 
 
 void screenUpdate(){
-  // draw the current demo method
-  demos[demoMode]();
+  // draw the current app method
+  apps[appActive]();
 
-  if (demoMode != demoModePreviously){
-    if (demoMode == DEMO_ACCELEROMETER){
+  if (appActive != appPreviously){
+    if (appActive == APP_ACCELEROMETER){
         accelerometerScreenEnabled = true;
     } 
-    else if (demoModePreviously == DEMO_ACCELEROMETER){
+    else if (appPreviously == APP_ACCELEROMETER){
         accelerometerScreenEnabled = false;
         setColorsOff();
     }
 
-    if (demoMode == DEMO_FLASHLIGHT) {
+    if (appActive == APP_FLASHLIGHT) {
       flashlightStatus = true;
     } 
-    else if (demoModePreviously == DEMO_FLASHLIGHT) {
+    else if (appPreviously == APP_FLASHLIGHT) {
       flashlightStatus = false;
       setColorsOff(); 
     }
 
-    if (demoMode == DEMO_SLIDER_PROGRESS_BAR) {
+    if (appActive == APP_SLIDER_PROGRESS_BAR) {
       ESP_LOGV(TAG_MAIN, "Enter Slider Progress Bar");
     } 
-    else if (demoModePreviously == DEMO_SLIDER_PROGRESS_BAR) {
+    else if (appPreviously == APP_SLIDER_PROGRESS_BAR) {
       setColorsOff(); 
     }
 
-    if (demoMode == DEMO_ACCELEROMETER) {
+    if (appActive == APP_ACCELEROMETER) {
       ESP_LOGV(TAG_MAIN, "Enter Accelerometer");
     } 
-    else if (demoModePreviously == DEMO_ACCELEROMETER) {
+    else if (appPreviously == APP_ACCELEROMETER) {
       setColorsOff(); 
     }
 
-    if (demoMode == DEMO_REACTION) {
+    if (appActive == APP_REACTION) {
       buttonManager.registerCallback(
         reactionGame.getButtonIndex(),
         ReactionTimeGame::reactionButtonPressedCallback
       );
     } 
-    else if (demoModePreviously == DEMO_REACTION) {
+    else if (appPreviously == APP_REACTION) {
       //reactionGameEnabled = false;
       buttonManager.unregisterCallback(reactionGame.getButtonIndex());
       reactionGame.resetGame(); // Reset the game state
     }
       
-    if (demoMode == DEMO_CLOCK_DISPLAY) {
+    if (appActive == APP_CLOCK_DISPLAY) {
       clockDisplay.begin(); // Inside the module, begin() will only do initialization once.
     } 
-    else if (demoModePreviously == DEMO_CLOCK_DISPLAY) {
-      // If desired, you can call clockDisplay.reset() when leaving demo mode 18.
+    else if (appPreviously == APP_CLOCK_DISPLAY) {
       clockDisplay.reset();
     }
 
-    if (demoMode == DEMO_BREAKOUT) {
+    if (appActive == APP_BREAKOUT) {
       breakoutGame.begin();    } 
-    else if (demoModePreviously == DEMO_BREAKOUT) {
+    else if (appPreviously == APP_BREAKOUT) {
       breakoutGame.end();
     }
 
-    if (demoMode == DEMO_SIMON_SAYS) {
+    if (appActive == APP_SIMON_SAYS) {
       simonGame.begin(); // Inside the module, begin() will only do initialization once.
     } 
-    else if (demoModePreviously == DEMO_SIMON_SAYS) {
+    else if (appPreviously == APP_SIMON_SAYS) {
       simonGame.end(); // Unregister button callbacks
     }
 
-    if (demoMode == DEMO_DINO_GAME) {
+    if (appActive == APP_MATRIX_SCREENSAVER) {
+      matrixScreensaver.begin();
+    } 
+    else if (appPreviously == APP_MATRIX_SCREENSAVER) {
+      ESP_LOGV(TAG_MAIN, "Exit Matrix Screensaver");
+    }
+
+    if (appActive == APP_DINO_GAME) {
       //dinoGameEnabled = true;
       buttonManager.registerCallback(
         dinoGame.getJumpButtonIndex(),
@@ -338,7 +344,7 @@ void screenUpdate(){
         DinoGame::resetButtonCallback
       );
     } 
-    else if (demoModePreviously == DEMO_DINO_GAME) {
+    else if (appPreviously == APP_DINO_GAME) {
       //dinoGameEnabled = false;
       buttonManager.unregisterCallback(dinoGame.getJumpButtonIndex());
       buttonManager.unregisterCallback(dinoGame.getDuckButtonIndex());
@@ -346,21 +352,21 @@ void screenUpdate(){
       dinoGame.resetGame(); // Reset the game state
     }
 
-    if (demoMode == DEMO_BOOPER) {
+    if (appActive == APP_BOOPER) {
       booper.begin();
     }
-    else if (demoModePreviously == DEMO_BOOPER) {
+    else if (appPreviously == APP_BOOPER) {
       booper.end();
     }
 
-    if (demoMode == DEMO_POWER_MANAGER) {
+    if (appActive == APP_POWER_MANAGER) {
       powerManager.registerShutdownCallback();
     }
-    else if (demoModePreviously == DEMO_POWER_MANAGER) {
+    else if (appPreviously == APP_POWER_MANAGER) {
       powerManager.unregisterShutdownCallback();
     }
 
-    if (demoMode == DEMO_WIFI_CONFIG) {
+    if (appActive == APP_WIFI_CONFIG) {
       // Register WiFiManagerCF callbacks
       buttonManager.registerCallback(
         button_BottomLeftIndex,
@@ -371,12 +377,12 @@ void screenUpdate(){
         WiFiManagerCF::bottomRightButtonCallback
       );
     }
-    else if (demoModePreviously == DEMO_WIFI_CONFIG) {
+    else if (appPreviously == APP_WIFI_CONFIG) {
       buttonManager.unregisterCallback(button_BottomLeftIndex);
       buttonManager.unregisterCallback(button_BottomRightIndex);
     }
 
-    demoModePreviously = demoMode; 
+    appPreviously = appActive; 
   }
 }
 
@@ -408,8 +414,8 @@ void loop() {
       case ButtonEvent_Pressed:
         ESP_LOGV(TAG_MAIN, "Pressed");
         if (ev.buttonIndex == 0) {
-            demoModePreviously = demoMode;
-            demoMode = (demoMode - 1 + DEMO_COUNT) % DEMO_COUNT;
+            appPreviously = appActive;
+            appActive = (appActive - 1 + APP_COUNT) % APP_COUNT;
         }
         break;
 
@@ -417,8 +423,8 @@ void loop() {
         ESP_LOGV(TAG_MAIN, "Released after %d ms", ev.duration);
         buttonCounter[ev.buttonIndex]++;
         if (ev.buttonIndex == 1) {
-            demoModePreviously = demoMode;
-            demoMode = (demoMode + 1) % DEMO_COUNT;
+            appPreviously = appActive;
+            appActive = (appActive + 1) % APP_COUNT;
         }
         break;
 
@@ -434,7 +440,6 @@ void loop() {
 
   if((millisNow - millisOld10) >= 20){
     millisOld10 = millisNow;
-
     sliderPositionRead();
     screenUpdate();
   }
@@ -448,41 +453,13 @@ void loop() {
     millisOld200 = millisNow;
     batteryManager.update();
     buttonManager.saveButtonCounters();
-    
-    // // Slow NVM write cycle, only check every
-    // if((millisNow - millisLastInteraction) >= 3000){
-    //   saveButtonCounters();
-    // }  
   }
 
-  if((millisNow - millisLastInteraction) >= 1800000){
-    // Go to deep sleep
-    if(preventSleepWhileCharging){
-      if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
-        clockDisplay.saveTime(); // Save the current clock time to Preferences so that it can be recovered later.
-        Serial.println("Going to sleep now...");
-        
-        display.clear();
-        display.setFont(ArialMT_Plain_10);
-        display.drawString(64, 30, "Going to sleep now...");
-        
-        delay(1000);
-        esp_deep_sleep_start();
-      }
-    } else {
-      Serial.println("Going to sleep now...");
-
-      display.clear();
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(64, 30, "Going to sleep now...");
-
-      delay(1000);
-      esp_deep_sleep_start();
-    }
+  if((millisNow - millisLastInteraction) >= 300000){
+    powerManager.deepSleep();
   }
 
   if((millisNow - millisOldHeartbeat) >= 600000){
-    //Calculate cycle time roughly from millis measurement
     millisOldHeartbeat = millisNow;
   }
 }

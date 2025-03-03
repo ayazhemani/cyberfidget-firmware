@@ -265,7 +265,7 @@ void BreakoutGame::drawGame() {
     // Show current death count
     String deathMsg = "Deaths: ";
     deathMsg += deathCount;
-    display.drawString(64, 0, deathMsg);
+    display.drawString(64, 20, deathMsg);
 
     display.display();
 }

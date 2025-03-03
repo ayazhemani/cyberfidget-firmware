@@ -10,16 +10,20 @@ unsigned long millisOldHeartbeat    = 0;
 unsigned long millisOld200          = 0;
 unsigned long millisOld50           = 0;
 unsigned long millisOld10           = 0;
-unsigned long millisDemoMode        = 0;
+unsigned long millisApp             = 0;
 unsigned long millisLastInteraction = 0;
+
+// Logging Management
+// Audio logging specifically handled in AudioManager::init()
+const char *TAG_MAIN = "mainApp";
 
 // Potentially unused
 unsigned long masterWatchdogTimer   = 0; 
 
-// Demo modes
-int  demoMode          = 0;
-int  demoModeSaved     = 0;
-int  demoModePreviously= 0;
+// App modes
+int  appActive          = 0;
+int  appActiveSaved     = 0;
+int  appPreviously= 0;
 
 // LED Sequencer & games
 bool ledSequencerEnabled       = false;
@@ -159,18 +163,18 @@ ButtonDebounce btns[4] = {
 // or in a dedicated .cpp for each manager or class.
 
 // Define the function pointer array
-Demo demos[DEMO_COUNT] = {
+App apps[APP_COUNT] = {
     #define X(func, id, name) func,
-        DEMO_LIST
+        APP_LIST
     #undef X
 };
 
 // Define the string array for names
-const char* demoNames[DEMO_COUNT] = {
+const char* appNames[APP_COUNT] = {
     #define X(func, id, name) name,
-        DEMO_LIST
+        APP_LIST
     #undef X
 };
 
 // Ensure everything is in sync
-static_assert(sizeof(demos) / sizeof(demos[0]) == DEMO_COUNT, "Mismatch between demo array size and enum count");
+static_assert(sizeof(apps) / sizeof(apps[0]) == APP_COUNT, "Mismatch between app array size and enum count");

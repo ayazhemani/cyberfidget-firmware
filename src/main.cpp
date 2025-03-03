@@ -276,6 +276,20 @@ void screenUpdate(){
       setColorsOff(); 
     }
 
+    if (demoMode == DEMO_SLIDER_PROGRESS_BAR) {
+      ESP_LOGV(TAG_MAIN, "Enter Slider Progress Bar");
+    } 
+    else if (demoModePreviously == DEMO_SLIDER_PROGRESS_BAR) {
+      setColorsOff(); 
+    }
+
+    if (demoMode == DEMO_ACCELEROMETER) {
+      ESP_LOGV(TAG_MAIN, "Enter Accelerometer");
+    } 
+    else if (demoModePreviously == DEMO_ACCELEROMETER) {
+      setColorsOff(); 
+    }
+
     if (demoMode == DEMO_REACTION) {
       buttonManager.registerCallback(
         reactionGame.getButtonIndex(),
@@ -421,11 +435,6 @@ void loop() {
   if((millisNow - millisOld10) >= 20){
     millisOld10 = millisNow;
 
-    // Reset LEDs
-    if (demoModePreviously == 11 || demoModePreviously == 17) { 
-      setColorsOff();    
-    }
-
     sliderPositionRead();
     screenUpdate();
   }
@@ -446,32 +455,35 @@ void loop() {
     // }  
   }
 
-  // if((millisNow - millisLastInteraction) >= 1800000){
-  //   // Go to deep sleep
-  //   if(preventSleepWhileCharging){
-  //     if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
-  //       clockDisplay.saveTime(); // Save the current clock time to Preferences so that it can be recovered later.
-  //       Serial.println("Going to sleep now...");
-  //       delay(1000);
-  //       esp_deep_sleep_start();
-  //     }
-  //   } else {
-  //     Serial.println("Going to sleep now...");
-  //     delay(1000);
-  //     esp_deep_sleep_start();
-  //   }
-  // }
+  if((millisNow - millisLastInteraction) >= 1800000){
+    // Go to deep sleep
+    if(preventSleepWhileCharging){
+      if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
+        clockDisplay.saveTime(); // Save the current clock time to Preferences so that it can be recovered later.
+        Serial.println("Going to sleep now...");
+        
+        display.clear();
+        display.setFont(ArialMT_Plain_10);
+        display.drawString(64, 30, "Going to sleep now...");
+        
+        delay(1000);
+        esp_deep_sleep_start();
+      }
+    } else {
+      Serial.println("Going to sleep now...");
+
+      display.clear();
+      display.setFont(ArialMT_Plain_10);
+      display.drawString(64, 30, "Going to sleep now...");
+
+      delay(1000);
+      esp_deep_sleep_start();
+    }
+  }
 
   if((millisNow - millisOldHeartbeat) >= 600000){
     //Calculate cycle time roughly from millis measurement
     millisOldHeartbeat = millisNow;
-  }
-
-  if (DEMO_DURATION != 0){ // Disable demo mode if duration is set to 0
-    if((millisNow - millisDemoMode) >= DEMO_DURATION){
-      ledSequencer();
-      millisDemoMode = millisNow;
-    }
   }
 }
 

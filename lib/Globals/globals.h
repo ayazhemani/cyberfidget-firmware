@@ -211,6 +211,7 @@ void drawSimonSaysGame();
 void drawMatrixScreensaver();
 void drawDinoGame();
 void drawPowerManager();
+void drawBooper();
 
 // Step 2: Define the X-Macro List
 #define DEMO_LIST \
@@ -228,6 +229,7 @@ void drawPowerManager();
     X(drawAccelerometerScreen, ACCELEROMETER, "Accelerometer") \
     X(drawButtonCounters, BUTTON_COUNTERS, "Button Counters") \
     /* X(drawAudioPlayer, AUDIO_PLAYER, "Audio Player") */ \
+    X(drawBooper, BOOPER, "Audio Booper") \
     X(drawFlashlight, FLASHLIGHT, "Flashlight") \
     X(drawReactionTimeGame, REACTION, "Reaction Time") \
     X(drawTimeOnCounter, TIME_ON_COUNTER, "Time Counter") \

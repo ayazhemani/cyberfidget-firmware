@@ -1,86 +1,81 @@
+// lib/BreakoutGame/BreakoutGame.h
+
 #ifndef BREAKOUT_GAME_H
 #define BREAKOUT_GAME_H
 
 #include "SSD1306Wire.h"
-#include <functional> // for std::function
+#include "ButtonManager.h"
+#include "AudioManager.h"
+#include "globals.h" // For button indices
+#include <functional> // For std::function
 
 class BreakoutGame {
 public:
-    // The callback type: no parameters, no return, called on paddle bounce.
-    using BounceCallback = std::function<void()>;
-    
-    BreakoutGame(SSD1306Wire& display);
+    BreakoutGame(SSD1306Wire& display, ButtonManager& buttonManager, AudioManager& audioManager);
 
-    // If you want to provide your bounce sound callback after construction:
-    void setBounceCallback(BounceCallback cb);
+    void begin();  // Start the game
+    void update(float accelX); // Update game logic
+    void end();    // Cleanup and unregister callbacks
+    void draw();   // Draw the game
 
-    // Update game logic. Ax is the horizontal acceleration from the IMU.
-    void update(float Ax);
-
-    // Reset the game (ball, paddle, bricks, death count).
-    void reset();
-
-    /**
-     * @brief Specify a button to monitor for game resets.
-     * @param buttonPin  The GPIO pin to read.
-     * @param activeLow  True if pressing the button pulls the pin LOW.
-     */
-    void setResetButton(int buttonPin, bool activeLow);
+    // Static instance pointer for callbacks
+    static BreakoutGame* instance;
 
 private:
-    // -- Reference to the OLED display --
+    // References to hardware components
     SSD1306Wire& display;
+    ButtonManager& buttonManager;
+    AudioManager& audioManager;
 
-    // -- Screen dimensions --
+    // Game properties and state variables
+    // Screen dimensions
     static constexpr int SCREEN_WIDTH  = 128;
     static constexpr int SCREEN_HEIGHT = 64;
 
-    // -- Paddle properties --
+    // Paddle properties
     float paddleX;                     // Left edge of the paddle
-    static constexpr int PADDLE_Y      = SCREEN_HEIGHT - 8; // near bottom
+    static constexpr int PADDLE_Y      = SCREEN_HEIGHT - 8; // Near bottom
     static constexpr int PADDLE_WIDTH  = 20;
     static constexpr int PADDLE_HEIGHT = 3;
-    float paddleSpeed; // multiplier for how fast we move when Ax changes
+    float paddleSpeed; // Multiplier for paddle movement speed
 
-    // -- Ball properties --
+    // Ball properties
     float ballX, ballY;    // Ball position
     float ballVX, ballVY;  // Ball velocity
     static constexpr int BALL_SIZE = 2; // 2x2 pixel ball
 
-    // -- Bricks --
+    // Bricks
     static constexpr int BRICK_ROWS   = 3;
     static constexpr int BRICK_COLS   = 8;
     static constexpr int BRICK_WIDTH  = 16; 
     static constexpr int BRICK_HEIGHT = 4;
     bool bricks[BRICK_ROWS][BRICK_COLS]; // true if brick is active
 
-    // -- Game state --
-    int  deathCount;   // How many times the ball hits the bottom
+    // Game state
+    int  deathCount;   // Number of times the ball hits the bottom
     bool gameWon;      // True if all bricks are destroyed
 
-    // **Timer for how long it takes to destroy all bricks**
+    // Timer for how long it takes to destroy all bricks
     unsigned long startTime; // When the game started/restarted
     unsigned long totalTime; // Final time it took (in ms) once game is won
 
-    // -- Reset Button Info --
-    int  resetButtonPin;      
-    bool resetButtonActiveLow; 
-    unsigned long lastButtonCheckTime;  
-    bool lastButtonState;
-    static constexpr unsigned long DEBOUNCE_MS = 150;
+    // Reset button information
+    int resetButtonIndex;
 
-    // The function we call when the ball bounces off the paddle.
-    // Default = nullptr (no sound).
-    BounceCallback bounceCallback; 
+    // Option to enable/disable brick hit sounds
+    bool brickSoundsEnabled;
 
     // Private methods
-    void initResetButton();  
-    void checkResetButton(); 
-    void movePaddle(float Ax);
-    void moveBall();
-    void checkCollisions();
-    void checkVictory();  
-    void drawGame();
+    void resetGame();           // Reset the game to initial state
+    void movePaddle(float Ax);  // Move the paddle based on input
+    void moveBall();            // Move the ball
+    void checkCollisions();     // Check for collisions
+    void checkVictory();        // Check if the game is won
+    void drawGame();            // Draw the game elements
+    void playBounceSound();     // Play sound when the ball bounces
+
+    // Static button event handler
+    static void onButtonEvent(const ButtonEvent& event);
 };
 
-#endif
+#endif // BREAKOUT_GAME_H

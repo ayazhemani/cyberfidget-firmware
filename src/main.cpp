@@ -10,7 +10,10 @@ License Placeholder
 #include "globals.h"
 
 
+// Include AudioManager
 #include "AudioManager.h"
+AudioManager audioManager;
+
 #include "BatteryManager.h"
 #include "ButtonManager.h"
 //displayermanager
@@ -76,10 +79,10 @@ ClockDisplay clockDisplay(display);
 SPHFluidGame sphGame(display);
 
 #include "BreakoutGame.h"
-BreakoutGame breakout(display);
+BreakoutGame breakoutGame(display, buttonManager, audioManager);
 
 #include "SimonSaysGame.h"
-SimonSaysGame simonGame(display, buttonManager, beepForSquareFn, beepOnUserPressFn);
+SimonSaysGame simonGame(display, buttonManager, audioManager);
 
 #include "MatrixScreensaver.h"
 MatrixScreensaver matrixScreensaver(display);
@@ -92,6 +95,9 @@ DinoGame dinoGame(
   /*duckBtnIndex=*/button_MiddleRightIndex,
   /*resetBtnIndex*/button_BottomRightIndex
   );
+
+#include "Booper.h"
+Booper booper(buttonManager, audioManager, display);
 
 #include "PowerManager.h"  // Include the new PowerManager
 PowerManager powerManager(display, buttonManager, clockDisplay);
@@ -184,16 +190,18 @@ void setup() {
 
   digitalWrite(OLED_RESET, HIGH); // Turn on the power regulator
   delay(200);
+
   // Initialising the UI will init the display too.
   display.init();
-
   //display.flipScreenVertically();
   display.setFont(ArialMT_Plain_10);
 
   // Speaker Setup
   //AudioLogger::instance().begin(Serial, AudioLogger::Info);
 
-  initAudio();  // Initialize the audio system
+  // Initialize AudioManager
+  audioManager.init();
+
   batteryManager.init(); // Initialize fuel gauge and battery management
 
   WiFiManagerCFObject.init();
@@ -204,15 +212,6 @@ void setup() {
 
   // Initialize the PowerManager
   powerManager.begin();
-
-
-
-
-  // To be removed from setup()
-  // Initialize the breakout game
-  breakout.reset();
-  breakout.setResetButton(button_BottomRight, /* activeLow = */ true); // Specify which pin to monitor for game resets
-  breakout.setBounceCallback(beepOnBounce); // **Attach the bounce callback** so BreakoutGame calls beepOnBounce
 
   // Matrix Screensaver
   matrixScreensaver.begin();
@@ -297,13 +296,11 @@ void screenUpdate(){
       clockDisplay.reset();
     }
 
-    // TO BE ADDED WHEN REMOVED FROM SETUP()
-    // if (demoMode == DEMO_BREAKOUT) {
-    //   breakout.begin();
-    // } 
-    // else if (demoModePreviously == DEMO_BREAKOUT) {
-    //   breakout.end();
-    // }
+    if (demoMode == DEMO_BREAKOUT) {
+      breakoutGame.begin();    } 
+    else if (demoModePreviously == DEMO_BREAKOUT) {
+      breakoutGame.end();
+    }
 
     if (demoMode == DEMO_SIMON_SAYS) {
       simonGame.begin(); // Inside the module, begin() will only do initialization once.
@@ -333,6 +330,13 @@ void screenUpdate(){
       buttonManager.unregisterCallback(dinoGame.getDuckButtonIndex());
       buttonManager.unregisterCallback(dinoGame.getResetButtonIndex());
       dinoGame.resetGame(); // Reset the game state
+    }
+
+    if (demoMode == DEMO_BOOPER) {
+      booper.begin();
+    }
+    else if (demoModePreviously == DEMO_BOOPER) {
+      booper.end();
     }
 
     if (demoMode == DEMO_POWER_MANAGER) {
@@ -366,8 +370,8 @@ void loop() {
   esp_task_wdt_reset();
   millisNow = millis();
   
-  // Handle audio streaming + beep logic
-  //loopAudio();
+  // Update AudioManager
+  audioManager.loop();
 
   // 1) Update the button states
   buttonManager.update();
@@ -492,7 +496,8 @@ void drawSPHFluidGame(){
 
 void drawBreakoutGame(){
     // Update the game with new accelerometer data
-    breakout.update(accelX);
+    breakoutGame.update(accelX);
+    breakoutGame.draw();
 }
 
 // New clock drawing function
@@ -526,99 +531,8 @@ void drawMatrixScreensaver(){
   matrixScreensaver.draw();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-Audio Boops with Buttons
-*/
-
-int readWhichButton() {
-  int pressedIndex = -1;
-  for (int i = 0; i < 4; i++) {
-    bool rawReading = (digitalRead(buttonPinsSimonSays[i]) == LOW); 
-    if (rawReading != btns[i].lastReading) {
-      btns[i].lastChangeTime = millis();
-      btns[i].lastReading    = rawReading;
-    } else {
-      // if stable for > DEBOUNCE_MS, accept new state
-      if ((millis() - btns[i].lastChangeTime) > ButtonDebounce::DEBOUNCE_MS) {
-        btns[i].stableState = rawReading;
-      }
-    }
-    // if stableState is true => button i is pressed
-    if (btns[i].stableState && !btns[i].wasPressed) {
-      pressedIndex = i;
-      btns[i].wasPressed = true;
-      break; 
-    }
-    // Reset wasPressed if button is released
-    if (!btns[i].stableState) {
-      btns[i].wasPressed = false;
-    }
-  }
-  return pressedIndex;
-}
-
-void beepOn(float freq) {
-  Serial.print("BEEP ON @ "); Serial.println(freq);
-  // e.g. sine.setFrequency(freq); in.begin();
-}
-
-void beepOff() {
-  Serial.println("BEEP OFF");
-  // e.g. in.end();
-}
-
-void updateBeep() {
-  if (beepActive && (millis() - beepStartTime >= beepDurationSimonSays)) {
-    beepOff();
-    beepActive = false;
-  }
-}
-
-void startBeep(float freq) {
-  beepFrequency = freq;
-  beepOn(freq);
-  beepActive = true;
-  beepStartTime = millis();
-}
-
-// additional audio controls
-Debouncer nextButtonDebouncer(2000);
-
-// ------------------- 4) Callback Functions for the Simon Game -------------------
-void beepForSquareFn(int sq) {
-  // Use `sq` to pick a beep frequency, for example:
-  float freq = 220.0f;
-  switch (sq) {
-    case 0: freq = 220.0f; break;
-    case 1: freq = 330.0f; break;
-    case 2: freq = 440.0f; break;
-    case 3: freq = 550.0f; break;
-  }
-  // Then your code to start the beep
-  startBeep(freq);
-}
-
-// Called when the user presses a correct button (must take int sq)
-void beepOnUserPressFn(int sq) {
-  // Possibly a different freq set:
-  float freq = 660.0f;
-  switch (sq) {
-    case 0: freq = 660.0f; break;
-    case 1: freq = 770.0f; break;
-    case 2: freq = 880.0f; break;
-    case 3: freq = 990.0f; break;
-  }
-  startBeep(freq);
+void drawBooper(){
+  // Update the screensaver
+  booper.update();
+  booper.draw();
 }

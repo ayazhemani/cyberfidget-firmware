@@ -2,40 +2,35 @@
 #define SIMON_SAYS_GAME_H
 
 #include <Arduino.h>
-#include <SSD1306Wire.h>     // Include your OLED library
-#include "ButtonManager.h"   // Include the ButtonManager
+#include <SSD1306Wire.h>
+#include "ButtonManager.h"
+#include "AudioManager.h"
 
 /**
  * @brief Simon Says Game Class
- * 
- * Manages the Simon Says game logic, including displaying patterns,
- * handling user input, and updating the game state. Integrates with the
- * ButtonManager to handle button events efficiently.
  */
 class SimonSaysGame {
 public:
     static const int MAX_PATTERN = 32;
 
+    /**
+     * @brief High-level states of the game
+     */
     enum State {
-        WAIT_START,
-        SHOW_PATTERN,
-        WAIT_USER,
-        GAME_OVER
+        WAIT_START,   // Waiting for user to start the first round
+        SHOW_PATTERN, // Currently showing the Simon pattern
+        WAIT_USER,    // Waiting for user to press correct buttons
+        WAIT_FINAL,   // User just got the final input correct; waiting for final release + delay
+        GAME_OVER     // The user has lost
     };
 
     /**
      * @brief Constructor for SimonSaysGame
-     * 
-     * @param display Reference to the OLED display
-     * @param buttonMgr Reference to the ButtonManager
-     * @param beepForSquareFn Callback for beeping when showing a pattern square
-     * @param beepOnUserPressFn Callback for beeping when the user presses a button
      */
     SimonSaysGame(
         SSD1306Wire &display,
         ButtonManager &buttonMgr,
-        void (*beepForSquareFn)(int),
-        void (*beepOnUserPressFn)(int)
+        AudioManager &audioMgr
     );
 
     /**
@@ -54,22 +49,15 @@ public:
     void end();
 
     /**
-     * @brief Handle button events from the ButtonManager
-     * 
-     * @param event The button event to process
+     * @brief Static callback for button events
      */
     static void onButtonEvent(const ButtonEvent& event);
 
 private:
-    // Reference to the OLED display
+    // References
     SSD1306Wire &display;
-
-    // Reference to the ButtonManager
     ButtonManager &buttonManager;
-
-    // Audio callbacks
-    void (*beepForSquare)(int);
-    void (*beepOnUserPress)(int);
+    AudioManager &audioManager;
 
     // Pattern data
     int  pattern[MAX_PATTERN];
@@ -79,37 +67,45 @@ private:
 
     // Game state
     State currentState;
-    int currentlyPressedButton;
+    int   currentlyPressedButton;
 
-    // Timing variables for pattern display
-    unsigned long showStartTime; 
-    unsigned long showStepTime;  
-    static const unsigned long SHOW_STEP_ON  = 500; 
-    static const unsigned long SHOW_STEP_OFF = 200; 
-    bool showingSquare;  
-    bool gapPhase;       
+    // Timing for showing pattern
+    unsigned long showStartTime;
+    unsigned long showStepTime;
+    static const unsigned long SHOW_STEP_ON  = 500; // how long to show
+    static const unsigned long SHOW_STEP_OFF = 200; // gap between steps
+    bool showingSquare;
+    bool gapPhase;
 
-    // Timing for game over display
+    // Timing for game over message
     unsigned long gameOverStartTime;
 
-    // Static instance pointer for callbacks
-    static SimonSaysGame* instance;
+    // Timing for final delay
+    unsigned long finalWaitStartTime;     // when we begin the final delay
+    static const unsigned long FINAL_WAIT = 750; // how long to wait after final release
 
-    // Button indices for the Simon Says game
+    // Button indices used by this game
     static const int buttonMappings[4];
 
+    // Singleton instance pointer for static callback
+    static SimonSaysGame* instance;
+
     // Private methods
+    void resetGame();
     void startRound();
     void extendPattern();
     void showPattern();
     void checkUserInput(int pressedButton);
     void gameOver();
-    void resetGame();
 
     // Display helpers
     void drawGrid(int highlightIndex);
     void fillSquare(int sq);
     void drawGameOver();
+
+    // Audio methods
+    void playBeepForSquare(int sq);
+    void playBeepOnUserPress(int sq);
 };
 
 #endif

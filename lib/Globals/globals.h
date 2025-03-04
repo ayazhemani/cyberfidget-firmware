@@ -7,6 +7,14 @@
 
 #include "esp_log.h" // Logging Management
 
+// #include "ButtonManager.h"
+// #include "SSD1306Wire.h"
+// #include "SparkFun_LIS2DH12.h"
+// #include "WiFiManagerCF.h"
+// #include "PowerManager.h"
+// #include "ClockDisplay.h"
+
+
 //
 // 1) Compile-time constants
 //
@@ -49,8 +57,13 @@ extern unsigned long millisLastInteraction;
 // Audio logging specifically handled in AudioManager::init()
 extern const char *TAG_MAIN;
 
-// You had this variable but it’s unused in your sample main.cpp. Keep or remove as needed:
-extern unsigned long masterWatchdogTimer; 
+// Class Declarations
+// extern ButtonManager buttonManager;
+// extern SSD1306Wire display;
+// extern SPARKFUN_LIS2DH12 accel;
+// extern WiFiManagerCF WiFiManagerCFObject;
+// extern PowerManager powerManager(display, buttonManager, clockDisplay);
+// extern ClockDisplay clockDisplay(display);
 
 // App modes
 extern int  appActive;
@@ -170,15 +183,15 @@ struct ButtonDebounce {
 };
 extern ButtonDebounce btns[4];
 
-void beepOnBounce();
-void loopAudio();
-void connectToWiFi();
-void beepOn();
-void beepOff();
-void updateBeep();
-void startBeep();
-void beepForSquareFn(int sq);
-void beepOnUserPressFn(int sq);
+// void beepOnBounce();
+// void loopAudio();
+// void connectToWiFi();
+// void beepOn();
+// void beepOff();
+// void updateBeep();
+// void startBeep();
+// void beepForSquareFn(int sq);
+// void beepOnUserPressFn(int sq);
 
 // Step 1: Declare function prototypes (so globals.cpp knows they exist)
 void drawFontFaceDemo();

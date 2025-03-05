@@ -2,46 +2,10 @@
 #define GLOBALS_H
 
 #include <Arduino.h>
-#include <time.h> // For struct tm
-#include "fontSuiGenerisRg.h" 
+#include <time.h>
+#include "esp_log.h"
 
-#include "esp_log.h" // Logging Management
-
-// #include "ButtonManager.h"
-// #include "SSD1306Wire.h"
-// #include "SparkFun_LIS2DH12.h"
-// #include "WiFiManagerCF.h"
-// #include "PowerManager.h"
-// #include "ClockDisplay.h"
-
-
-//
-// 1) Compile-time constants
-//
-
-// Pin assignments — changed from #define to constexpr for clarity
-constexpr int POWER_PIN_OLED = 12;  // OLED VREG
-constexpr int POWER_PIN_AUX  = 2;   // RGB VREG
-//constexpr int LED_BUILTIN  = 13;  // Declared in esp32-hal
-constexpr int CHRG_ENA       = 13;  // If truly the same as LED_BUILTIN, watch for conflicts
-constexpr int PIN            = 0;   // NeoPixel or LED data pin
-constexpr int OLED_RESET     = 7;   // Also RX pin
-constexpr int VOLT_READ_PIN  = 35;  // Battery voltage divider pin
-constexpr int RGB_COUNT      = 4;   // Number of RGB LEDs
-
-// Debounce and hold thresholds
-constexpr unsigned long BUTTON_DEBOUNCE_MS = 20;       // Debounce time in ms
-constexpr unsigned long BUTTON_HOLD_THRESHOLD_MS = 1500; // Time in ms to trigger a "hold"
-
-// Number of buttons
-constexpr int numButtons = 6;
-
-//
-// 2) Extern global variables (runtime values)
-//   These are defined exactly once in globals.cpp
-//
-
-// Timers
+// Global timers
 extern unsigned long millisNow;
 extern unsigned long millisOldHeartbeat;
 extern unsigned long millisOld200;
@@ -50,45 +14,24 @@ extern unsigned long millisOld10;
 extern unsigned long millisApp;
 extern unsigned long millisLastInteraction;
 
-// // Memory Management
-// extern Preferences preferencesMainApp;
-
-// Logging Management
-// Audio logging specifically handled in AudioManager::init()
 extern const char *TAG_MAIN;
-
-// Class Declarations
-// extern ButtonManager buttonManager;
-// extern SSD1306Wire display;
-// extern SPARKFUN_LIS2DH12 accel;
-// extern WiFiManagerCF WiFiManagerCFObject;
-// extern PowerManager powerManager(display, buttonManager, clockDisplay);
-// extern ClockDisplay clockDisplay(display);
 
 // App modes
 extern int  appActive;
 extern int  appActiveSaved;
 extern int  appPreviously;
 
-// LED Sequencer & games
-extern bool ledSequencerEnabled;
+// Some booleans for states
 extern bool accelerometerScreenEnabled;
 extern bool reactionGameEnabled;
 extern volatile bool buttonPressed;
 
-// Buttons
-// extern const int buttonPins[numButtons];
-// extern volatile unsigned long lastDebounceTime[numButtons];
-// extern volatile int buttonState[numButtons];
+// Button counters
+constexpr int numButtons = 6;
 extern int buttonCounter[numButtons];
 extern int buttonCounterSaved[numButtons];
-extern const int button_TopLeft;
-extern const int button_TopRight;
-extern const int button_MiddleLeft;
-extern const int button_MiddleRight;
-extern const int button_BottomLeft;
-extern const int button_BottomRight;
 
+// For indexing the six buttons
 extern const int button_TopLeftIndex;
 extern const int button_TopRightIndex;
 extern const int button_MiddleLeftIndex;
@@ -96,16 +39,7 @@ extern const int button_MiddleRightIndex;
 extern const int button_BottomLeftIndex;
 extern const int button_BottomRightIndex;
 
-extern const int s_buttonPins[numButtons];    // Pin assignments for all buttons
-extern const bool s_usePullups[numButtons];   // Whether each button uses internal pull-up resistors
-
-// RGBW LEDS
-extern const uint16_t pixel_Front_Top;
-extern const uint16_t pixel_Front_Middle;
-extern const uint16_t pixel_Front_Bottom;
-extern const uint16_t pixel_Back;
-
-// Accelerometer
+// Accelerometer readings
 extern float accelX;
 extern float accelY;
 extern float accelZ;
@@ -114,15 +48,8 @@ extern float tempC;
 // Battery
 extern float batteryVoltage;
 extern float batteryVoltagePercentage;
-extern uint16_t batteryVoltageLowCutoff;
-extern uint16_t batteryVoltageHighCutoff;
-extern bool preventSleepWhileCharging;
-extern bool enableBatterySOCCutoff;
-extern float batterySOCCutoff;
-extern float sleepChargingChangeThreshold;
-extern float batteryChangeRate;
 
-// Slider
+// Slider readings
 extern int sliderPosition_Millivolts;
 extern int sliderPosition_12Bits;
 // Filtered slider positions
@@ -135,65 +62,24 @@ extern float sliderPosition_Percentage_Inverted_Filtered;
 
 // WiFi
 extern char wifiAP_SSID[];
-extern bool wifimanager_nonblocking;
 extern bool isTryingToConnect;
 
 // Clock
-extern bool     clockScreenEnabled;
+extern bool clockScreenEnabled;
 extern struct tm currentTime;
 
-// Serial data / text scrolling
-extern bool newDataReceived;
-extern bool showingDefaultScreen;
-extern int  lineCount;
-extern int  currentLine;
-extern bool isScreenUpdated;
-extern int  previousLine;
-extern int  scrollOffset;
-extern int  previousScrollOffset;
-extern String dataLines[];
-extern String incomingData;
-extern const int maxLinesOnScreen;
-extern unsigned long lastDataTime;
-extern const unsigned long dataTimeout;
+// Audio beep logic
+extern bool beepActive;
+extern float beepFrequency;
 
-// Scroll mode enumeration
+// Scroll mode
 enum ScrollMode {
     LINE_SCROLL,
     PIXEL_SCROLL
 };
 extern ScrollMode currentScrollMode;
 
-// Audio beep logic
-extern bool         beepActive;
-extern unsigned long beepStartTime;
-extern unsigned long beepDurationSimonSays;
-extern float        beepFrequency;
-
-// Buttons for SimonSays, etc.
-extern const int buttonPinsSimonSays[4];
-
-// Debounce struct for those 4 buttons
-struct ButtonDebounce {
-    bool stableState;
-    bool lastReading;
-    unsigned long lastChangeTime;
-    bool wasPressed;
-    static const unsigned long DEBOUNCE_MS = 100;
-};
-extern ButtonDebounce btns[4];
-
-// void beepOnBounce();
-// void loopAudio();
-// void connectToWiFi();
-// void beepOn();
-// void beepOff();
-// void updateBeep();
-// void startBeep();
-// void beepForSquareFn(int sq);
-// void beepOnUserPressFn(int sq);
-
-// Step 1: Declare function prototypes (so globals.cpp knows they exist)
+// Forward declarations for the “apps”
 void drawFontFaceDemo();
 void drawProgressBarDemo();
 void drawImageDemo_1();
@@ -207,7 +93,6 @@ void drawCircleDemo();
 void drawBatteryProgressBar();
 void drawAccelerometerScreen();
 void drawButtonCounters();
-void drawAudioPlayer();
 void drawFlashlight();
 void drawReactionTimeGame();
 void drawTimeOnCounter();
@@ -223,7 +108,10 @@ void drawDinoGame();
 void drawPowerManager();
 void drawBooper();
 
-// Step 2: Define the X-Macro List
+// The array of function pointers is set up via X-Macro:
+typedef void (*App)(void);
+
+// Step 2: X-Macro list of apps
 #define APP_LIST \
     X(drawFontFaceDemo, FONT_FACE, "Font Face") \
     X(drawProgressBarDemo, PROGRESS_BAR, "Progress Bar") \
@@ -254,16 +142,15 @@ void drawBooper();
     X(drawDinoGame, DINO_GAME, "Dino Game") \
     X(drawPowerManager, POWER_MANAGER, "Power Manager")
 
-// Step 3: Define the Enum
+// Step 3: Enum
 enum AppIndex {
     #define X(func, id, name) APP_##id,
-        APP_LIST
+    APP_LIST
     #undef X
     APP_COUNT
 };
 
-// Step 4: Declare function pointer and name arrays
-typedef void (*App)(void);
+// Arrays of function pointers and names
 extern App apps[APP_COUNT];
 extern const char* appNames[APP_COUNT];
 

@@ -1,5 +1,6 @@
 #include "RGBController.h"
 #include "globals.h"
+#include "HAL.h"
 
 typedef void (*RGBW)(void);
 RGBW colors[] = {red, green, blue, white, halfWHITE};

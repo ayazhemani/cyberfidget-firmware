@@ -14,6 +14,7 @@
 #include "SparkFun_LIS2DH12.h"
 #include "WiFiManagerCF.h"
 #include "ButtonManager.h"
+#include <Adafruit_NeoPixel.h>
 
 // You probably still need your pin assignments, 
 // either from globals.h or repeated here:
@@ -60,6 +61,9 @@ namespace {
 
     // If you have a global BatteryManager:
     static BatteryManager s_batteryManager; 
+
+    // RGBW LEDs
+    static Adafruit_NeoPixel s_rgbStrip = Adafruit_NeoPixel(RGB_COUNT, PIN, NEO_RGBW + NEO_KHZ800);
 
     // ... any other managers or singletons you want hidden behind HAL
 }
@@ -114,6 +118,9 @@ namespace HAL
         s_wifiManager.init();
         s_wifiManager.setDisplay(s_display);
 
+        // Initialize RGB manager
+        s_rgbStrip.begin();
+
         // Any other hardware inits ...
     }
 
@@ -137,6 +144,7 @@ namespace HAL
     SSD1306Wire& display()            { return s_display; }
     SPARKFUN_LIS2DH12& accelerometer(){ return s_accel; }
     WiFiManagerCF& wifiManagerCF()    { return s_wifiManager; }
+    
 
     //----------------------------------------------------------------------
     // Example power/wakeup calls
@@ -168,8 +176,9 @@ namespace HAL
 
     float readSliderPercentage()
     {
-       int raw = analogRead(VOLT_READ_PIN);
-       return (raw);
+        // Read the raw slider position in millivolts and 12-bit ADC value
+        sliderPosition_Millivolts = analogReadMilliVolts(VOLT_READ_PIN);
+        sliderPosition_12Bits = analogRead(VOLT_READ_PIN);
     }
 
     void setOledPower(bool on)
@@ -206,11 +215,16 @@ namespace HAL
     {
         // Turn them all off
     }
-    
-    void enterDeepSleep(uint64_t sleepTimeUs)
+
+    void chargingEnable()
     {
-        // call esp_sleep_enable_timer_wakeup(sleepTimeUs);
-        // etc.
-        // esp_deep_sleep_start();
+        pinMode(CHRG_ENA, OUTPUT);
+        digitalWrite(CHRG_ENA, HIGH);
+    }
+
+    void chargingDisable()
+    {
+        pinMode(CHRG_ENA, OUTPUT);
+        digitalWrite(CHRG_ENA, LOW);
     }
 }

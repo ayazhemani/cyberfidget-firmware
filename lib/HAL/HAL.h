@@ -34,6 +34,8 @@ namespace HAL
     // Additional helper calls for controlling certain pins, turning hardware on/off, etc.
     void setOledPower(bool on);
     void setAuxPower(bool on);
+    void chargingEnable();
+    void chargingDisable();
 
     // ... add more hardware-related getters/setters as you see fit
 };

@@ -48,6 +48,13 @@ extern float tempC;
 // Battery
 extern float batteryVoltage;
 extern float batteryVoltagePercentage;
+extern uint16_t batteryVoltageLowCutoff;
+extern uint16_t batteryVoltageHighCutoff;
+extern bool preventSleepWhileCharging;
+extern bool enableBatterySOCCutoff;
+extern float batterySOCCutoff;
+extern float sleepChargingChangeThreshold;
+extern float batteryChangeRate;
 
 // Slider readings
 extern int sliderPosition_Millivolts;

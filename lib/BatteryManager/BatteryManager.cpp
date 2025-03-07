@@ -103,11 +103,9 @@ void BatteryManager::update() {
     // RED LED on front stays on when charging is blocked
     if(enableBatterySOCCutoff) {
       if ((batteryVoltagePercentage > batterySOCCutoff) && (lipo.getChangeRate() > sleepChargingChangeThreshold)) {
-          pinMode(CHRG_ENA, OUTPUT);
-          digitalWrite(CHRG_ENA, HIGH);
+        HAL::chargingDisable();
       } else {
-          pinMode(CHRG_ENA, OUTPUT);
-          digitalWrite(CHRG_ENA, LOW);
+        HAL::chargingEnable();
       }
     }
 }

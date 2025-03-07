@@ -130,10 +130,6 @@ void applyRateLimit(float &currentValue, float newValue, float rateLimit) {
 
 // Read and filter the slider position
 void sliderPositionRead() {
-    // Read the raw slider position in millivolts and 12-bit ADC value
-    sliderPosition_Millivolts = analogReadMilliVolts(VOLT_READ_PIN);
-    sliderPosition_12Bits = analogRead(VOLT_READ_PIN);
-
     float filtered_12Bits;
 
     // Apply the corrected Kalman filter to the primary 12-bit variable
@@ -151,7 +147,7 @@ void sliderPositionRead() {
     // Apply an Exponential Moving Average (EMA) filter to the percentage
     // The EMA filter smooths out the percentage value to reduce the effect of small changes.
     // The smoothing factor alpha determines how much weight is given to new measurements.
-    const float alpha = 0.4f; // Alpha between 0 (slow response) and 1 (fast response)
+    const float alpha = 0.35f; // Alpha between 0 (slow response) and 1 (fast response)
 
     // Update the EMA filter state
     percentageEMA = alpha * percentage + (1.0f - alpha) * percentageEMA;

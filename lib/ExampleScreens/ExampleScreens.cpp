@@ -1,10 +1,11 @@
 #include "globals.h"
-#include "SSD1306Wire.h"
 #include "ExampleScreens.h"
 #include "images.h"
 #include "RGBController.h"
+#include "HAL.h"
 
-extern SSD1306Wire display;
+static auto& strip         = HAL::strip();  // NeoPixels
+static auto& display       = HAL::display();
 
 void drawFontFaceDemo() {
   display.clear();

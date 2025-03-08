@@ -1,8 +1,5 @@
 #include "AppManager.h"
-#include "globals.h"
 #include "HAL.h"
-
-// Include your game screens
 #include "ReactionTimeGame.h"
 #include "DinoGame.h"
 #include "SimonSaysGame.h"
@@ -16,237 +13,199 @@
 #include "Flashlight.h"
 #include "SliderPosition.h"
 #include "SerialDisplay.h"
+#include "RGBController.h"
+#include "ExampleScreens.h"
 
-static ClockDisplay clockDisplay( HAL::display() );
-static PowerManager powerManager( HAL::display(), HAL::buttonManager(), clockDisplay );
+// ALIASES for HAL references
+static auto& display       = HAL::display();
+static auto& buttonManager = HAL::buttonManager();
+static auto& audioManager  = HAL::audioManager();
+static auto& accelerometer = HAL::accelerometer();
+static auto& wifiManager   = HAL::wifiManagerCF();
+static auto& strip         = HAL::strip();  // NeoPixels
 
-// Example: ReactionTimeGame wants references to display + button manager
-static ReactionTimeGame reactionGame( HAL::display(), button_BottomRightIndex, HAL::buttonManager() );
-static SPHFluidGame    sphGame( HAL::display() );
-static BreakoutGame    breakoutGame( HAL::display(), HAL::buttonManager(), HAL::audioManager() );
-static DinoGame        dinoGame( HAL::display(), HAL::buttonManager(),
-                                 button_MiddleLeftIndex, button_MiddleRightIndex, button_BottomRightIndex );
-static SimonSaysGame   simonGame( HAL::display(), HAL::buttonManager(), HAL::audioManager() );
-static MatrixScreensaver matrixScreensaver( HAL::display() );
-static Booper          booper( HAL::buttonManager(), HAL::audioManager(), HAL::display() );
+// Define the function pointer array
+App apps[APP_COUNT] = {
+    #define X(func, id, name) func,
+        APP_LIST
+    #undef X
+};
 
-void AppManagerSetup()
-{
-    // All the hardware-level stuff is now in HAL:
+// Define the string array for names
+const char* appNames[APP_COUNT] = {
+    #define X(func, id, name) name,
+        APP_LIST
+    #undef X
+};
+
+// Ensure everything is in sync
+static_assert(sizeof(apps) / sizeof(apps[0]) == APP_COUNT, "Mismatch between app array size and enum count");
+
+// Game instances
+static ClockDisplay clockDisplay(display);
+static PowerManager powerManager(display, buttonManager, clockDisplay);
+static ReactionTimeGame reactionGame(display, button_BottomRightIndex, buttonManager);
+static SPHFluidGame sphGame(display);
+static BreakoutGame breakoutGame(display, buttonManager, audioManager);
+static DinoGame dinoGame(display, buttonManager,
+                         button_MiddleLeftIndex, button_MiddleRightIndex, button_BottomRightIndex);
+static SimonSaysGame simonGame(display, buttonManager, audioManager);
+static MatrixScreensaver matrixScreensaver(display);
+static Booper booper(buttonManager, audioManager, display);
+
+void AppManager::setup() {
     HAL::initHardware();
     HAL::configureWakeupPins();
-
-    // If you have other logging config calls, do them here or in HAL
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     esp_log_level_set(TAG_MAIN, ESP_LOG_VERBOSE);
-    ESP_LOGI(TAG_MAIN, "AppManagerSetup complete");
-
-    // If you have any additional setup steps for your managers:
+    ESP_LOGI(TAG_MAIN, "AppManager setup complete");
     powerManager.begin();
 }
 
-void AppManagerLoop()
-{
-    // Let the HAL do any hardware-level updates (watchdog, buttonManager, audio, etc.)
+void AppManager::loop() {
     HAL::loopHardware();
-
-    // Keep track of time
     millisNow = millis();
+    processButtonEvents();
 
-    // 1) Buttons are updated by HAL::loopHardware(). 
-    //    If you still want to handle button events here:
+    if ((millisNow - millisOld10) >= 20) {
+        millisOld10 = millisNow;
+        sliderPositionRead();
+        screenUpdate();
+    }
+
+    if ((millisNow - millisOld50) >= 50) {
+        millisOld50 = millisNow;
+        HAL::updateAccelerometer();
+    }
+
+    if ((millisNow - millisOld200) >= 200) {
+        millisOld200 = millisNow;
+        buttonManager.saveButtonCounters();
+    }
+
+    if ((millisNow - millisLastInteraction) >= 300000) {
+        powerManager.deepSleep();
+    }
+}
+
+void AppManager::processButtonEvents() {
     ButtonEvent ev;
-    while ( HAL::buttonManager().getNextEvent(ev) ) 
-    {
-        if ( HAL::buttonManager().hasCallback(ev.buttonIndex) ) {
-            // If there's a button callback
-            ButtonCallback cb = HAL::buttonManager().getCallback(ev.buttonIndex);
+    while (buttonManager.getNextEvent(ev)) {
+        if (buttonManager.hasCallback(ev.buttonIndex)) {
+            ButtonCallback cb = buttonManager.getCallback(ev.buttonIndex);
             if (cb) cb(ev);
-        }
-        else {
-            // Global event handling
-            ESP_LOGV(TAG_MAIN, "Button #%d => ", ev.buttonIndex);
+        } else {
             switch (ev.eventType) {
                 case ButtonEvent_Pressed:
-                    ESP_LOGV(TAG_MAIN, "Pressed");
                     if (ev.buttonIndex == button_TopLeftIndex) {
                         appPreviously = appActive;
                         appActive = (appActive - 1 + APP_COUNT) % APP_COUNT;
                     }
                     break;
                 case ButtonEvent_Released:
-                    ESP_LOGV(TAG_MAIN, "Released after %d ms", ev.duration);
                     buttonCounter[ev.buttonIndex]++;
                     if (ev.buttonIndex == button_TopRightIndex) {
                         appPreviously = appActive;
                         appActive = (appActive + 1) % APP_COUNT;
                     }
                     break;
-                case ButtonEvent_Held:
-                    ESP_LOGV(TAG_MAIN, "Held for %d ms", ev.duration);
-                    break;
                 default:
                     break;
             }
         }
     }
-
-    // Example housekeeping intervals
-    if ((millisNow - millisOld10) >= 20) {
-        millisOld10 = millisNow;
-        sliderPositionRead();   // Reads and filters slider
-        screenUpdate();
-    }
-
-    if ((millisNow - millisOld50) >= 50) {
-        millisOld50 = millisNow;
-        // If you want updated accelerometer data each 50ms:
-        if (HAL::accelerometer().available()) {
-            accelX = HAL::accelerometer().getX();
-            accelY = HAL::accelerometer().getY();
-            accelZ = HAL::accelerometer().getZ();
-            tempC  = HAL::accelerometer().getTemperature();
-        }
-    }
-
-    if ((millisNow - millisOld200) >= 200) {
-        millisOld200 = millisNow;
-        // Possibly do battery update here if you want
-        // Save button counters, etc.
-        HAL::buttonManager().saveButtonCounters();
-    }
-
-    // Sleep management
-    if ((millisNow - millisLastInteraction) >= 300000) { // 5 minutes
-        powerManager.deepSleep();
-    }
-
-    if ((millisNow - millisOldHeartbeat) >= 600000) { // 10 minutes
-        millisOldHeartbeat = millisNow;
-        // Optional heartbeat
-    }
 }
 
-// This is the function that draws the “current app” each 20 ms
-void screenUpdate()
-{
-    // Call the function pointer from the array
+void AppManager::screenUpdate() {
     apps[appActive]();
 
-    // If we changed apps, handle transitions
-    if (appActive != appPreviously)
-    {
-        // Example: if appActive is accelerometer, turn on something; if we left it, turn off, etc.
-        if (appActive == APP_ACCELEROMETER) {
+    if (appActive != appPreviously) {
+		if (appActive == APP_ACCELEROMETER) {
             accelerometerScreenEnabled = true;
         } else if (appPreviously == APP_ACCELEROMETER) {
             accelerometerScreenEnabled = false;
-            setColorsOff(); 
-        }
-
-        if (appActive == APP_FLASHLIGHT) {
-            flashlightStatus = true;
-        } else if (appPreviously == APP_FLASHLIGHT) {
-            flashlightStatus = false;
             setColorsOff();
         }
-
-        // Reaction game
-        if (appActive == APP_REACTION) {
-            HAL::buttonManager().registerCallback(
-                reactionGame.getButtonIndex(),
-                ReactionTimeGame::reactionButtonPressedCallback
-            );
-        } else if (appPreviously == APP_REACTION) {
-            HAL::buttonManager().unregisterCallback(reactionGame.getButtonIndex());
-            reactionGame.resetGame();
+		
+		if (appActive == APP_BOOPER) {
+            booper.begin();
+        } else if (appPreviously == APP_BOOPER) {
+            booper.end();
         }
-
-        // Clock display
-        if (appActive == APP_CLOCK_DISPLAY) {
-            clockDisplay.begin();
-        } else if (appPreviously == APP_CLOCK_DISPLAY) {
-            clockDisplay.reset();
-        }
-
-        // Breakout
-        if (appActive == APP_BREAKOUT) {
+		
+		if (appActive == APP_BREAKOUT) {
             breakoutGame.begin();
         } else if (appPreviously == APP_BREAKOUT) {
             breakoutGame.end();
         }
 
-        // Simon Says
+        if (appActive == APP_CLOCK_DISPLAY) {
+            clockDisplay.begin();
+        } else if (appPreviously == APP_CLOCK_DISPLAY) {
+            clockDisplay.reset();
+        }
+		
+        if (appActive == APP_DINO_GAME) {
+            buttonManager.registerCallback(dinoGame.getJumpButtonIndex(), DinoGame::jumpButtonCallback);
+            buttonManager.registerCallback(dinoGame.getDuckButtonIndex(), DinoGame::duckButtonCallback);
+            buttonManager.registerCallback(dinoGame.getResetButtonIndex(), DinoGame::resetButtonCallback);
+        } else if (appPreviously == APP_DINO_GAME) {
+            buttonManager.unregisterCallback(dinoGame.getJumpButtonIndex());
+            buttonManager.unregisterCallback(dinoGame.getDuckButtonIndex());
+            buttonManager.unregisterCallback(dinoGame.getResetButtonIndex());
+            dinoGame.resetGame();
+        }
+
+		if (appActive == APP_FLASHLIGHT) {
+            flashlightStatus = true;
+        } else if (appPreviously == APP_FLASHLIGHT) {
+            flashlightStatus = false;
+            setColorsOff();
+        }
+		
+		if (appActive == APP_POWER_MANAGER) {
+            powerManager.registerShutdownCallback();
+        } else if (appPreviously == APP_POWER_MANAGER) {
+            powerManager.unregisterShutdownCallback();
+        }
+		
+		if (appActive == APP_REACTION) {
+            buttonManager.registerCallback(reactionGame.getButtonIndex(), ReactionTimeGame::reactionButtonPressedCallback);
+        } else if (appPreviously == APP_REACTION) {
+            buttonManager.unregisterCallback(reactionGame.getButtonIndex());
+            reactionGame.resetGame();
+        }
+
         if (appActive == APP_SIMON_SAYS) {
             simonGame.begin();
         } else if (appPreviously == APP_SIMON_SAYS) {
             simonGame.end();
         }
 
-        // Matrix
         if (appActive == APP_MATRIX_SCREENSAVER) {
             matrixScreensaver.begin();
-        } else if (appPreviously == APP_MATRIX_SCREENSAVER) {
-            // ...
         }
-
-        // Dino
-        if (appActive == APP_DINO_GAME) {
-            HAL::buttonManager().registerCallback(
-                dinoGame.getJumpButtonIndex(),
-                DinoGame::jumpButtonCallback
-            );
-            HAL::buttonManager().registerCallback(
-                dinoGame.getDuckButtonIndex(),
-                DinoGame::duckButtonCallback
-            );
-            HAL::buttonManager().registerCallback(
-                dinoGame.getResetButtonIndex(),
-                DinoGame::resetButtonCallback
-            );
-        } else if (appPreviously == APP_DINO_GAME) {
-            HAL::buttonManager().unregisterCallback(dinoGame.getJumpButtonIndex());
-            HAL::buttonManager().unregisterCallback(dinoGame.getDuckButtonIndex());
-            HAL::buttonManager().unregisterCallback(dinoGame.getResetButtonIndex());
-            dinoGame.resetGame();
-        }
-
-        // Booper
-        if (appActive == APP_BOOPER) {
-            booper.begin();
-        } else if (appPreviously == APP_BOOPER) {
-            booper.end();
-        }
-
-        // Power Manager
-        if (appActive == APP_POWER_MANAGER) {
-            powerManager.registerShutdownCallback();
-        } else if (appPreviously == APP_POWER_MANAGER) {
-            powerManager.unregisterShutdownCallback();
-        }
-
-        // WiFi Config
-        if (appActive == APP_WIFI_CONFIG) {
-            HAL::buttonManager().registerCallback(
+		
+		if (appActive == APP_WIFI_CONFIG) {
+            buttonManager.registerCallback(
                 button_BottomLeftIndex, 
                 WiFiManagerCF::bottomLeftButtonCallback
             );
-            HAL::buttonManager().registerCallback(
+            buttonManager.registerCallback(
                 button_BottomRightIndex,
                 WiFiManagerCF::bottomRightButtonCallback
             );
         } else if (appPreviously == APP_WIFI_CONFIG) {
-            HAL::buttonManager().unregisterCallback(button_BottomLeftIndex);
-            HAL::buttonManager().unregisterCallback(button_BottomRightIndex);
+            buttonManager.unregisterCallback(button_BottomLeftIndex);
+            buttonManager.unregisterCallback(button_BottomRightIndex);
         }
 
         appPreviously = appActive;
     }
 }
 
-// Example “draw” functions for certain apps:
+// Draw functions
 void drawReactionTimeGame() {
-    // Reaction game’s logic
     reactionGame.update(millisNow);
 }
 
@@ -280,7 +239,7 @@ void drawPowerManager() {
 }
 
 void drawWifiConfig() {
-    HAL::wifiManagerCF().process();
+    wifiManager.process();  // using the local alias instead of HAL::wifiManagerCF()
 }
 
 void drawSimonSaysGame() {
@@ -296,5 +255,3 @@ void drawBooper() {
     booper.update();
     booper.draw();
 }
-
-// etc. for the rest of your “draw” functions...

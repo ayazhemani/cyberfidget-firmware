@@ -6,9 +6,10 @@
 // Forward-declare any hardware-related classes you want to expose from the HAL:
 class AudioManager;
 class ButtonManager;
-class SSD1306Wire;
 class SPARKFUN_LIS2DH12;
 class WiFiManagerCF;
+class Adafruit_NeoPixel;
+
 
 // The “HAL” namespace wraps all hardware initialization + references
 namespace HAL
@@ -26,6 +27,9 @@ namespace HAL
     SSD1306Wire& display();
     SPARKFUN_LIS2DH12& accelerometer();
     WiFiManagerCF& wifiManagerCF();
+
+    // Class accessor
+    Adafruit_NeoPixel& strip(); 
     
     // If you want to set wake pins, deep sleep, etc. directly from AppManager
     void configureWakeupPins();
@@ -36,6 +40,7 @@ namespace HAL
     void setAuxPower(bool on);
     void chargingEnable();
     void chargingDisable();
+    void updateAccelerometer();
 
     // ... add more hardware-related getters/setters as you see fit
 };

@@ -5,6 +5,7 @@
 #include <esp_sleep.h>
 #include <esp_task_wdt.h>
 #include <esp_system.h>
+#include <Adafruit_NeoPixel.h>
 #include "AudioManager.h"
 #include "BatteryManager.h"
 #include "RGBController.h"
@@ -14,14 +15,14 @@
 #include "SparkFun_LIS2DH12.h"
 #include "WiFiManagerCF.h"
 #include "ButtonManager.h"
-#include <Adafruit_NeoPixel.h>
+
 
 // You probably still need your pin assignments, 
 // either from globals.h or repeated here:
 constexpr int POWER_PIN_OLED = 12;
 constexpr int POWER_PIN_AUX  = 2;
-constexpr int SDA = 21;  
-constexpr int SCL = 22;
+//constexpr int SDA = 21;  
+//constexpr int SCL = 22;
 //constexpr int LED_BUILTIN  = 13;  // Declared in esp32-hal
 constexpr int CHRG_ENA       = 13;  // If truly the same as LED_BUILTIN, watch for conflicts
 constexpr int PIN            = 0;   // NeoPixel or LED data pin
@@ -101,7 +102,7 @@ namespace HAL
         Wire.begin(SDA, SCL);
         if (!s_accel.begin())
         {
-            Serial.println("Accel not detected. Freezing...");
+            Serial.println("Accelerometer not detected. Halting...");
             while (1);
         }
 
@@ -139,11 +140,12 @@ namespace HAL
     //----------------------------------------------------------------------
     // Provide references so other code can use these hardware objects
     //----------------------------------------------------------------------
-    AudioManager& audioManager()       { return s_audioManager; }
-    ButtonManager& buttonManager()     { return s_buttonManager; }
-    SSD1306Wire& display()            { return s_display; }
-    SPARKFUN_LIS2DH12& accelerometer(){ return s_accel; }
-    WiFiManagerCF& wifiManagerCF()    { return s_wifiManager; }
+    AudioManager& audioManager()        { return s_audioManager; }
+    ButtonManager& buttonManager()      { return s_buttonManager; }
+    SSD1306Wire& display()              { return s_display; }
+    SPARKFUN_LIS2DH12& accelerometer()  { return s_accel; }
+    WiFiManagerCF& wifiManagerCF()      { return s_wifiManager; }
+    Adafruit_NeoPixel& strip()          { return s_rgbStrip; }
     
 
     //----------------------------------------------------------------------
@@ -177,8 +179,8 @@ namespace HAL
     float readSliderPercentage()
     {
         // Read the raw slider position in millivolts and 12-bit ADC value
-        sliderPosition_Millivolts = analogReadMilliVolts(VOLT_READ_PIN);
-        sliderPosition_12Bits = analogRead(VOLT_READ_PIN);
+        //sliderPosition_Millivolts = analogReadMilliVolts(VOLT_READ_PIN);
+        return sliderPosition_12Bits = analogRead(VOLT_READ_PIN);
     }
 
     void setOledPower(bool on)
@@ -213,7 +215,10 @@ namespace HAL
     
     void setRgbLedsOff()
     {
-        // Turn them all off
+        for (int i = 0; i < s_rgbStrip.numPixels(); i++) {
+            s_rgbStrip.setPixelColor(i, s_rgbStrip.Color(0,0,0,0));
+          }
+          updateStrip();
     }
 
     void chargingEnable()
@@ -226,5 +231,13 @@ namespace HAL
     {
         pinMode(CHRG_ENA, OUTPUT);
         digitalWrite(CHRG_ENA, LOW);
+    }
+
+    void updateAccelerometer()
+    {
+            accelX = s_accel.getX();
+            accelY = s_accel.getY();
+            accelZ = s_accel.getZ();
+            tempC  = s_accel.getTemperature();
     }
 }

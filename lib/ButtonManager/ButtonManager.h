@@ -60,7 +60,7 @@ public:
     /**
      * @brief Call in setup() to configure pinModes, etc.
      */
-    void begin();
+    void init();
 
     /**
      * @brief Call frequently in loop() to update the button states and record any new events.

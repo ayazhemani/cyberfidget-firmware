@@ -3,6 +3,7 @@
 #include "WiFiManagerCF.h"
 #include "globals.h"
 #include <WiFi.h>
+#include "CFHAL.h"
 
 // Initialize static instance pointer
 WiFiManagerCF* WiFiManagerCF::instance = nullptr;
@@ -23,8 +24,8 @@ void WiFiManagerCF::init() {
     WiFi.mode(WIFI_STA);
 }
 
-void WiFiManagerCF::setDisplay(SSD1306Wire &disp) {
-    display = &disp;
+void WiFiManagerCF::setDisplay() {
+    display = &HAL::displayProxy();
 }
 
 void WiFiManagerCF::draw() {

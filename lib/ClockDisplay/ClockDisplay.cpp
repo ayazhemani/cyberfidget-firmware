@@ -1,4 +1,5 @@
 #include "ClockDisplay.h"
+#include "CFHAL.h"     // For DisplayProxy
 #include <WiFi.h>   // We use WiFi.status() to see if we're connected
 
 // For accessing the system time functions
@@ -15,8 +16,8 @@ extern const uint8_t suiGenerisRg_20[];  // Font used
 // ---------------------------------------------------------------------
 // Constructor: Initialize member variables.
 // ---------------------------------------------------------------------
-ClockDisplay::ClockDisplay(SSD1306Wire &display)
-    : m_display(display),
+ClockDisplay::ClockDisplay()
+    : m_display(HAL::displayProxy()),
       m_accurateTime(false),
       m_initialized(false),
       m_currentTime(0),

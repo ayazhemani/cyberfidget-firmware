@@ -1,11 +1,16 @@
 #include "Booper.h"
 #include "globals.h" // For slider position and button indices
+#include "CFHAL.h"  // Use our proxy header
 
 Booper* Booper::instance = nullptr;
 
-Booper::Booper(ButtonManager& btnMgr, AudioManager& audioMgr, SSD1306Wire& disp)
-    : buttonManager(btnMgr), audioManager(audioMgr), display(disp),
-      volume(0.5f), octave(0), toneStopTime(0)
+Booper::Booper(ButtonManager& btnMgr, AudioManager& audioMgr) :
+    buttonManager(btnMgr),
+    audioManager(audioMgr),
+    display(HAL::displayProxy()),  // Use the DisplayProxy from HAL
+    volume(0.5f),
+    octave(0),
+    toneStopTime(0)
 {
     instance = this;
 }

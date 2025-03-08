@@ -2,7 +2,7 @@
 #define SIMON_SAYS_GAME_H
 
 #include <Arduino.h>
-#include <SSD1306Wire.h>
+#include <DisplayProxy.h>
 #include "ButtonManager.h"
 #include "AudioManager.h"
 
@@ -28,7 +28,6 @@ public:
      * @brief Constructor for SimonSaysGame
      */
     SimonSaysGame(
-        SSD1306Wire &display,
         ButtonManager &buttonMgr,
         AudioManager &audioMgr
     );
@@ -55,7 +54,7 @@ public:
 
 private:
     // References
-    SSD1306Wire &display;
+    DisplayProxy &display;
     ButtonManager &buttonManager;
     AudioManager &audioManager;
 

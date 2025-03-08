@@ -1,5 +1,6 @@
 // ReactionTimeGame.cpp
 #include "ReactionTimeGame.h"
+#include "CFHAL.h"
 
 // Initialize static instance pointer
 ReactionTimeGame* ReactionTimeGame::instance = nullptr;
@@ -16,8 +17,8 @@ void ReactionTimeGame::reactionButtonPressedCallback(const ButtonEvent& ev) {
     }
 }
 
-ReactionTimeGame::ReactionTimeGame(SSD1306Wire& disp, int btnIndex, ButtonManager& btnManager)
-    : display(disp), buttonIndex(btnIndex), buttonManager(btnManager), 
+ReactionTimeGame::ReactionTimeGame(int btnIndex, ButtonManager& btnManager)
+    : display(HAL::displayProxy()), buttonIndex(btnIndex), buttonManager(btnManager), 
       gameStarted(false), waitingForReaction(false), delayActive(false), messageDisplayed(false) {
     
     // Register the callback for the specific button
@@ -28,7 +29,7 @@ ReactionTimeGame::ReactionTimeGame(SSD1306Wire& disp, int btnIndex, ButtonManage
     ReactionTimeGame::instance = this;
 }
 
-void ReactionTimeGame::update(unsigned long millisNow) {
+void ReactionTimeGame::update(unsigned long millis_NOW) {
     // Only proceed if the game is active (callback is registered)
     if (!buttonManager.hasCallback(buttonIndex)) {
         return; // Skip update if the game isn't active
@@ -47,13 +48,13 @@ void ReactionTimeGame::update(unsigned long millisNow) {
     }
 
     // Handle the delay logic
-    if (delayActive && millisNow >= randomDelayEnd) {
+    if (delayActive && millis_NOW >= randomDelayEnd) {
         Serial.println("Displaying 'GO!' screen.");
         display.clear();
         display.drawString(64, 22, "GO!");
         display.display();
 
-        startTime = millisNow;
+        startTime = millis_NOW;
         waitingForReaction = true;
         delayActive = false;
     }
@@ -77,7 +78,7 @@ void ReactionTimeGame::handleButtonPress() {
     }
 }
 
-void ReactionTimeGame::startGame(unsigned long millisNow) {
+void ReactionTimeGame::startGame(unsigned long millis_NOW) {
     Serial.println("Starting Reaction Time Game.");
     gameStarted = true;
     display.clear();
@@ -85,7 +86,7 @@ void ReactionTimeGame::startGame(unsigned long millisNow) {
     display.display();
 
     unsigned long randomDelay = random(1000, 5000); // Delay between 1s and 5s
-    randomDelayEnd = millisNow + randomDelay;
+    randomDelayEnd = millis_NOW + randomDelay;
     delayActive = true;
     messageDisplayed = false;
 }

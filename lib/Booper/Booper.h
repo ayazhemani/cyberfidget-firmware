@@ -3,11 +3,11 @@
 
 #include "ButtonManager.h"
 #include "AudioManager.h"
-#include "SSD1306Wire.h"
+#include "DisplayProxy.h"
 
 class Booper {
 public:
-    Booper(ButtonManager& btnMgr, AudioManager& audioMgr, SSD1306Wire& display);
+    Booper(ButtonManager& btnMgr, AudioManager& audioMgr);
 
     void begin();
     void update(); // Call this in the main loop
@@ -17,7 +17,7 @@ public:
 private:
     ButtonManager& buttonManager;
     AudioManager& audioManager;
-    SSD1306Wire& display;
+    DisplayProxy& display;
 
     float volume; // Volume level (0.0 to 1.0)
     int octave;   // Octave shift for tones

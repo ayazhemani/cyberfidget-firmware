@@ -2,8 +2,8 @@
 
 #include <vector>
 #include <math.h>
-#include <Arduino.h>       // For random(), etc., on Arduino/ESP
-#include "SSD1306Wire.h"   // Or your specific SSD1306 library
+#include <Arduino.h>
+#include "DisplayProxy.h" 
 
 class SPHFluidGame {
 public:
@@ -14,7 +14,7 @@ public:
         float pressure;
     };
 
-    SPHFluidGame(SSD1306Wire& disp);
+    SPHFluidGame();
 
     // Updates the simulation by one step, taking external acceleration (e.g., from an IMU).
     void update(float accelX, float accelY);
@@ -42,7 +42,7 @@ private:
     float cohesionStrength;   // Additional force pulling particles together
 
     // ---- Display / screen ----
-    SSD1306Wire& display;
+    DisplayProxy& display;
     int screenWidth;
     int screenHeight;
 

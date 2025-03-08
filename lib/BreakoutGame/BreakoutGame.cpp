@@ -2,12 +2,13 @@
 
 #include "BreakoutGame.h"
 #include "globals.h" // For button indices
+#include "CFHAL.h"
 
 // Initialize the static instance pointer
 BreakoutGame* BreakoutGame::instance = nullptr;
 
-BreakoutGame::BreakoutGame(SSD1306Wire& disp, ButtonManager& btnMgr, AudioManager& audioMgr)
-    : display(disp), buttonManager(btnMgr), audioManager(audioMgr),
+BreakoutGame::BreakoutGame(ButtonManager& btnMgr, AudioManager& audioMgr)
+    : display(HAL::displayProxy()), buttonManager(btnMgr), audioManager(audioMgr),
       brickSoundsEnabled(true) // Initialize brick crash sounds to enabled
 {
     instance = this; // Set the static instance pointer

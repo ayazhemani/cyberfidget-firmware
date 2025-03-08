@@ -2,8 +2,7 @@
 #define MATRIX_SCREENSAVER_H
 
 #include <Arduino.h>
-
-class SSD1306Wire;
+#include "DisplayProxy.h"
 
 class MatrixScreensaver {
 public:
@@ -16,14 +15,14 @@ public:
 
     static const char ALIEN_CHARS[16];
 
-    MatrixScreensaver(SSD1306Wire &disp);
+    MatrixScreensaver();
 
     void begin();  // Initialize state
     void update(); // Step state machine
     void draw();   // Render to the display
 
 private:
-    SSD1306Wire &display;
+    DisplayProxy& display;
 
     // We do small stepping every frameInterval ms
     unsigned long lastUpdateTime;

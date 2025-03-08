@@ -1,10 +1,11 @@
 #include "DinoGame.h"
+#include "CFHAL.h"
 
 DinoGame* DinoGame::instance = nullptr;
 
-DinoGame::DinoGame(SSD1306Wire& disp, ButtonManager& btnMgr,
+DinoGame::DinoGame(ButtonManager& btnMgr,
                    int jumpIndex, int duckIndex, int resetIndex)
-  : display(disp),
+  : display(HAL::displayProxy()),
     buttonManager(btnMgr),
     jumpBtnIndex(jumpIndex),
     duckBtnIndex(duckIndex),

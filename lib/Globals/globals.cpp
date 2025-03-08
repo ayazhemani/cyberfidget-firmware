@@ -1,13 +1,18 @@
 #include "globals.h"
 
 // Timers
-unsigned long millisNow             = 0;
+unsigned long millis_NOW             = 0;
 unsigned long millisOldHeartbeat    = 0;
-unsigned long millisOld200          = 0;
-unsigned long millisOld50           = 0;
-unsigned long millisOld10           = 0;
-unsigned long millisApp             = 0;
-unsigned long millisLastInteraction = 0;
+unsigned long millis_HAL_TASK_200MS          = 0;
+unsigned long millis_APP_TASK_200MS          = 0;
+unsigned long millis_HAL_TASK_50MS           = 0;
+unsigned long millis_HAL_TASK_20MS           = 0;
+unsigned long millis_APP_TASK_20MS           = 0;
+unsigned long millis_APP_LASTINTERACTION = 0;
+int TASK_20MS = 20;
+int TASK_50MS = 50;
+int TASK_200MS = 200;
+int TASK_LASTINTERACT = 300000;
 
 // Logging
 const char* TAG_MAIN = "mainApp";
@@ -26,36 +31,6 @@ volatile bool buttonPressed     = false;
 int buttonCounter[numButtons]       = {0};
 int buttonCounterSaved[numButtons]  = {0};
 
-const int button_TopLeftIndex    = 0;
-const int button_TopRightIndex   = 1;
-const int button_MiddleLeftIndex = 2;
-const int button_MiddleRightIndex= 3;
-const int button_BottomLeftIndex = 4;
-const int button_BottomRightIndex= 5;
-
-// Accelerometer
-float accelX = 0;
-float accelY = 0;
-float accelZ = 0;
-float tempC  = 0;
-
-// Battery
-float batteryVoltage            = 0.0f;
-float batteryVoltagePercentage  = 0.0f;
-
-// Slider
-int sliderPosition_Millivolts     = 0;
-int sliderPosition_12Bits         = 0;
-uint16_t sliderPosition_12Bits_Inverted= 0;
-uint8_t  sliderPosition_8Bits          = 0;
-uint8_t  sliderPosition_8Bits_Inverted = 0;
-// Filtered slider positions
-float sliderPosition_12Bits_Filtered = 0.0f;
-float sliderPosition_12Bits_Inverted_Filtered = 0.0f;
-int sliderPosition_8Bits_Filtered = 0;
-int sliderPosition_8Bits_Inverted_Filtered = 0;
-float sliderPosition_Percentage_Filtered = 0.0f;
-float sliderPosition_Percentage_Inverted_Filtered = 0.0f;
 
 // WiFi
 char wifiAP_SSID[]   = "CyberFidget_AP";
@@ -68,6 +43,3 @@ struct tm currentTime   = {0};
 // Audio beep logic
 bool beepActive       = false;
 float beepFrequency   = 440.0f;
-
-// Scroll mode
-ScrollMode currentScrollMode = PIXEL_SCROLL;

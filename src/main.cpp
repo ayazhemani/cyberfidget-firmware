@@ -6,7 +6,6 @@ License Placeholder
 
 // Main Include
 #include <Arduino.h>  // Required for Arduino-specific types
-#include "globals.h"
 #include "AppManager.h"
 
 
@@ -18,16 +17,22 @@ void loop() {
 }
 
 // Comment out above code and remove comments below for One Application setup
-/*
-#include "HAL.h"
+// #include "globals.h"
+// #include "CFHAL.h"
 
-void setup() {
-  HAL::initHardware();
-  // ... do your game setup
-}
+// void setup() {
+//   HAL::configureWakeupPins();
+//   esp_log_level_set("*", ESP_LOG_VERBOSE);
+//   esp_log_level_set(TAG_MAIN, ESP_LOG_VERBOSE);
+//   HAL::initHardware();
+//   ESP_LOGI(TAG_MAIN, "Setup() complete");
 
-void loop() {
-  HAL::loopHardware();
-  // ... your app logic
-}
-*/
+//   HAL::realDisplay().init();
+//   HAL::drawText(0, 0, "Hello, World!");
+//   HAL::updateDisplay();
+// }
+
+// void loop() {
+//   HAL::loopHardware();
+//   // ... your app logic
+// }

@@ -1,4 +1,4 @@
-#include "HAL.h"
+#include "CFHAL.h"
 
 // Include all low-level libraries and drivers:
 #include <Wire.h>
@@ -6,12 +6,14 @@
 #include <esp_task_wdt.h>
 #include <esp_system.h>
 #include <Adafruit_NeoPixel.h>
+#include <SSD1306Wire.h>
+
 #include "AudioManager.h"
 #include "BatteryManager.h"
 #include "RGBController.h"
 #include "Flashlight.h"
 #include "SliderPosition.h"
-#include "SSD1306Wire.h"
+
 #include "SparkFun_LIS2DH12.h"
 #include "WiFiManagerCF.h"
 #include "ButtonManager.h"
@@ -28,7 +30,60 @@ constexpr int CHRG_ENA       = 13;  // If truly the same as LED_BUILTIN, watch f
 constexpr int PIN            = 0;   // NeoPixel or LED data pin
 constexpr int OLED_RESET     = 7;   // Also RX pin
 constexpr int VOLT_READ_PIN  = 35;  // Battery voltage divider pin
+
+// RGBW LEDS
 constexpr int RGB_COUNT      = 4;   // Number of RGB LEDs
+const uint16_t pixel_Front_Top    = 1;
+const uint16_t pixel_Front_Middle = 2;
+const uint16_t pixel_Front_Bottom = 3;
+const uint16_t pixel_Back         = 0;
+
+// Buttons
+const int button_TopLeft = 36;
+const int button_TopRight = 37;
+const int button_MiddleLeft = 38;
+const int button_MiddleRight = 39;
+const int button_BottomLeft = 34;
+const int button_BottomRight = 15;
+
+const int button_TopLeftIndex = 0;
+const int button_TopRightIndex = 1;
+const int button_MiddleLeftIndex = 2;
+const int button_MiddleRightIndex = 3;
+const int button_BottomLeftIndex = 4;
+const int button_BottomRightIndex = 5;
+
+// Accelerometer
+float accelX = 0;
+float accelY = 0;
+float accelZ = 0;
+float tempC  = 0;
+
+// Slider
+int sliderPosition_Millivolts     = 0;
+int sliderPosition_12Bits         = 0;
+uint16_t sliderPosition_12Bits_Inverted= 0;
+uint8_t  sliderPosition_8Bits          = 0;
+uint8_t  sliderPosition_8Bits_Inverted = 0;
+// Filtered slider positions
+float sliderPosition_12Bits_Filtered = 0.0f;
+float sliderPosition_12Bits_Inverted_Filtered = 0.0f;
+int sliderPosition_8Bits_Filtered = 0;
+int sliderPosition_8Bits_Inverted_Filtered = 0;
+float sliderPosition_Percentage_Filtered = 0.0f;
+float sliderPosition_Percentage_Inverted_Filtered = 0.0f;
+
+// Battery
+float    batteryVoltage             = 0.0f;
+float    batteryVoltagePercentage   = 0.0f;
+uint16_t batteryVoltageLowCutoff    = 3200;
+uint16_t batteryVoltageHighCutoff   = 4200;
+bool     preventSleepWhileCharging  = true;
+bool     enableBatterySOCCutoff     = true;
+float    batterySOCCutoff           = 80.0f;
+float    sleepChargingChangeThreshold = -10.0f;
+float    batteryChangeRate          = 0.0f;
+
 
 // Here we create the “internal” (file-scope) single instances 
 // of the hardware classes. We’ll return references to these
@@ -42,7 +97,14 @@ namespace {
     constexpr int numButtons = 6;
     // Example button pins (if not from globals):
     //   { 36, 37, 38, 39, 34, 15 };
-    static const int s_buttonPins[numButtons] = {36, 37, 38, 39, 34, 15};
+    static const int s_buttonPins[numButtons] = {
+        button_TopLeft, 
+        button_TopRight, 
+        button_MiddleLeft, 
+        button_MiddleRight, 
+        button_BottomLeft, 
+        button_BottomRight
+    };
     static const bool s_usePullups[numButtons] = {false, false, false, false, false, true};
 
     // Create one ButtonManager
@@ -54,9 +116,6 @@ namespace {
         1500UL   // Hold threshold ms
     );
 
-    // The SSD1306 display
-    static SSD1306Wire s_display(0x3c, SDA, SCL);
-
     // Accelerometer
     static SPARKFUN_LIS2DH12 s_accel;
 
@@ -65,6 +124,12 @@ namespace {
 
     // RGBW LEDs
     static Adafruit_NeoPixel s_rgbStrip = Adafruit_NeoPixel(RGB_COUNT, PIN, NEO_RGBW + NEO_KHZ800);
+
+    // Real display
+    static SSD1306Wire s_realDisplay(0x3C, SDA, SCL);
+
+    // Display proxy
+    static DisplayProxy s_displayProxy(s_realDisplay);  
 
     // ... any other managers or singletons you want hidden behind HAL
 }
@@ -76,27 +141,30 @@ namespace HAL
     //----------------------------------------------------------------------
     void initHardware()
     {
-        // Initialize serial, if desired
-        Serial.begin(115200);
+        pinMode(OLED_RESET, OUTPUT);
+        digitalWrite(OLED_RESET, LOW);
+
+  
 
         // Turn on the OLED power regulator
         pinMode(POWER_PIN_OLED, OUTPUT);
         digitalWrite(POWER_PIN_OLED, HIGH);
-        delay(100);
+        delay(200);
+        digitalWrite(OLED_RESET, HIGH);
+        delay(10);
 
         // Turn on the AUX regulator (for RGB, etc.)
         pinMode(POWER_PIN_AUX, OUTPUT);
         digitalWrite(POWER_PIN_AUX, HIGH);
 
-        // Possibly reset the display pin if needed
-        // pinMode(OLED_RESET, OUTPUT);
-        // digitalWrite(OLED_RESET, LOW);
-        // delay(200);
-        // digitalWrite(OLED_RESET, HIGH);
+        // Initialize serial
+        Serial.begin(115200);
+        Serial.println();
+        Serial.println();
 
         // Initialize display
-        s_display.init();
-        s_display.setFont(ArialMT_Plain_10);
+        s_realDisplay.init();
+        s_realDisplay.setFont(ArialMT_Plain_10);
 
         // Initialize the I2C for accelerometer, etc.
         Wire.begin(SDA, SCL);
@@ -107,7 +175,7 @@ namespace HAL
         }
 
         // Initialize button manager
-        s_buttonManager.begin();
+        s_buttonManager.init();
 
         // Initialize audio manager
         s_audioManager.init();
@@ -117,12 +185,17 @@ namespace HAL
 
         // Initialize WiFi manager
         s_wifiManager.init();
-        s_wifiManager.setDisplay(s_display);
+
+        // Initalize slider
+        pinMode(VOLT_READ_PIN, INPUT); // Slider Input
 
         // Initialize RGB manager
         s_rgbStrip.begin();
 
         // Any other hardware inits ...
+
+        // Print wakeup reason
+        printWakeupReason();
     }
 
     //----------------------------------------------------------------------
@@ -131,10 +204,27 @@ namespace HAL
     void loopHardware()
     {
         esp_task_wdt_reset();
+        millis_NOW = millis();
+
         // e.g. update audio, or battery, or anything that must be polled
         s_audioManager.loop();
         s_buttonManager.update();
-        s_batteryManager.update();
+        
+
+        if ((millis_NOW - millis_HAL_TASK_20MS) >= TASK_20MS) {
+            millis_HAL_TASK_20MS = millis_NOW;
+            sliderPositionRead(VOLT_READ_PIN);       
+        }
+    
+        if ((millis_NOW - millis_HAL_TASK_50MS) >= TASK_50MS) {
+            millis_HAL_TASK_50MS = millis_NOW;
+            HAL::updateAccelerometer();
+        }
+    
+        if ((millis_NOW - millis_HAL_TASK_200MS) >= TASK_200MS) {
+            millis_HAL_TASK_200MS = millis_NOW;
+            s_batteryManager.update();
+        }
     }
 
     //----------------------------------------------------------------------
@@ -142,7 +232,7 @@ namespace HAL
     //----------------------------------------------------------------------
     AudioManager& audioManager()        { return s_audioManager; }
     ButtonManager& buttonManager()      { return s_buttonManager; }
-    SSD1306Wire& display()              { return s_display; }
+    SSD1306Wire& realDisplay()          { return s_realDisplay; }
     SPARKFUN_LIS2DH12& accelerometer()  { return s_accel; }
     WiFiManagerCF& wifiManagerCF()      { return s_wifiManager; }
     Adafruit_NeoPixel& strip()          { return s_rgbStrip; }
@@ -176,34 +266,35 @@ namespace HAL
     float getAccelerometerY() { return s_accel.getY(); }
     float getAccelerometerZ() { return s_accel.getZ(); }
 
-    float readSliderPercentage()
-    {
-        // Read the raw slider position in millivolts and 12-bit ADC value
-        //sliderPosition_Millivolts = analogReadMilliVolts(VOLT_READ_PIN);
-        return sliderPosition_12Bits = analogRead(VOLT_READ_PIN);
-    }
-
     void setOledPower(bool on)
     {
         digitalWrite(POWER_PIN_OLED, on ? HIGH : LOW);
     }
 
+    DisplayProxy& displayProxy() {
+        return s_displayProxy;
+    }
+
+    // SSD1306Wire& realDisplay() {
+    //     return s_realDisplay;
+    // }
+
     void clearDisplay()
     {
         //if (!displayInitialized) return;
-        s_display.clear();
+        s_realDisplay.clear();
     }
 
     void drawText(int x, int y, const char* text)
     {
         //if (!displayInitialized) return;
-        s_display.drawString(x, y, text);
+        s_realDisplay.drawString(x, y, text);
     }
 
     void updateDisplay()
     {
         //if (!displayInitialized) return;
-        s_display.display();
+        s_realDisplay.display();
     }
 
     void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b)
@@ -240,4 +331,29 @@ namespace HAL
             accelZ = s_accel.getZ();
             tempC  = s_accel.getTemperature();
     }
+
+    void printWakeupReason() {
+        esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+      
+        switch (wakeup_reason) {
+          case ESP_SLEEP_WAKEUP_EXT0: 
+            Serial.println("Wakeup caused by external signal using RTC_IO");
+            break;
+          case ESP_SLEEP_WAKEUP_EXT1: 
+            Serial.println("Wakeup caused by external signal using RTC_CNTL");
+            break;
+          case ESP_SLEEP_WAKEUP_TIMER: 
+            Serial.println("Wakeup caused by timer");
+            break;
+          case ESP_SLEEP_WAKEUP_TOUCHPAD: 
+            Serial.println("Wakeup caused by touchpad");
+            break;
+          case ESP_SLEEP_WAKEUP_ULP: 
+            Serial.println("Wakeup caused by ULP program");
+            break;
+          default: 
+            Serial.println("Wakeup was not caused by deep sleep");
+            break;
+        }
+      }
 }

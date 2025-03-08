@@ -1,10 +1,11 @@
 #include "SPHFluidGame.h"
+#include "CFHAL.h"
 
 //--------------------------------------------------------------------------------
 // Constructor
 //--------------------------------------------------------------------------------
-SPHFluidGame::SPHFluidGame(SSD1306Wire& disp)
-    : display(disp)
+SPHFluidGame::SPHFluidGame()
+    : display(HAL::displayProxy())
 {
     // Initialize simulation parameters
 

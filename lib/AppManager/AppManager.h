@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 #include "globals.h"
-#include "HAL.h"
 
 // Forward declare the “app” draw functions
 void drawFontFaceDemo();

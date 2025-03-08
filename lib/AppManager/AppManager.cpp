@@ -1,5 +1,5 @@
 #include "AppManager.h"
-#include "HAL.h"
+#include "CFHAL.h"
 #include "ReactionTimeGame.h"
 #include "DinoGame.h"
 #include "SimonSaysGame.h"
@@ -17,7 +17,7 @@
 #include "ExampleScreens.h"
 
 // ALIASES for HAL references
-static auto& display       = HAL::display();
+static auto& display       = HAL::displayProxy();
 static auto& buttonManager = HAL::buttonManager();
 static auto& audioManager  = HAL::audioManager();
 static auto& accelerometer = HAL::accelerometer();
@@ -42,48 +42,47 @@ const char* appNames[APP_COUNT] = {
 static_assert(sizeof(apps) / sizeof(apps[0]) == APP_COUNT, "Mismatch between app array size and enum count");
 
 // Game instances
-static ClockDisplay clockDisplay(display);
-static PowerManager powerManager(display, buttonManager, clockDisplay);
-static ReactionTimeGame reactionGame(display, button_BottomRightIndex, buttonManager);
-static SPHFluidGame sphGame(display);
-static BreakoutGame breakoutGame(display, buttonManager, audioManager);
-static DinoGame dinoGame(display, buttonManager,
+static ClockDisplay clockDisplay;
+static PowerManager powerManager(buttonManager, clockDisplay);
+static ReactionTimeGame reactionGame(button_BottomRightIndex, buttonManager);
+static SPHFluidGame sphGame;
+static BreakoutGame breakoutGame(buttonManager, audioManager);
+static DinoGame dinoGame(buttonManager,
                          button_MiddleLeftIndex, button_MiddleRightIndex, button_BottomRightIndex);
-static SimonSaysGame simonGame(display, buttonManager, audioManager);
-static MatrixScreensaver matrixScreensaver(display);
-static Booper booper(buttonManager, audioManager, display);
+static SimonSaysGame simonGame(buttonManager, audioManager);
+static MatrixScreensaver matrixScreensaver;
+static Booper booper(buttonManager, audioManager);
 
 void AppManager::setup() {
-    HAL::initHardware();
     HAL::configureWakeupPins();
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     esp_log_level_set(TAG_MAIN, ESP_LOG_VERBOSE);
+    HAL::initHardware();
     ESP_LOGI(TAG_MAIN, "AppManager setup complete");
     powerManager.begin();
 }
 
 void AppManager::loop() {
     HAL::loopHardware();
-    millisNow = millis();
+    
     processButtonEvents();
 
-    if ((millisNow - millisOld10) >= 20) {
-        millisOld10 = millisNow;
-        sliderPositionRead();
+    if ((millis_NOW - millis_APP_TASK_20MS) >= TASK_20MS) {
+        millis_APP_TASK_20MS = millis_NOW;
         screenUpdate();
     }
 
-    if ((millisNow - millisOld50) >= 50) {
-        millisOld50 = millisNow;
-        HAL::updateAccelerometer();
-    }
+    // if ((millisNow - millis_HAL_TASK_50MS) >= TASK_50MS) {
+    //     millis_HAL_TASK_50MS = millisNow;
+    //     HAL::updateAccelerometer();
+    // }
 
-    if ((millisNow - millisOld200) >= 200) {
-        millisOld200 = millisNow;
+    if ((millis_NOW - millis_APP_TASK_200MS) >= TASK_200MS) {
+        millis_APP_TASK_200MS = millis_NOW;
         buttonManager.saveButtonCounters();
     }
 
-    if ((millisNow - millisLastInteraction) >= 300000) {
+    if ((millis_NOW - millis_APP_LASTINTERACTION) >= TASK_LASTINTERACT) {
         powerManager.deepSleep();
     }
 }
@@ -195,6 +194,7 @@ void AppManager::screenUpdate() {
                 button_BottomRightIndex,
                 WiFiManagerCF::bottomRightButtonCallback
             );
+            wifiManager.setDisplay();
         } else if (appPreviously == APP_WIFI_CONFIG) {
             buttonManager.unregisterCallback(button_BottomLeftIndex);
             buttonManager.unregisterCallback(button_BottomRightIndex);
@@ -206,7 +206,7 @@ void AppManager::screenUpdate() {
 
 // Draw functions
 void drawReactionTimeGame() {
-    reactionGame.update(millisNow);
+    reactionGame.update(millis_NOW);
 }
 
 void drawSPHFluidGame() {

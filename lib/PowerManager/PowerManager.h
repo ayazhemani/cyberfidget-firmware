@@ -5,13 +5,13 @@
 
 #include <Arduino.h>
 #include "ButtonManager.h"
-#include "SSD1306Wire.h"
+#include "DisplayProxy.h"
 #include "ClockDisplay.h"
 
 class PowerManager {
 public:
     // Constructor
-    PowerManager(SSD1306Wire& display, ButtonManager& buttonManager, ClockDisplay& clockDisplay);
+    PowerManager(ButtonManager& buttonManager, ClockDisplay& clockDisplay);
 
     // Initialize the power manager
     void begin();
@@ -36,7 +36,7 @@ private:
     static void onButtonPressCallback(const ButtonEvent &event);
 
     // Reference to display and buttonManager
-    SSD1306Wire& display;
+    DisplayProxy& display;
     ButtonManager& buttonManager;
     ClockDisplay& clockDisplay;
 

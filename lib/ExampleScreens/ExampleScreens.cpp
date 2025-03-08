@@ -2,10 +2,10 @@
 #include "ExampleScreens.h"
 #include "images.h"
 #include "RGBController.h"
-#include "HAL.h"
+#include "CFHAL.h"
 
 static auto& strip         = HAL::strip();  // NeoPixels
-static auto& display       = HAL::display();
+static auto& display       = HAL::displayProxy();
 
 void drawFontFaceDemo() {
   display.clear();

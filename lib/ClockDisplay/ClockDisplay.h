@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include "SSD1306Wire.h"    // Your display library
+#include "DisplayProxy.h"
 #include <time.h>
 #include <Preferences.h>
 
@@ -18,8 +18,8 @@
  */
 class ClockDisplay {
 public:
-    // Constructor: pass a reference to the display you wish to use.
-    ClockDisplay(SSD1306Wire &display);
+    // Constructor
+    ClockDisplay();
 
     // Called once at startup (or when switching to the clock app). It loads saved time data,
     // and if WiFi is connected, it calls configTzTime() so that the system time will update.
@@ -38,7 +38,7 @@ public:
 
 
 private:
-    SSD1306Wire &m_display;  // Reference to the display instance
+    DisplayProxy& m_display;  // Reference to the display instance
 
     Preferences m_preferences;  // For storing time data between deep sleep sessions
 

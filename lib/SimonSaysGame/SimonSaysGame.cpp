@@ -1,5 +1,6 @@
 #include "SimonSaysGame.h"
 #include "globals.h"  // Replace with your actual global button index definitions
+#include "CFHAL.h"
 
 // Initialize static instance pointer
 SimonSaysGame* SimonSaysGame::instance = nullptr;
@@ -15,11 +16,10 @@ const int SimonSaysGame::buttonMappings[4] = {
 //--------------------- Constructor / Setup ---------------------------
 
 SimonSaysGame::SimonSaysGame(
-    SSD1306Wire &disp,
     ButtonManager &btnMgr,
     AudioManager &audMgr
 )
-    : display(disp),
+    : display(HAL::displayProxy()),
       buttonManager(btnMgr),
       audioManager(audMgr),
       patternLength(0),

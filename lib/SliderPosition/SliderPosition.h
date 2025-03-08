@@ -26,7 +26,7 @@ void sliderPositionFilterUpdate();
 // Function declarations for reading and Kalman filter operations
 
 // Reads the slider position and applies filtering.
-void sliderPositionRead();
+void sliderPositionRead(int sliderVoltagePin);
 
 // Initializes the Kalman filter state.
 void sliderPositionKalmanFilterInit();

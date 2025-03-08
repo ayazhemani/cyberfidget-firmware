@@ -50,7 +50,7 @@ ButtonCallback ButtonManager::getCallback(int buttonIndex) const {
     return buttonCallbacks[buttonIndex];
 }
 
-void ButtonManager::begin() {
+void ButtonManager::init() {
     // Configure each pin as INPUT or INPUT_PULLUP
     for (int i = 0; i < _numButtons; i++) {
         if (_usePullups[i]) {
@@ -59,6 +59,7 @@ void ButtonManager::begin() {
             pinMode(_pins[i], INPUT);
         }
     }
+    loadButtonCounters();
 }
 
 void ButtonManager::update() {

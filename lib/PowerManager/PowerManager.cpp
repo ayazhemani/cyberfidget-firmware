@@ -1,12 +1,13 @@
 // PowerManager.cpp
 #include "PowerManager.h"
 #include "globals.h"
+#include "CFHAL.h"
 
 // Initialize the static instance reference
 PowerManager* PowerManager::instance = nullptr;
 
-PowerManager::PowerManager(SSD1306Wire& disp, ButtonManager& btnMgr, ClockDisplay& clkDsply)
-    : display(disp), buttonManager(btnMgr), clockDisplay(clkDsply), lastTapTime(0) {
+PowerManager::PowerManager(ButtonManager& btnMgr, ClockDisplay& clkDsply)
+    : display(HAL::displayProxy()), buttonManager(btnMgr), clockDisplay(clkDsply), lastTapTime(0) {
     // Set the static instance to this object
     instance = this;
 }

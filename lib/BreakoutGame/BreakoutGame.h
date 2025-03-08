@@ -3,7 +3,7 @@
 #ifndef BREAKOUT_GAME_H
 #define BREAKOUT_GAME_H
 
-#include "SSD1306Wire.h"
+#include "DisplayProxy.h"
 #include "ButtonManager.h"
 #include "AudioManager.h"
 #include "globals.h" // For button indices
@@ -11,7 +11,7 @@
 
 class BreakoutGame {
 public:
-    BreakoutGame(SSD1306Wire& display, ButtonManager& buttonManager, AudioManager& audioManager);
+    BreakoutGame(ButtonManager& buttonManager, AudioManager& audioManager);
 
     void begin();  // Start the game
     void update(float accelX); // Update game logic
@@ -23,7 +23,7 @@ public:
 
 private:
     // References to hardware components
-    SSD1306Wire& display;
+    DisplayProxy& display;
     ButtonManager& buttonManager;
     AudioManager& audioManager;
 

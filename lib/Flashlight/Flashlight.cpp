@@ -1,9 +1,7 @@
 #include "Flashlight.h"
 #include "RGBController.h"   // For LED strip control and pixel definitions
 #include "globals.h"         // For sliderPosition_8Bits, flashlightStatus, etc.
-#include "SSD1306Wire.h"     // For display object
-
-extern SSD1306Wire display;  // Global display object
+#include "CFHAL.h"           // For HAL::displayProxy()
 
 bool flashlightStatus = false;  // Whether the flashlight is on or off
 
@@ -25,7 +23,9 @@ void flashlightController() {
 }
 
 void drawFlashlight() {
-    // Clear and set up the display for the flashlight screen
+    DisplayProxy& display = HAL::displayProxy();
+
+     // Clear and set up the display for the flashlight screen
     display.clear();
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.setFont(ArialMT_Plain_16);

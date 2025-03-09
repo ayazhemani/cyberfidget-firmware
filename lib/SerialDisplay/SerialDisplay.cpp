@@ -1,6 +1,6 @@
 #include "SerialDisplay.h"
 #include "globals.h"
-#include "CFHAL.h"           // For HAL::displayProxy()
+#include "HAL.h"           // For HAL::displayProxy()
 
 // Scroll mode
 ScrollMode currentScrollMode = PIXEL_SCROLL;

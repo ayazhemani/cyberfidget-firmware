@@ -24,8 +24,8 @@
 
 //     // If you want to show text
 //     HAL::clearDisplay();
-//     HAL::drawText(0, 0, String("Slider: ") + sliderVal);
-//     HAL::drawText(0, 10, String("ax: ") + ax);
+//     HAL::drawString(0, 0, String("Slider: ") + sliderVal);
+//     HAL::drawString(0, 10, String("ax: ") + ax);
 //     HAL::updateDisplay();
 
 //     // ...

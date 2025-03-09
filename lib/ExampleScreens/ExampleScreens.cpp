@@ -2,7 +2,7 @@
 #include "ExampleScreens.h"
 #include "images.h"
 #include "RGBController.h"
-#include "CFHAL.h"
+#include "HAL.h"
 
 static auto& strip         = HAL::strip();  // NeoPixels
 static auto& display       = HAL::displayProxy();

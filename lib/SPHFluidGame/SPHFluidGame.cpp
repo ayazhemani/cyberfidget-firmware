@@ -1,5 +1,5 @@
 #include "SPHFluidGame.h"
-#include "CFHAL.h"
+#include "HAL.h"
 
 //--------------------------------------------------------------------------------
 // Constructor

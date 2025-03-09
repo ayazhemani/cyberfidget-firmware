@@ -75,7 +75,7 @@
 //         display.clear();
 //     }
 
-//     void drawText(int x, int y, const char* text)
+//     void drawString(int x, int y, const char* text)
 //     {
 //         if (!displayInitialized) return;
 //         display.drawString(x, y, text);

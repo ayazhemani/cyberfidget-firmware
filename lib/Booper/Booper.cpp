@@ -1,6 +1,6 @@
 #include "Booper.h"
 #include "globals.h" // For slider position and button indices
-#include "CFHAL.h"  // Use our proxy header
+#include "HAL.h"  // Use our proxy header
 
 Booper* Booper::instance = nullptr;
 

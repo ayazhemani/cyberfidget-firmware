@@ -2,7 +2,7 @@
 
 #include "BreakoutGame.h"
 #include "globals.h" // For button indices
-#include "CFHAL.h"
+#include "HAL.h"
 
 // Initialize the static instance pointer
 BreakoutGame* BreakoutGame::instance = nullptr;

@@ -1,7 +1,7 @@
 // PowerManager.cpp
 #include "PowerManager.h"
 #include "globals.h"
-#include "CFHAL.h"
+#include "HAL.h"
 
 // Initialize the static instance reference
 PowerManager* PowerManager::instance = nullptr;

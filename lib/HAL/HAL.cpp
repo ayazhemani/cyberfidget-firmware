@@ -1,4 +1,4 @@
-#include "CFHAL.h"
+#include "HAL.h"
 
 // Include all low-level libraries and drivers:
 #include <Wire.h>
@@ -123,7 +123,7 @@ namespace {
     static BatteryManager s_batteryManager; 
 
     // RGBW LEDs
-    static Adafruit_NeoPixel s_rgbStrip = Adafruit_NeoPixel(RGB_COUNT, PIN, NEO_RGBW + NEO_KHZ800);
+    static Adafruit_NeoPixel s_rgbStrip = Adafruit_NeoPixel(RGB_COUNT, PIN, NEO_GRBW + NEO_KHZ800);
 
     // Real display
     static SSD1306Wire s_realDisplay(0x3C, SDA, SCL);
@@ -196,6 +196,18 @@ namespace HAL
 
         // Print wakeup reason
         printWakeupReason();
+    }
+
+    //----------------------------------------------------------------------
+    //  Initialize all the things, helpful for standalone apps
+    //----------------------------------------------------------------------
+    void initEasyEverything()
+    {
+        configureWakeupPins();
+        esp_log_level_set("*", ESP_LOG_VERBOSE);
+        esp_log_level_set(TAG_MAIN, ESP_LOG_VERBOSE);
+        initHardware();
+        ESP_LOGI(TAG_MAIN, "Setup() complete");
     }
 
     //----------------------------------------------------------------------
@@ -285,7 +297,7 @@ namespace HAL
         s_realDisplay.clear();
     }
 
-    void drawText(int x, int y, const char* text)
+    void drawString(int16_t x, int16_t y, const String &text)
     {
         //if (!displayInitialized) return;
         s_realDisplay.drawString(x, y, text);
@@ -297,11 +309,11 @@ namespace HAL
         s_realDisplay.display();
     }
 
-    void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b)
+    void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b, uint8_t w)
     {
         // If you have a NeoPixel library, you’d do:
-        // pixels.setPixelColor(index, pixels.Color(r, g, b));
-        // pixels.show();
+        s_rgbStrip.setPixelColor(index, s_rgbStrip.Color(r, g, b, w));
+        s_rgbStrip.show();
     }
     
     void setRgbLedsOff()

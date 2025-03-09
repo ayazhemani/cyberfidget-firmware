@@ -1,6 +1,6 @@
 #include "BatteryManager.h"
 #include "globals.h"
-#include "CFHAL.h"
+#include "HAL.h"
 
 BatteryManager::BatteryManager() : lipo(MAX1704X_MAX17048) {}
 

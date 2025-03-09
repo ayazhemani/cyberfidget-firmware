@@ -1,5 +1,5 @@
 #include "ClockDisplay.h"
-#include "CFHAL.h"     // For DisplayProxy
+#include "HAL.h"     // For DisplayProxy
 #include <WiFi.h>   // We use WiFi.status() to see if we're connected
 
 // For accessing the system time functions

@@ -1,6 +1,6 @@
 #include "SimonSaysGame.h"
 #include "globals.h"  // Replace with your actual global button index definitions
-#include "CFHAL.h"
+#include "HAL.h"
 
 // Initialize static instance pointer
 SimonSaysGame* SimonSaysGame::instance = nullptr;

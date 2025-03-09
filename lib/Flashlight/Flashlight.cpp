@@ -1,7 +1,7 @@
 #include "Flashlight.h"
 #include "RGBController.h"   // For LED strip control and pixel definitions
 #include "globals.h"         // For sliderPosition_8Bits, flashlightStatus, etc.
-#include "CFHAL.h"           // For HAL::displayProxy()
+#include "HAL.h"           // For HAL::displayProxy()
 
 bool flashlightStatus = false;  // Whether the flashlight is on or off
 

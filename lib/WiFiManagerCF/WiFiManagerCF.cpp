@@ -3,7 +3,7 @@
 #include "WiFiManagerCF.h"
 #include "globals.h"
 #include <WiFi.h>
-#include "CFHAL.h"
+#include "HAL.h"
 
 // Initialize static instance pointer
 WiFiManagerCF* WiFiManagerCF::instance = nullptr;

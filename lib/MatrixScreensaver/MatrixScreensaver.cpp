@@ -1,5 +1,5 @@
 #include "MatrixScreensaver.h"
-#include "CFHAL.h"
+#include "HAL.h"
 
 // Just an example set
 const char MatrixScreensaver::ALIEN_CHARS[16] = {

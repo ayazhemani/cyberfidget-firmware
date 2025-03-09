@@ -1,6 +1,6 @@
 // ReactionTimeGame.cpp
 #include "ReactionTimeGame.h"
-#include "CFHAL.h"
+#include "HAL.h"
 
 // Initialize static instance pointer
 ReactionTimeGame* ReactionTimeGame::instance = nullptr;

@@ -1,5 +1,5 @@
 #include "DinoGame.h"
-#include "CFHAL.h"
+#include "HAL.h"
 
 DinoGame* DinoGame::instance = nullptr;
 

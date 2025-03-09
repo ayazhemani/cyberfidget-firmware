@@ -1,5 +1,5 @@
 #include "AppManager.h"
-#include "CFHAL.h"
+#include "HAL.h"
 #include "ReactionTimeGame.h"
 #include "DinoGame.h"
 #include "SimonSaysGame.h"
@@ -179,6 +179,12 @@ void AppManager::screenUpdate() {
             simonGame.begin();
         } else if (appPreviously == APP_SIMON_SAYS) {
             simonGame.end();
+        }
+
+        if (appActive == APP_SLIDER_PROGRESS_BAR) {
+            ESP_LOGI(TAG_MAIN, "APP_SLIDER_PROGRESS_BAR Active");
+        } else if (appPreviously == APP_SLIDER_PROGRESS_BAR) {
+            setColorsOff();
         }
 
         if (appActive == APP_MATRIX_SCREENSAVER) {

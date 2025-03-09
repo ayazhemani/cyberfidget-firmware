@@ -1,6 +1,6 @@
 #include "SliderPosition.h"
 #include "globals.h" 
-#include "CFHAL.h"
+#include "HAL.h"
 
 /* 
  * Expert-Level Comment:

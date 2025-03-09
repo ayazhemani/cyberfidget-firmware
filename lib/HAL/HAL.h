@@ -1,5 +1,5 @@
-#ifndef CFHAL_H
-#define CFHAL_H
+#ifndef HAL_H
+#define HAL_H
 
 #include <Arduino.h>
 
@@ -75,6 +75,9 @@ namespace HAL
     // Initializes all hardware (pins, I2C, display, accelerometer, etc.)
     void initHardware();
 
+    // Initializes all the things for standalone apps
+    void initEasyEverything();
+
     // A “loop” method, if you want to update any hardware each pass
     void loopHardware();
 
@@ -100,15 +103,16 @@ namespace HAL
     void chargingDisable();
     void updateAccelerometer();
     void printWakeupReason();
+    void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b, uint8_t w);
 
     // Display-related methods
     DisplayProxy& displayProxy();
     SSD1306Wire& realDisplay();
     void clearDisplay();
     void updateDisplay();
-    void drawText(int x, int y, const char* text);
+    void drawString(int16_t x, int16_t y, const String &text);
 
     // ... add more hardware-related getters/setters as you see fit
 };
 
-#endif // CFHAL_H
+#endif // HAL_H

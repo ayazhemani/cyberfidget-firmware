@@ -2,7 +2,7 @@
 #ifndef REACTION_TIME_GAME_H
 #define REACTION_TIME_GAME_H
 
-#include "SSD1306Wire.h"
+#include "DisplayProxy.h"
 #include "ButtonManager.h"
 
 /**
@@ -17,14 +17,14 @@ public:
      * @param buttonIndex Index of the button assigned to this game
      * @param buttonManager Reference to the ButtonManager instance
      */
-    ReactionTimeGame(SSD1306Wire& display, int buttonIndex, ButtonManager& buttonManager);
+    ReactionTimeGame(int buttonIndex, ButtonManager& buttonManager);
 
     /**
      * @brief Update method to be called periodically
      * 
-     * @param millisNow Current time in milliseconds
+     * @param millis_NOW Current time in milliseconds
      */
-    void update(unsigned long millisNow);
+    void update(unsigned long millis_NOW);
 
     /**
      * @brief Static callback function to handle button presses
@@ -48,7 +48,7 @@ public:
     void resetGame();
 
 private:
-    SSD1306Wire& display;
+    DisplayProxy& display;
     ButtonManager& buttonManager;
     int buttonIndex; // Index of the button used for this game
 
@@ -68,9 +68,9 @@ private:
     /**
      * @brief Start the reaction time game
      * 
-     * @param millisNow Current time in milliseconds
+     * @param millis_NOW Current time in milliseconds
      */
-    void startGame(unsigned long millisNow);
+    void startGame(unsigned long millis_NOW);
 
     /**
      * @brief Display the reaction time to the user

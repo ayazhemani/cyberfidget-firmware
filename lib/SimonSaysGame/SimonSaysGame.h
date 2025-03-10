@@ -2,90 +2,109 @@
 #define SIMON_SAYS_GAME_H
 
 #include <Arduino.h>
-
-class SSD1306Wire;
+#include <DisplayProxy.h>
+#include "ButtonManager.h"
+#include "AudioManager.h"
 
 /**
- * Simon Says with:
- *  - 4 buttons (0..3) mapped to a 2×2 grid
- *  - Score display when user loses (how many patterns were completed)
- *  - No dynamic memory
+ * @brief Simon Says Game Class
  */
 class SimonSaysGame {
 public:
     static const int MAX_PATTERN = 32;
 
+    /**
+     * @brief High-level states of the game
+     */
     enum State {
-        WAIT_START,
-        SHOW_PATTERN,
-        WAIT_USER,
-        GAME_OVER
+        WAIT_START,   // Waiting for user to start the first round
+        SHOW_PATTERN, // Currently showing the Simon pattern
+        WAIT_USER,    // Waiting for user to press correct buttons
+        WAIT_FINAL,   // User just got the final input correct; waiting for final release + delay
+        GAME_OVER     // The user has lost
     };
 
     /**
-     * @param display Reference to SSD1306 display
-     * @param beepForSquareFn Called when the game shows a pattern step
-     * @param beepOnUserPressFn Called when user presses a correct button
+     * @brief Constructor for SimonSaysGame
      */
     SimonSaysGame(
-        SSD1306Wire &display,
-        void (*beepForSquareFn)(int),
-        void (*beepOnUserPressFn)(int)
+        ButtonManager &buttonMgr,
+        AudioManager &audioMgr
     );
 
-    // Initialize the game (call in setup())
+    /**
+     * @brief Initialize the game and register button callbacks
+     */
     void begin();
 
-    // Update the game logic (call in loop()). 
-    //  pressedButton = 0..3 if pressed, or -1 if no button pressed.
-    void update(int pressedButton);
+    /**
+     * @brief Update the game logic (call in loop())
+     */
+    void update();
 
-    // Resets the entire game
-    void resetGame();
+    /**
+     * @brief Cleanup and unregister button callbacks
+     */
+    void end();
+
+    /**
+     * @brief Static callback for button events
+     */
+    static void onButtonEvent(const ButtonEvent& event);
 
 private:
-    // Reference to the OLED
-    SSD1306Wire &display;
-
-    // Audio callbacks (function pointers)
-    void (*beepForSquare)(int);
-    void (*beepOnUserPress)(int);
+    // References
+    DisplayProxy &display;
+    ButtonManager &buttonManager;
+    AudioManager &audioManager;
 
     // Pattern data
     int  pattern[MAX_PATTERN];
-    int  patternLength;  // how many steps in the current pattern
-    int  patternIndex;   // which step we’re currently showing or checking
-
-    // Keep track of how many full patterns the user has matched
+    int  patternLength;
+    int  patternIndex;
     int  score;
 
-    // Game flow state
+    // Game state
     State currentState;
+    int   currentlyPressedButton;
 
-    // SHOW_PATTERN timing
-    unsigned long showStartTime; 
-    unsigned long showStepTime;  
-    static const unsigned long SHOW_STEP_ON  = 500; 
-    static const unsigned long SHOW_STEP_OFF = 200; 
-    bool showingSquare;  
-    bool gapPhase;       
+    // Timing for showing pattern
+    unsigned long showStartTime;
+    unsigned long showStepTime;
+    static const unsigned long SHOW_STEP_ON  = 500; // how long to show
+    static const unsigned long SHOW_STEP_OFF = 200; // gap between steps
+    bool showingSquare;
+    bool gapPhase;
 
-    // GAME_OVER timing
+    // Timing for game over message
     unsigned long gameOverStartTime;
 
+    // Timing for final delay
+    unsigned long finalWaitStartTime;     // when we begin the final delay
+    static const unsigned long FINAL_WAIT = 750; // how long to wait after final release
+
+    // Button indices used by this game
+    static const int buttonMappings[4];
+
+    // Singleton instance pointer for static callback
+    static SimonSaysGame* instance;
+
     // Private methods
+    void resetGame();
     void startRound();
     void extendPattern();
     void showPattern();
     void checkUserInput(int pressedButton);
     void gameOver();
 
-    // Helpers to draw the 2×2 grid
+    // Display helpers
     void drawGrid(int highlightIndex);
     void fillSquare(int sq);
-
-    // Display a “Game Over” message and the final score
     void drawGameOver();
+
+    // Audio methods
+    void playBeepForSquare(int sq);
+    void playBeepOnUserPress(int sq);
 };
 
 #endif

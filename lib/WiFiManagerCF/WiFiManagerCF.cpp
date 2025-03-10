@@ -3,6 +3,7 @@
 #include "WiFiManagerCF.h"
 #include "globals.h"
 #include <WiFi.h>
+#include "HAL.h"
 
 // Initialize static instance pointer
 WiFiManagerCF* WiFiManagerCF::instance = nullptr;
@@ -23,8 +24,8 @@ void WiFiManagerCF::init() {
     WiFi.mode(WIFI_STA);
 }
 
-void WiFiManagerCF::setDisplay(SSD1306Wire &disp) {
-    display = &disp;
+void WiFiManagerCF::setDisplay() {
+    display = &HAL::displayProxy();
 }
 
 void WiFiManagerCF::draw() {
@@ -207,7 +208,7 @@ bool WiFiManagerCF::isConnecting() {
 
 void WiFiManagerCF::startWebServer() {
     if (!isWebServerRunning) {
-        disableWatchdog();
+        //disableWatchdog();
 
         server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
             request->send(200, "text/html", "<h1>Cyber Fidget Config Portal</h1>");
@@ -224,6 +225,6 @@ void WiFiManagerCF::stopWebServer() {
         server.end();
         isWebServerRunning = false;
         Serial.println("Web Server Stopped");
-        enableWatchdog();
+        //enableWatchdog();
     }
 }

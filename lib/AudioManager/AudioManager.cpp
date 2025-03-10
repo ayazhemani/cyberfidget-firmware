@@ -1,89 +1,83 @@
+// lib/AudioManager/AudioManager.cpp
+
 #include "AudioManager.h"
-#include "globals.h"           // For globals like sliderPosition_Percentage, button_* constants
-#include "SSD1306Wire.h"       // For display access
+#include "globals.h" // For accessing global variables like slider positions
 
-extern SSD1306Wire display;
-extern const uint8_t suiGenerisRg_20[];  // Font used in drawAudioPlayer
+AudioManager::AudioManager()
+    : currentFrequency(440.0f), // Default frequency
+      isPlaying(false),
+      stopAtMillis(0),          // Initialize stop time
+      in(generator),
+      volume(in),
+      copier(i2s, volume)
+{
+    // Constructor body can be empty or initialize variables as needed
+}
 
-bool audioPlayerRunning = false;
-bool playingBeep = false;
-unsigned long beepStart = 0;
+void AudioManager::init() {
+    //AudioLogger::instance().begin(Serial, AudioLogger::Info);
 
-// Instantiate audio objects
-I2SStream i2s;
-SineWaveGenerator<int16_t> sine;
-GeneratedSoundStream<int16_t> in(sine);
-VolumeStream volume(in);
-StreamCopy copier(i2s, volume);
-AudioActions action;
-
-void initAudio() {
+    // Configure I2S for audio output
     auto cfg = i2s.defaultConfig(TX_MODE);
-    cfg.i2s_format      = I2S_LSB_FORMAT;
-    cfg.pin_ws          = 27; 
-    cfg.pin_bck         = 26; 
-    cfg.pin_data        = 14; 
-    cfg.channels        = 2;
+    cfg.i2s_format = I2S_LSB_FORMAT; // Use standard I2S format
+    cfg.pin_ws = 27;   // LRC pin (Word Select)
+    cfg.pin_bck = 26;  // BCLK pin
+    cfg.pin_data = 14; // DIN pin
+    cfg.channels = 2;
     cfg.bits_per_sample = 16;
-    
+
     i2s.begin(cfg);
-    in.begin(cfg);
-    
+
+    // Initialize the sine wave generator
+    generator.setFrequency(currentFrequency);
+
+    // Initialize the volume control
     auto vcfg = volume.defaultConfig();
-    vcfg.copyFrom(cfg);
+    vcfg.copyFrom(cfg); // Copy configuration from I2S
     volume.begin(vcfg);
-    volume.setVolume(0.0);
-    
-    setupActions(); 
+    volume.setVolume(0.7f); // Default volume at 100%
+
+    isPlaying = false;
 }
 
-void setupActions() {
-    auto act_low = AudioActions::ActiveLow;
-    static float note[] = { N_C3, N_D3, N_E3, N_F3, N_G3, N_A3 };
-    action.add(button_TopLeft,    actionKeyOn, actionKeyOff, act_low, &note[0]);
-    action.add(button_TopRight,   actionKeyOn, actionKeyOff, act_low, &note[1]);
-    action.add(button_MiddleLeft, actionKeyOn, actionKeyOff, act_low, &note[2]);
-    action.add(button_MiddleRight,actionKeyOn, actionKeyOff, act_low, &note[3]);
-    action.add(button_BottomLeft, actionKeyOn, actionKeyOff, act_low, &note[4]);
-    action.add(button_BottomRight,actionKeyOn, actionKeyOff, act_low, &note[5]);
-}
+void AudioManager::loop() {
+    if (isPlaying) {
+        // Copy audio data from generator through volume to I2S
+        copier.copy();
 
-void actionKeyOn(bool active, int pin, void* ptr) {
-    if (audioPlayerRunning) {
-        float freq = *((float*)ptr);
-        sine.setFrequency(freq);
-        in.begin();
+        // Check if we need to stop the tone
+        if (stopAtMillis > 0 && millis() >= stopAtMillis) {
+            stopTone();
+            stopAtMillis = 0; // Reset stop time
+        }
     }
 }
 
-void actionKeyOff(bool active, int pin, void* ptr) {
-    in.end();
+void AudioManager::setVolume(float volumeLevel) {
+    // Ensure volume is within 0.0 to 1.0
+    float vol = constrain(volumeLevel, 0.0f, 1.0f);
+    volume.setVolume(vol);
 }
 
-void beepOnBounce() {
-    if (!playingBeep) {
-        sine.setFrequency(440.0f);  // A4 note as default
-        in.begin();
-        playingBeep = true;
-        beepStart = millis();
+void AudioManager::playTone(float frequency, int durationMs) {
+    currentFrequency = frequency;
+    generator.setFrequency(currentFrequency);
+
+    if (!isPlaying) {
+        generator.begin();
+        isPlaying = true;
+    }
+
+    if (durationMs > 0) {
+        stopAtMillis = millis() + durationMs; // Set time to stop the tone
+    } else {
+        stopAtMillis = 0; // Play indefinitely
     }
 }
 
-void drawAudioPlayer() {
-    float volumeSlider = float(sliderPosition_Percentage) / 100.0f;
-    volume.setVolume(volumeSlider);
-
-    if (!audioPlayerRunning) {
-        display.clear();
-        display.setTextAlignment(TEXT_ALIGN_CENTER);
-        display.setFont(suiGenerisRg_20);
-        display.drawString(64, 10, "Booper");
-        display.display();
-        audioPlayerRunning = true;
+void AudioManager::stopTone() {
+    if (isPlaying) {
+        generator.end();
+        isPlaying = false;
     }
-    Serial.print("Volume: " + String(volume.volume()));
-}
-
-void loopAudio() {
-    copier.copy();
 }

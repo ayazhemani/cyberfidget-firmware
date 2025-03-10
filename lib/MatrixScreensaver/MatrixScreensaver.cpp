@@ -1,5 +1,5 @@
 #include "MatrixScreensaver.h"
-#include <SSD1306Wire.h>
+#include "HAL.h"
 
 // Just an example set
 const char MatrixScreensaver::ALIEN_CHARS[16] = {
@@ -55,8 +55,8 @@ uint16_t MatrixScreensaver::findGlyphOffset(char c) {
 }
 
 // Constructor
-MatrixScreensaver::MatrixScreensaver(SSD1306Wire &disp)
-: display(disp)
+MatrixScreensaver::MatrixScreensaver()
+: display(HAL::displayProxy())
 {
     // e.g. update the state machine every 30ms
     frameInterval = 30;

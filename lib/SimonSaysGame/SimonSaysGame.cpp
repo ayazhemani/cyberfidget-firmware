@@ -1,14 +1,27 @@
 #include "SimonSaysGame.h"
-#include <SSD1306Wire.h>  // or your specific OLED library
+#include "globals.h"  // Replace with your actual global button index definitions
+#include "HAL.h"
+
+// Initialize static instance pointer
+SimonSaysGame* SimonSaysGame::instance = nullptr;
+
+// Define how the Simon game indexes map to your actual hardware buttons
+const int SimonSaysGame::buttonMappings[4] = {
+    button_MiddleLeftIndex,  // game button 0 = this physical button
+    button_MiddleRightIndex, // game button 1 = ...
+    button_BottomLeftIndex,  // game button 2 = ...
+    button_BottomRightIndex  // game button 3 = ...
+};
+
+//--------------------- Constructor / Setup ---------------------------
 
 SimonSaysGame::SimonSaysGame(
-    SSD1306Wire &disp,
-    void (*beepForSq)(int),
-    void (*beepOnUserPressSq)(int)
+    ButtonManager &btnMgr,
+    AudioManager &audMgr
 )
-    : display(disp),
-      beepForSquare(beepForSq),
-      beepOnUserPress(beepOnUserPressSq),
+    : display(HAL::displayProxy()),
+      buttonManager(btnMgr),
+      audioManager(audMgr),
       patternLength(0),
       patternIndex(0),
       score(0),
@@ -17,70 +30,176 @@ SimonSaysGame::SimonSaysGame(
       showStepTime(0),
       showingSquare(false),
       gapPhase(false),
-      gameOverStartTime(0)
+      gameOverStartTime(0),
+      finalWaitStartTime(0),
+      currentlyPressedButton(-1)
 {
     for (int i = 0; i < MAX_PATTERN; i++) {
         pattern[i] = -1;
     }
+
+    // Set the static instance pointer to this instance
+    SimonSaysGame::instance = this;
 }
 
 void SimonSaysGame::begin() {
+    // Register button callbacks
+    for (int i = 0; i < 4; i++) {
+        buttonManager.registerCallback(buttonMappings[i], SimonSaysGame::onButtonEvent);
+    }
+
+    // Reset the game state
     resetGame();
 }
 
-void SimonSaysGame::update(int pressedButton) {
+void SimonSaysGame::end() {
+    // Unregister callbacks
+    for (int i = 0; i < 4; i++) {
+        buttonManager.unregisterCallback(buttonMappings[i]);
+    }
+
+    // Stop any playing tones
+    audioManager.stopTone();
+}
+
+//--------------------- Main Loop Update ---------------------------
+
+void SimonSaysGame::update() {
     switch (currentState) {
     case WAIT_START:
-        // Press any button to start
-        if (pressedButton != -1) {
-            startRound();
-        } else {
-            drawGrid(-1); // idle grid
-        }
+        // Draw an idle screen if desired, or do nothing
+        // We keep the grid blank or with a message
+        drawGrid(-1);
+        // The user must press any valid button to start
         break;
 
     case SHOW_PATTERN:
+        // We are in the middle of showing the Simon pattern
         showPattern();
         break;
 
     case WAIT_USER:
-        if (pressedButton != -1) {
-            checkUserInput(pressedButton);
+        // We wait for user input. If a button is pressed, it is handled in onButtonEvent
+        // Meanwhile, highlight the currently pressed button (if any)
+        if (currentlyPressedButton >= 0) {
+            drawGrid(currentlyPressedButton);
         } else {
-            drawGrid(-1); // no highlight
+            drawGrid(-1);
+        }
+        break;
+
+    case WAIT_FINAL:
+        // The user has just pressed the correct final button in the sequence.
+        // We stay in this state until:
+        //   1) The user releases that button
+        //   2) We wait an additional FINAL_WAIT ms, then start the next round
+
+        // If user is still holding the button, highlight it
+        if (currentlyPressedButton >= 0) {
+            drawGrid(currentlyPressedButton);
+        } else {
+            // Once the button is released, check how long we've been here
+            // If finalWaitStartTime == 0, we set it now
+            if (finalWaitStartTime == 0) {
+                finalWaitStartTime = millis();
+            }
+            // Once we've waited the required time, start the next round
+            if (millis() - finalWaitStartTime >= FINAL_WAIT) {
+                startRound();
+            } else {
+                drawGrid(-1);
+            }
         }
         break;
 
     case GAME_OVER:
-        // Display "Game Over" with final score for 2s, then reset
-        if (millis() - gameOverStartTime > 2000) {
-            resetGame();
-        } else {
+        // Show "Game Over" for a while
+        if (millis() - gameOverStartTime < 3000) {
             drawGameOver();
+        } else {
+            // After some time, reset the game, so user can start again
+            resetGame();
         }
         break;
     }
 }
+
+//--------------------- Button Events ---------------------------
+
+void SimonSaysGame::onButtonEvent(const ButtonEvent& event) {
+    if (!instance) return;
+
+    // Figure out which game button (0..3) was pressed based on your hardware index
+    int pressedButtonIndex = event.buttonIndex;
+    int gameButtonIndex = -1;
+    for (int i = 0; i < 4; i++) {
+        if (pressedButtonIndex == buttonMappings[i]) {
+            gameButtonIndex = i;
+            break;
+        }
+    }
+    if (gameButtonIndex == -1) {
+        return; // Not one of the SimonSays buttons
+    }
+
+    // Press
+    if (event.eventType == ButtonEvent_Pressed) {
+        if (instance->currentState == WAIT_START) {
+            // Start the first round
+            instance->startRound();
+        }
+        else if (instance->currentState == WAIT_USER) {
+            // Register which button is pressed
+            instance->currentlyPressedButton = gameButtonIndex;
+            // Check if it's correct
+            instance->checkUserInput(gameButtonIndex);
+            // Start user-press tone
+            instance->playBeepOnUserPress(gameButtonIndex);
+        }
+        else if (instance->currentState == WAIT_FINAL) {
+            // If we’re in WAIT_FINAL, the user might press something else
+            // but we typically do nothing, or you could treat it as an error.
+            // For simplicity, ignore new presses in WAIT_FINAL.
+        }
+    }
+
+    // Release
+    else if (event.eventType == ButtonEvent_Released) {
+        if (instance->currentlyPressedButton == gameButtonIndex) {
+            // Stop tone
+            instance->audioManager.stopTone();
+            instance->currentlyPressedButton = -1;
+        }
+    }
+}
+
+//--------------------- Game Flow Methods ---------------------------
 
 void SimonSaysGame::resetGame() {
     patternLength = 0;
     patternIndex  = 0;
     score         = 0;
     currentState  = WAIT_START;
-
+    currentlyPressedButton = -1;
+    finalWaitStartTime = 0;
+    // Clear out pattern
     for (int i = 0; i < MAX_PATTERN; i++) {
         pattern[i] = -1;
     }
+    // Stop any tones
+    audioManager.stopTone();
 }
 
 void SimonSaysGame::startRound() {
     extendPattern();
-    patternIndex  = 0;
+    patternIndex = 0;
     showingSquare = false;
-    gapPhase      = false;
+    gapPhase = false;
     showStartTime = millis();
     showStepTime  = showStartTime;
-    currentState  = SHOW_PATTERN;
+
+    currentState = SHOW_PATTERN;
+    finalWaitStartTime = 0; // reset final wait for the new round
 }
 
 void SimonSaysGame::extendPattern() {
@@ -88,71 +207,68 @@ void SimonSaysGame::extendPattern() {
         pattern[patternLength] = random(0, 4); // 0..3
         patternLength++;
     }
-    // Otherwise the user might have “won” everything
 }
 
+/**
+ * @brief Show the Simon pattern one step at a time
+ */
 void SimonSaysGame::showPattern() {
     unsigned long now = millis();
 
-    // Done showing? Move to WAIT_USER
+    // If we've shown all steps
     if (patternIndex >= patternLength) {
+        // Move on to user input
         currentState = WAIT_USER;
         patternIndex = 0;
         drawGrid(-1);
         return;
     }
 
+    // Are we turning a square ON right now?
     if (!showingSquare && !gapPhase) {
-        // Turn on the current square
         int sq = pattern[patternIndex];
         drawGrid(sq);
         showingSquare = true;
         showStepTime  = now;
-
-        // Call beep callback for pattern step
-        if (beepForSquare) {
-            beepForSquare(sq);
-        }
+        // Play beep for that square
+        playBeepForSquare(sq);
     }
+    // Have we shown it long enough?
     else if (showingSquare && (now - showStepTime > SHOW_STEP_ON)) {
-        // Turn off
+        // Turn the square off, go to gap
         drawGrid(-1);
         showingSquare = false;
-        gapPhase      = true;
-        showStepTime  = now;
+        gapPhase = true;
+        showStepTime = now;
+        // Stop tone
+        audioManager.stopTone();
     }
+    // Then we wait in gap phase for SHOW_STEP_OFF ms
     else if (gapPhase && (now - showStepTime > SHOW_STEP_OFF)) {
-        // Move to next step
         gapPhase = false;
         patternIndex++;
     }
 }
 
+/**
+ * @brief Check if the pressed button is correct in sequence
+ */
 void SimonSaysGame::checkUserInput(int pressedButton) {
-    // Check if correct button
     if (pressedButton == pattern[patternIndex]) {
+        // Correct so far
         patternIndex++;
 
-        // (Optional) beep for correct user press
-        if (beepOnUserPress) {
-            beepOnUserPress(pressedButton);
-        }
-
-        // If the user matched the full pattern
+        // If that press completed the sequence
         if (patternIndex >= patternLength) {
-            // They completed this entire round
-            score = patternLength; 
-            // Start next round
-            startRound();
+            // The user has matched the entire pattern, so we move
+            // to WAIT_FINAL. We do NOT immediately start a new round.
+            score = patternLength;
+            currentState = WAIT_FINAL;
+            // finalWaitStartTime is set later, once they release the button
         }
-        else {
-            // Optionally flash their press
-            drawGrid(pressedButton);
-            delay(100);
-            drawGrid(-1);
-        }
+        // else we just keep waiting for the next correct press
     } else {
-        // Wrong press => game over
+        // Wrong answer -> game over
         gameOver();
     }
 }
@@ -160,43 +276,31 @@ void SimonSaysGame::checkUserInput(int pressedButton) {
 void SimonSaysGame::gameOver() {
     currentState = GAME_OVER;
     gameOverStartTime = millis();
+    currentlyPressedButton = -1; 
+    audioManager.stopTone();
 }
 
-// -----------------------------------------------------------------------------
-// Draw "Game Over" with final score
-// -----------------------------------------------------------------------------
+//--------------------- Drawing/Display Helpers ---------------------------
+
 void SimonSaysGame::drawGameOver() {
     display.clear();
-
-    // You can use display.drawString(...) calls if your library supports text.
-    // For example, with SSD1306Wire, you might do:
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(ArialMT_Plain_10); // or your chosen font
-    display.drawString(30, 20, "GAME OVER");
-
-    // Show the final 'score'
+    display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(64, 20, "GAME OVER");
     String msg = "Score: ";
     msg += score;
-    display.drawString(30, 35, msg);
-
+    display.drawString(64, 40, msg);
     display.display();
 }
 
-// -----------------------------------------------------------------------------
-// Draw a 2×2 grid, highlightIndex = which square to fill (-1 if none)
-// -----------------------------------------------------------------------------
 void SimonSaysGame::drawGrid(int highlightIndex) {
     display.clear();
 
-    // Draw horizontal line at y=31, vertical line at x=63
-    for (int x = 0; x < 128; x++) {
-        display.setPixel(x, 31);
-    }
-    for (int y = 0; y < 64; y++) {
-        display.setPixel(63, y);
-    }
+    // Draw horizontal and vertical lines to make a 4-square layout
+    display.drawLine(0, 31, 127, 31);  // horizontal line across middle
+    display.drawLine(63, 0, 63, 63);   // vertical line across middle
 
-    // Fill highlight if requested
+    // Highlight a square if specified
     if (highlightIndex != -1) {
         fillSquare(highlightIndex);
     }
@@ -205,34 +309,45 @@ void SimonSaysGame::drawGrid(int highlightIndex) {
 }
 
 void SimonSaysGame::fillSquare(int sq) {
-    // 0: top-left, 1: top-right, 2: bottom-left, 3: bottom-right
-    int xStart = 0, xEnd = 63;
-    int yStart = 0, yEnd = 31;
+    int xStart = 0;
+    int yStart = 0;
+    int width  = 63;
+    int height = 31;
 
     switch (sq) {
-        case 0:
-            xStart = 0;   xEnd = 63;
-            yStart = 0;   yEnd = 31;
-            break;
-        case 1:
-            xStart = 64;  xEnd = 127;
-            yStart = 0;   yEnd = 31;
-            break;
-        case 2:
-            xStart = 0;   xEnd = 63;
-            yStart = 32;  yEnd = 63;
-            break;
-        case 3:
-            xStart = 64;  xEnd = 127;
-            yStart = 32;  yEnd = 63;
-            break;
-        default:
-            return;
+    case 0: // Top-left
+        xStart = 0;    yStart = 0;
+        break;
+    case 1: // Top-right
+        xStart = 64;   yStart = 0;
+        break;
+    case 2: // Bottom-left
+        xStart = 0;    yStart = 32;
+        break;
+    case 3: // Bottom-right
+        xStart = 64;   yStart = 32;
+        break;
+    default:
+        return;
     }
 
-    for (int x = xStart; x <= xEnd; x++) {
-        for (int y = yStart; y <= yEnd; y++) {
-            display.setPixel(x, y);
-        }
+    display.fillRect(xStart, yStart, width, height);
+}
+
+//--------------------- Audio ---------------------------
+
+void SimonSaysGame::playBeepForSquare(int sq) {
+    // Frequencies for the pattern
+    float frequencies[4] = { 261.63f, 329.63f, 392.00f, 523.25f }; // C4, E4, G4, C5
+    if (sq >= 0 && sq < 4) {
+        audioManager.playTone(frequencies[sq]);
+    }
+}
+
+void SimonSaysGame::playBeepOnUserPress(int sq) {
+    // Frequencies for user-press (usually a bit higher)
+    float frequencies[4] = { 523.25f, 659.25f, 783.99f, 1046.50f }; // C5, E5, G5, C6
+    if (sq >= 0 && sq < 4) {
+        audioManager.playTone(frequencies[sq]);
     }
 }

@@ -1,25 +1,29 @@
 #include "SerialDisplay.h"
 #include "globals.h"
-#include "SSD1306Wire.h"
+#include "HAL.h"           // For HAL::displayProxy()
 
-extern SSD1306Wire display;
-extern String incomingData;
-extern unsigned long lastDataTime;
-extern const unsigned long dataTimeout;
-extern bool newDataReceived;
-extern int lineCount;
-extern int currentLine;
-extern bool isScreenUpdated;
-extern const int maxLinesOnScreen;
-extern ScrollMode currentScrollMode;
-extern int previousLine;
-extern int scrollOffset;
-extern int previousScrollOffset;
-extern String dataLines[];
+// Scroll mode
+ScrollMode currentScrollMode = PIXEL_SCROLL;
 
-int maxScrollOffset =  0;            // Maximum pixel offset for scrolling
+// Serial data / text scrolling
+String incomingData = ""; // Buffer for incoming data
+bool newDataReceived   = false;
+bool showingDefaultScreen = true;
+int  lineCount         = 0;
+int  currentLine       = 0;
+bool isScreenUpdated   = false;
+int  previousLine      = 0;
+int  scrollOffset      = 16;
+int  previousScrollOffset = 0;
+String dataLines[10];
+unsigned long lastDataTime = 0; // Stores the last time data was received
+const unsigned long dataTimeout = 5000; // Timeout period in milliseconds (e.g., 5 seconds)
+
+const int maxLinesOnScreen = 6;       // Number of lines that fit on the screen at once
 const int lineHeight = 13;            // Height of each line in pixels 13px = AerialMT_Plain_10
 const int displayHeight = 64;         // Height of your display in pixel
+int maxScrollOffset =  0;             // Maximum pixel offset for scrolling
+
 
 void serialDataScreenProcessor() {
     newDataReceived = false;
@@ -147,6 +151,7 @@ void updateScrollPositionFromSlider() {
 }
 
 void drawSerialDataScreen() {
+    DisplayProxy& display = HAL::displayProxy();
     display.clear();
     display.setTextAlignment(TEXT_ALIGN_LEFT);
     display.setFont(ArialMT_Plain_10);
@@ -178,6 +183,7 @@ void drawSerialDataScreen() {
 }
 
 void drawDefaultInfoScreen() {
+    DisplayProxy& display = HAL::displayProxy();
     display.clear();
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.setFont(ArialMT_Plain_10); // Use an appropriate font size

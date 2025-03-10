@@ -1,12 +1,14 @@
 #include "RGBController.h"
 #include "globals.h"
+#include "HAL.h"
 
 typedef void (*RGBW)(void);
 RGBW colors[] = {red, green, blue, white, halfWHITE};
 
 int colorLength = (sizeof(colors) / sizeof(RGBW));
 
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(RGB_COUNT, PIN, NEO_RGBW + NEO_KHZ800);
+// Reference alias for `HAL::strip()`
+static Adafruit_NeoPixel& strip = HAL::strip();
 
 static void colorSet(uint32_t c, uint8_t wait) {
   for(uint16_t i = 0; i < strip.numPixels(); i++) {
@@ -130,10 +132,4 @@ void mapToRainbow(int input, uint8_t dim, uint8_t &red, uint8_t &green, uint8_t 
     red = (uint8_t)((y * dim));
     green = (uint8_t)((x * dim));
     blue = (uint8_t)((z * dim));
-}
-
-void ledSequencer(){
-  if(ledSequencerEnabled){
-    setRandomColors(); // or rainbow(20);
-  }
 }

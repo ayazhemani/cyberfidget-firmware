@@ -60,7 +60,7 @@ public:
     /**
      * @brief Call in setup() to configure pinModes, etc.
      */
-    void begin();
+    void init();
 
     /**
      * @brief Call frequently in loop() to update the button states and record any new events.
@@ -95,6 +95,16 @@ public:
     // Getter methods
     int getNumButtons() const { return _numButtons; }
     bool hasCallback(int buttonIndex) const;
+
+    /**
+     * @brief Call to save button counters.
+     */
+    void saveButtonCounters();
+
+    /**
+     * @brief Call to load button counters.
+     */
+    void loadButtonCounters();
     
 private:
     // --- Configuration ---

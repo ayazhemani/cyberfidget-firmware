@@ -1,5 +1,5 @@
 #include "MatrixScreensaver.h"
-#include <SSD1306Wire.h> // or your specific SSD1306 library
+#include <DisplayProxy.h> // or your specific SSD1306 library
 #include "fontNotoSansJPReg.h"
 
 // Here’s a small set of random glyphs / ASCII for demonstration
@@ -94,8 +94,8 @@ static const uint8_t bayer4x4[4][4] = {
 };
 
 
-MatrixScreensaverDither::MatrixScreensaverDither(SSD1306Wire &disp)
-: display(disp),
+MatrixScreensaverDither::MatrixScreensaverDither()
+: display(HAL::displayProxy()),
   lastUpdateTime(0),
   scrollInterval(100) // default 250 ms
 {

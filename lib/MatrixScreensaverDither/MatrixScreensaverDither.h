@@ -2,8 +2,7 @@
 #define MATRIX_SCREENSAVER_DITHER_H
 
 #include <Arduino.h>
-
-class SSD1306Wire;  // Forward declaration of your display class
+#include "DisplayProxy.h"
 
 /**
  * @brief A "Matrix" (the movie) style screensaver with time-based scrolling
@@ -38,7 +37,7 @@ public:
      * @brief Construct a new MatrixScreensaverDither object.
      * @param disp Reference to your SSD1306Wire display instance.
      */
-    MatrixScreensaverDither(SSD1306Wire &disp);
+    MatrixScreensaverDither();
 
     /**
      * @brief Initialize columns with random data. Call in setup().
@@ -72,7 +71,7 @@ public:
 
 private:
     /// Reference to the OLED
-    SSD1306Wire &display;
+    DisplayProxy &display;
 
     /// Last time we scrolled
     unsigned long lastUpdateTime;

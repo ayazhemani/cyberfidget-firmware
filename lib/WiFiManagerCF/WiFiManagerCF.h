@@ -5,7 +5,7 @@
 #include <WiFiManager.h>
 #include <ESPAsyncWebServer.h>
 #include "ButtonManager.h"
-#include <SSD1306Wire.h>
+#include <DisplayProxy.h>
 
 class WiFiManagerCF {
 public:
@@ -30,7 +30,7 @@ public:
     void stopWiFiConnection();
     bool isConnecting();
 
-    void setDisplay(SSD1306Wire &disp);
+    void setDisplay();
 
 private:
     WiFiManager wifiManager;
@@ -41,7 +41,7 @@ private:
     unsigned long connectStartTime;
 
     // Display reference
-    SSD1306Wire *display;
+    DisplayProxy *display;
 
     // Internal state machine
     enum WiFiState {

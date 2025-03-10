@@ -1,8 +1,8 @@
 #ifndef RGBCONTROLLER_H
 #define RGBCONTROLLER_H
 
-#include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
+#include <Adafruit_NeoPixel.h>
 
 // Initialize NeoPixel strip and LED controls
 void initRGB();
@@ -20,9 +20,8 @@ void setDeterminedColorsAll(uint8_t colorR, uint8_t colorG, uint8_t colorB, uint
 void setColorsOff();
 void rainbow(int wait);
 void mapToRainbow(int input, uint8_t dim, uint8_t &red, uint8_t &green, uint8_t &blue);
-void ledSequencer();
 
 // Expose strip for global access if needed
-extern Adafruit_NeoPixel strip;
+//extern Adafruit_NeoPixel strip;
 
 #endif

@@ -1,24 +1,47 @@
+// lib/BreakoutGame/BreakoutGame.cpp
+
 #include "BreakoutGame.h"
-#include <Arduino.h> // for pinMode, millis, digitalRead, etc.
+#include "globals.h" // For button indices
+#include "HAL.h"
 
-//----------------------------------------------------------------------------------------
-// Constructor
-//----------------------------------------------------------------------------------------
-BreakoutGame::BreakoutGame(SSD1306Wire& disp)
-    : display(disp), bounceCallback(nullptr)
+// Initialize the static instance pointer
+BreakoutGame* BreakoutGame::instance = nullptr;
+
+BreakoutGame::BreakoutGame(ButtonManager& btnMgr, AudioManager& audioMgr)
+    : display(HAL::displayProxy()), buttonManager(btnMgr), audioManager(audioMgr),
+      brickSoundsEnabled(true) // Initialize brick crash sounds to enabled
 {
-    resetButtonPin       = -1;
-    resetButtonActiveLow = true;
-    lastButtonCheckTime  = 0;
-    lastButtonState      = false;
-
-    reset();
+    instance = this; // Set the static instance pointer
+    resetButtonIndex = button_BottomRightIndex; // Use the appropriate button index
 }
 
-//----------------------------------------------------------------------------------------
-// Reset game to initial state
-//----------------------------------------------------------------------------------------
-void BreakoutGame::reset() {
+void BreakoutGame::begin() {
+    // Reset the game state
+    resetGame();
+
+    // Register button callback for the reset button
+    buttonManager.registerCallback(resetButtonIndex, BreakoutGame::onButtonEvent);
+}
+
+void BreakoutGame::end() {
+    // Unregister the button callback
+    buttonManager.unregisterCallback(resetButtonIndex);
+
+    // Stop any playing sounds
+    audioManager.stopTone();
+}
+
+// Static button event handler
+void BreakoutGame::onButtonEvent(const ButtonEvent& event) {
+    if (instance) {
+        if (event.buttonIndex == instance->resetButtonIndex && event.eventType == ButtonEvent_Pressed) {
+            instance->resetGame();
+        }
+    }
+}
+
+// Reset the game to its initial state
+void BreakoutGame::resetGame() {
     // Paddle
     paddleX     = (SCREEN_WIDTH - PADDLE_WIDTH) / 2.0f; 
     paddleSpeed = 2.0f;  
@@ -26,8 +49,8 @@ void BreakoutGame::reset() {
     // Ball
     ballX  = SCREEN_WIDTH / 2.0f;
     ballY  = SCREEN_HEIGHT / 2.0f;
-    ballVX = 0.8f;
-    ballVY = -0.8f;
+    ballVX = 1.0f;
+    ballVY = -1.0f;
 
     // Bricks: reset all to active
     for (int r = 0; r < BRICK_ROWS; r++) {
@@ -40,94 +63,42 @@ void BreakoutGame::reset() {
     deathCount = 0;
     gameWon    = false;
 
-    // **Start timing now**
+    // Start timing now
     startTime  = millis();
-    totalTime  = 0;
+    totalTime  = 0U;
+
+    // Stop any playing sounds
+    audioManager.stopTone();
 }
 
-//----------------------------------------------------------------------------------------
-// Set the reset button pin and active logic
-//----------------------------------------------------------------------------------------
-void BreakoutGame::setResetButton(int buttonPin, bool activeLow) {
-    resetButtonPin       = buttonPin;
-    resetButtonActiveLow = activeLow;
-    initResetButton();
-}
-
-//----------------------------------------------------------------------------------------
-// Configure the reset button pinMode
-//----------------------------------------------------------------------------------------
-void BreakoutGame::initResetButton() {
-    if (resetButtonPin >= 0) {
-        // If it's active low, use INPUT_PULLUP
-        // If it's active high, use INPUT
-        if (resetButtonActiveLow) {
-            pinMode(resetButtonPin, INPUT_PULLUP);
-        } else {
-            pinMode(resetButtonPin, INPUT);
-        }
-
-        bool currentVal = digitalRead(resetButtonPin);
-        lastButtonState = currentVal;
-    }
-}
-
-//----------------------------------------------------------------------------------------
-// Checks if the button is pressed, performs software debounce, and resets the game
-//----------------------------------------------------------------------------------------
-void BreakoutGame::checkResetButton() {
-    if (resetButtonPin < 0) return;
-
-    unsigned long now = millis();
-    if (now - lastButtonCheckTime < DEBOUNCE_MS) return;
-
-    bool rawVal  = digitalRead(resetButtonPin);
-    bool pressed = (resetButtonActiveLow) ? (rawVal == LOW) : (rawVal == HIGH);
-
-    if (pressed && !lastButtonState) {
-        // Button was just pressed
-        reset(); 
-    }
-
-    lastButtonState = rawVal;
-    lastButtonCheckTime = now;
-}
-
-//----------------------------------------------------------------------------------------
-// Main update loop
-//----------------------------------------------------------------------------------------
-void BreakoutGame::update(float Ax) {
-    // 1) Check if the reset button is pressed
-    checkResetButton();
-
-    // 2) If the game is already won, just draw the "YOU WIN" screen
+// Update method to be called in the main loop
+void BreakoutGame::update(float accelX) {
     if (gameWon) {
+        // Game over; just draw the game
         drawGame();
         return;
     }
 
-    // 3) Move the paddle based on Ax
-    movePaddle(Ax);
+    // Move paddle based on accelerometer input
+    movePaddle(accelX);
 
-    // 4) Move the ball
+    // Move the ball
     moveBall();
 
-    // 5) Check collisions (with walls, paddle, bricks)
+    // Check collisions
     checkCollisions();
 
-    // 6) Check if all bricks are destroyed
+    // Check for victory
     checkVictory();
 
-    // 7) Draw everything on the display
+    // Draw the game
     drawGame();
 }
 
-//----------------------------------------------------------------------------------------
-// Move paddle with accelerometer
-//----------------------------------------------------------------------------------------
-void BreakoutGame::movePaddle(float Ax) {
-    // Tweak the multiplier or sign as needed
-    paddleX += Ax * paddleSpeed * -0.01f; 
+// Move the paddle based on accelerometer input
+void BreakoutGame::movePaddle(float accelX) {
+    // Adjust paddle position based on accelerometer input
+    paddleX += accelX * paddleSpeed * -0.01f;
 
     // Keep paddle within screen bounds
     if (paddleX < 0) {
@@ -137,38 +108,30 @@ void BreakoutGame::movePaddle(float Ax) {
     }
 }
 
-//----------------------------------------------------------------------------------------
 // Move the ball
-//----------------------------------------------------------------------------------------
 void BreakoutGame::moveBall() {
     ballX += ballVX;
     ballY += ballVY;
 }
 
-//----------------------------------------------------------------------------------------
-// Set a user-provided callback for paddle bounces
-//----------------------------------------------------------------------------------------
-void BreakoutGame::setBounceCallback(BounceCallback cb) {
-    bounceCallback = cb;
-}
-
-//----------------------------------------------------------------------------------------
-// Check for collisions with walls, paddle, bricks
-//----------------------------------------------------------------------------------------
+// Check for collisions with walls, paddle, and bricks
 void BreakoutGame::checkCollisions() {
     // Left/right walls
     if (ballX <= 0) {
         ballX = 0;
         ballVX *= -1;
+        // Removed sound for wall collision
     } else if (ballX + BALL_SIZE >= SCREEN_WIDTH) {
         ballX = SCREEN_WIDTH - BALL_SIZE;
         ballVX *= -1;
+        // Removed sound for wall collision
     }
 
     // Top wall
     if (ballY <= 0) {
         ballY = 0;
         ballVY *= -1;
+        // Removed sound for wall collision
     }
 
     // Bottom wall -> "death"
@@ -176,25 +139,21 @@ void BreakoutGame::checkCollisions() {
         deathCount++;
         ballX  = SCREEN_WIDTH / 2.0f;
         ballY  = SCREEN_HEIGHT / 2.0f;
-        ballVX = (random(2) ? 1.2f : -1.2f);
-        ballVY = -1.2f;
+        ballVX = (random(2) ? 1.0f : -1.0f);
+        ballVY = -1.0f;
         return;
     }
 
-    // Paddle
+    // Paddle collision
     if ((ballY + BALL_SIZE) >= PADDLE_Y && ballY <= (PADDLE_Y + PADDLE_HEIGHT)) {
         if ((ballX + BALL_SIZE) >= paddleX && ballX <= (paddleX + PADDLE_WIDTH)) {
             ballY = PADDLE_Y - BALL_SIZE;
             ballVY *= -1;
-
-            // **Play bounce sound** if callback is provided
-            if (bounceCallback) {
-                bounceCallback();
-            }
+            playBounceSound(); // Play sound on paddle hit
         }
     }
 
-    // Bricks
+    // Bricks collision
     for (int r = 0; r < BRICK_ROWS; r++) {
         for (int c = 0; c < BRICK_COLS; c++) {
             if (!bricks[r][c]) continue;
@@ -208,20 +167,26 @@ void BreakoutGame::checkCollisions() {
             {
                 bricks[r][c] = false;
                 ballVY *= -1;
+
+                // Adjust ball position to prevent sticking
                 if (ballVY > 0) {
-                    ballY = brickY - BALL_SIZE;
-                } else {
                     ballY = brickY + BRICK_HEIGHT;
+                } else {
+                    ballY = brickY - BALL_SIZE;
                 }
+
+                // Play sound when breaking a brick if enabled
+                if (brickSoundsEnabled) {
+                    playBounceSound();
+                }
+
                 return; 
             }
         }
     }
 }
 
-//----------------------------------------------------------------------------------------
-// Check if all bricks are gone
-//----------------------------------------------------------------------------------------
+// Check if all bricks are destroyed
 void BreakoutGame::checkVictory() {
     for (int r = 0; r < BRICK_ROWS; r++) {
         for (int c = 0; c < BRICK_COLS; c++) {
@@ -231,14 +196,32 @@ void BreakoutGame::checkVictory() {
             }
         }
     }
-    // No bricks found: user wins!
+    // No bricks found: player wins!
     gameWon    = true;
-    totalTime  = millis() - startTime; // how long it took, in ms
+    totalTime  = millis() - startTime; // Calculate how long it took in ms
+
+    // Stop any playing sounds
+    audioManager.stopTone();
 }
 
-//----------------------------------------------------------------------------------------
+// Play a sound when the ball bounces
+void BreakoutGame::playBounceSound() {
+    // Frequency for bounce sound
+    float freq = 600.0f;
+    // Duration in milliseconds
+    int durationMs = 100; // Play sound for 100 ms
+
+    // Play the tone
+    audioManager.playTone(freq, durationMs);
+}
+
+// Draw the game on the display
+void BreakoutGame::draw() {
+    // Drawing is handled in drawGame()
+    drawGame();
+}
+
 // Draw everything on the display
-//----------------------------------------------------------------------------------------
 void BreakoutGame::drawGame() {
     display.clear();
     display.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -265,18 +248,10 @@ void BreakoutGame::drawGame() {
     }
 
     // Draw the paddle
-    for (int px = 0; px < PADDLE_WIDTH; px++) {
-        for (int py = 0; py < PADDLE_HEIGHT; py++) {
-            display.setPixel((int)paddleX + px, PADDLE_Y + py);
-        }
-    }
+    display.fillRect(static_cast<int>(paddleX), PADDLE_Y, PADDLE_WIDTH, PADDLE_HEIGHT);
 
     // Draw the ball
-    for (int bx = 0; bx < BALL_SIZE; bx++) {
-        for (int by = 0; by < BALL_SIZE; by++) {
-            display.setPixel((int)ballX + bx, (int)ballY + by);
-        }
-    }
+    display.fillRect(static_cast<int>(ballX), static_cast<int>(ballY), BALL_SIZE, BALL_SIZE);
 
     // Draw bricks
     for (int r = 0; r < BRICK_ROWS; r++) {
@@ -284,18 +259,14 @@ void BreakoutGame::drawGame() {
             if (!bricks[r][c]) continue;
             int brickX = c * BRICK_WIDTH;
             int brickY = r * BRICK_HEIGHT;
-            for (int x = 0; x < BRICK_WIDTH; x++) {
-                for (int y = 0; y < BRICK_HEIGHT; y++) {
-                    display.setPixel(brickX + x, brickY + y);
-                }
-            }
+            display.fillRect(brickX, brickY, BRICK_WIDTH - 1, BRICK_HEIGHT - 1); // -1 for spacing
         }
     }
 
     // Show current death count
     String deathMsg = "Deaths: ";
     deathMsg += deathCount;
-    display.drawString(64, 24, deathMsg);
+    display.drawString(64, 20, deathMsg);
 
     display.display();
 }

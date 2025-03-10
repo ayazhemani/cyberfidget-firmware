@@ -1,4 +1,7 @@
 #include "ButtonManager.h"
+#include "globals.h" 
+#include <Preferences.h>
+Preferences preferencesMainApp;
 
 ButtonManager::ButtonManager(const int* pins,
                              const bool* usePullups,
@@ -47,7 +50,7 @@ ButtonCallback ButtonManager::getCallback(int buttonIndex) const {
     return buttonCallbacks[buttonIndex];
 }
 
-void ButtonManager::begin() {
+void ButtonManager::init() {
     // Configure each pin as INPUT or INPUT_PULLUP
     for (int i = 0; i < _numButtons; i++) {
         if (_usePullups[i]) {
@@ -56,6 +59,7 @@ void ButtonManager::begin() {
             pinMode(_pins[i], INPUT);
         }
     }
+    loadButtonCounters();
 }
 
 void ButtonManager::update() {
@@ -155,4 +159,55 @@ void ButtonManager::pushEvent(int buttonIndex, ButtonEventType type, unsigned lo
 
     // If the buffer is full, we essentially overwrite the oldest event
     // (if _eventWriteIndex == _eventReadIndex again).
+}
+
+// Check if a button was pressed
+// Based on counters, which isn't a great way to do it
+// these types of events should be triggered via state handshake so holds and releases can be accomodated
+bool compareButtonCounters(volatile int* counter1, volatile int* counter2, int length) {
+    for (int i = 0; i < length; i++) {
+        if (counter1[i] != counter2[i]) {
+        return false;
+        }
+    }
+    return true;
+}
+  
+// Button Use Counters
+void ButtonManager::loadButtonCounters() {
+    preferencesMainApp.begin("mainApp", true);
+
+    // Retrieve each button counter value
+    for (int i = 0; i < numButtons; i++) {
+        buttonCounterSaved[i] = preferencesMainApp.getInt((String("button") + i).c_str(), 0); // Read the count back
+        buttonCounter[i] = buttonCounterSaved[i]; // Keep the saved and lived counts synced
+    }
+
+    appActiveSaved = preferencesMainApp.getInt("appActive", 0);
+    appActive = appActiveSaved;
+
+    preferencesMainApp.end();
+}
+
+void ButtonManager::saveButtonCounters() {
+    // Compare button counters
+    if (compareButtonCounters(buttonCounter, buttonCounterSaved, numButtons) == false){
+        ESP_LOGV(TAG_MAIN, "Button counters are not equal. Updating Saved Counters.");
+
+        preferencesMainApp.begin("mainApp", false);
+
+        // Store each button counter value
+        for (int i = 0; i < numButtons; i++) {
+        preferencesMainApp.putInt((String("button") + i).c_str(), buttonCounter[i]); // Write the live count
+        buttonCounterSaved[i] = buttonCounter[i]; // Keep the saved and lived counts synced
+        }
+
+    preferencesMainApp.end();
+    }
+
+    if (appActive != appActiveSaved){
+        preferencesMainApp.begin("mainApp", false);
+        preferencesMainApp.putInt("appActive", appActive);
+        preferencesMainApp.end();
+    }
 }

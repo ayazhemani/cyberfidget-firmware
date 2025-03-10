@@ -1,67 +1,263 @@
-// AppManager.cpp
 #include "AppManager.h"
+#include "HAL.h"
 #include "ReactionTimeGame.h"
-#include "MatrixScreensaver.h" // Assume this exists
-#include "globals.h"
+#include "DinoGame.h"
+#include "SimonSaysGame.h"
+#include "MatrixScreensaver.h"
+#include "Booper.h"
+#include "SPHFluidGame.h"
+#include "BreakoutGame.h"
+#include "ClockDisplay.h"
+#include "PowerManager.h"
+#include "WiFiManagerCF.h"
+#include "Flashlight.h"
+#include "SliderPosition.h"
+#include "SerialDisplay.h"
+#include "RGBController.h"
+#include "ExampleScreens.h"
 
-AppManager::AppManager(ButtonManager& btnManager)
-    : buttonManager(btnManager), currentApp(None) {}
+// ALIASES for HAL references
+static auto& display       = HAL::displayProxy();
+static auto& buttonManager = HAL::buttonManager();
+static auto& audioManager  = HAL::audioManager();
+static auto& accelerometer = HAL::accelerometer();
+static auto& wifiManager   = HAL::wifiManagerCF();
+static auto& strip         = HAL::strip();  // NeoPixels
 
-/**
- * @brief Activate a specific app, ensuring only one app is active at a time
- * 
- * @param app The app to activate
- */
-void AppManager::activateApp(ActiveApp app) {
-    if (currentApp == app) {
-        // App is already active
-        return;
-    }
+// Define the function pointer array
+App apps[APP_COUNT] = {
+    #define X(func, id, name) func,
+        APP_LIST
+    #undef X
+};
 
-    // Deactivate the current app
-    deactivateCurrentApp();
+// Define the string array for names
+const char* appNames[APP_COUNT] = {
+    #define X(func, id, name) name,
+        APP_LIST
+    #undef X
+};
 
-    // Activate the new app
-    switch (app) {
-        case ReactionTimeGameApp:
-            // Assuming you have a global ReactionTimeGame instance
-            buttonManager.registerCallback(reactionGame.getButtonIndex(), ReactionTimeGame::reactionButtonPressedCallback);
-            Serial.println("Reaction Time Game Activated.");
-            break;
-        
-        // case MatrixScreensaverApp:
-        //     // Assuming you have a global MatrixScreensaver instance
-        //     buttonManager.registerCallback(matrixScreensaver.getButtonIndex(), MatrixScreensaver::screensaverButtonPressedCallback);
-        //     Serial.println("Matrix Screensaver Activated.");
-        //     break;
+// Ensure everything is in sync
+static_assert(sizeof(apps) / sizeof(apps[0]) == APP_COUNT, "Mismatch between app array size and enum count");
 
-        // Handle other apps similarly
-        default:
-            break;
-    }
+// Game instances
+static ClockDisplay clockDisplay;
+static PowerManager powerManager(buttonManager, clockDisplay);
+static ReactionTimeGame reactionGame(button_BottomRightIndex, buttonManager);
+static SPHFluidGame sphGame;
+static BreakoutGame breakoutGame(buttonManager, audioManager);
+static DinoGame dinoGame(buttonManager,
+                         button_MiddleLeftIndex, button_MiddleRightIndex, button_BottomRightIndex);
+static SimonSaysGame simonGame(buttonManager, audioManager);
+static MatrixScreensaver matrixScreensaver;
+static Booper booper(buttonManager, audioManager);
 
-    currentApp = app;
+void AppManager::setup() {
+    HAL::configureWakeupPins();
+    esp_log_level_set("*", ESP_LOG_VERBOSE);
+    esp_log_level_set(TAG_MAIN, ESP_LOG_VERBOSE);
+    HAL::initHardware();
+    ESP_LOGI(TAG_MAIN, "AppManager setup complete");
+    powerManager.begin();
 }
 
-/**
- * @brief Deactivate the currently active app
- */
-void AppManager::deactivateCurrentApp() {
-    switch (currentApp) {
-        case ReactionTimeGameApp:
-            buttonManager.unregisterCallback(reactionGame.getButtonIndex());
-            Serial.println("Reaction Time Game Deactivated.");
-            break;
-        
-        // case MatrixScreensaverApp:
-        //     buttonManager.unregisterCallback(matrixScreensaver.getButtonIndex());
-        //     Serial.println("Matrix Screensaver Deactivated.");
-        //     break;
+void AppManager::loop() {
+    HAL::loopHardware();
+    
+    processButtonEvents();
 
-        // Handle other apps similarly
-        default:
-            break;
+    if ((millis_NOW - millis_APP_TASK_20MS) >= TASK_20MS) {
+        millis_APP_TASK_20MS = millis_NOW;
+        screenUpdate();
     }
 
-    currentApp = None;
+    // if ((millisNow - millis_HAL_TASK_50MS) >= TASK_50MS) {
+    //     millis_HAL_TASK_50MS = millisNow;
+    //     HAL::updateAccelerometer();
+    // }
+
+    if ((millis_NOW - millis_APP_TASK_200MS) >= TASK_200MS) {
+        millis_APP_TASK_200MS = millis_NOW;
+        buttonManager.saveButtonCounters();
+    }
+
+    if ((millis_NOW - millis_APP_LASTINTERACTION) >= TASK_LASTINTERACT) {
+        powerManager.deepSleep();
+    }
+}
+
+void AppManager::processButtonEvents() {
+    ButtonEvent ev;
+    while (buttonManager.getNextEvent(ev)) {
+        if (buttonManager.hasCallback(ev.buttonIndex)) {
+            ButtonCallback cb = buttonManager.getCallback(ev.buttonIndex);
+            if (cb) cb(ev);
+        } else {
+            switch (ev.eventType) {
+                case ButtonEvent_Pressed:
+                    if (ev.buttonIndex == button_TopLeftIndex) {
+                        appPreviously = appActive;
+                        appActive = (appActive - 1 + APP_COUNT) % APP_COUNT;
+                    }
+                    break;
+                case ButtonEvent_Released:
+                    buttonCounter[ev.buttonIndex]++;
+                    if (ev.buttonIndex == button_TopRightIndex) {
+                        appPreviously = appActive;
+                        appActive = (appActive + 1) % APP_COUNT;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
+void AppManager::screenUpdate() {
+    apps[appActive]();
+
+    if (appActive != appPreviously) {
+		if (appActive == APP_ACCELEROMETER) {
+            accelerometerScreenEnabled = true;
+        } else if (appPreviously == APP_ACCELEROMETER) {
+            accelerometerScreenEnabled = false;
+            setColorsOff();
+        }
+		
+		if (appActive == APP_BOOPER) {
+            booper.begin();
+        } else if (appPreviously == APP_BOOPER) {
+            booper.end();
+        }
+		
+		if (appActive == APP_BREAKOUT) {
+            breakoutGame.begin();
+        } else if (appPreviously == APP_BREAKOUT) {
+            breakoutGame.end();
+        }
+
+        if (appActive == APP_CLOCK_DISPLAY) {
+            clockDisplay.begin();
+        } else if (appPreviously == APP_CLOCK_DISPLAY) {
+            clockDisplay.reset();
+        }
+		
+        if (appActive == APP_DINO_GAME) {
+            buttonManager.registerCallback(dinoGame.getJumpButtonIndex(), DinoGame::jumpButtonCallback);
+            buttonManager.registerCallback(dinoGame.getDuckButtonIndex(), DinoGame::duckButtonCallback);
+            buttonManager.registerCallback(dinoGame.getResetButtonIndex(), DinoGame::resetButtonCallback);
+        } else if (appPreviously == APP_DINO_GAME) {
+            buttonManager.unregisterCallback(dinoGame.getJumpButtonIndex());
+            buttonManager.unregisterCallback(dinoGame.getDuckButtonIndex());
+            buttonManager.unregisterCallback(dinoGame.getResetButtonIndex());
+            dinoGame.resetGame();
+        }
+
+		if (appActive == APP_FLASHLIGHT) {
+            flashlightStatus = true;
+        } else if (appPreviously == APP_FLASHLIGHT) {
+            flashlightStatus = false;
+            setColorsOff();
+        }
+		
+		if (appActive == APP_POWER_MANAGER) {
+            powerManager.registerShutdownCallback();
+        } else if (appPreviously == APP_POWER_MANAGER) {
+            powerManager.unregisterShutdownCallback();
+        }
+		
+		if (appActive == APP_REACTION) {
+            buttonManager.registerCallback(reactionGame.getButtonIndex(), ReactionTimeGame::reactionButtonPressedCallback);
+        } else if (appPreviously == APP_REACTION) {
+            buttonManager.unregisterCallback(reactionGame.getButtonIndex());
+            reactionGame.resetGame();
+        }
+
+        if (appActive == APP_SIMON_SAYS) {
+            simonGame.begin();
+        } else if (appPreviously == APP_SIMON_SAYS) {
+            simonGame.end();
+        }
+
+        if (appActive == APP_SLIDER_PROGRESS_BAR) {
+            ESP_LOGI(TAG_MAIN, "APP_SLIDER_PROGRESS_BAR Active");
+        } else if (appPreviously == APP_SLIDER_PROGRESS_BAR) {
+            setColorsOff();
+        }
+
+        if (appActive == APP_MATRIX_SCREENSAVER) {
+            matrixScreensaver.begin();
+        }
+		
+		if (appActive == APP_WIFI_CONFIG) {
+            buttonManager.registerCallback(
+                button_BottomLeftIndex, 
+                WiFiManagerCF::bottomLeftButtonCallback
+            );
+            buttonManager.registerCallback(
+                button_BottomRightIndex,
+                WiFiManagerCF::bottomRightButtonCallback
+            );
+            wifiManager.setDisplay();
+        } else if (appPreviously == APP_WIFI_CONFIG) {
+            buttonManager.unregisterCallback(button_BottomLeftIndex);
+            buttonManager.unregisterCallback(button_BottomRightIndex);
+        }
+
+        appPreviously = appActive;
+    }
+}
+
+// Draw functions
+void drawReactionTimeGame() {
+    reactionGame.update(millis_NOW);
+}
+
+void drawSPHFluidGame() {
+    int targetCount = sliderPosition_Percentage_Inverted_Filtered;
+    static int currentCount = 100;
+    if (targetCount != currentCount) {
+        sphGame.setParticleCount(targetCount);
+        currentCount = targetCount;
+    }
+    sphGame.update(accelX, accelY);
+}
+
+void drawBreakoutGame() {
+    breakoutGame.update(accelX);
+    breakoutGame.draw();
+}
+
+void updateClockDisplay() {
+    clockDisplay.update();
+}
+
+void drawDinoGame() {
+    dinoGame.setSpeedBySlider(sliderPosition_Percentage_Inverted_Filtered);
+    dinoGame.update();
+    dinoGame.draw();
+}
+
+void drawPowerManager() {
+    powerManager.update();
+}
+
+void drawWifiConfig() {
+    wifiManager.process();  // using the local alias instead of HAL::wifiManagerCF()
+}
+
+void drawSimonSaysGame() {
+    simonGame.update();
+}
+
+void drawMatrixScreensaver() {
+    matrixScreensaver.update();
+    matrixScreensaver.draw();
+}
+
+void drawBooper() {
+    booper.update();
+    booper.draw();
 }

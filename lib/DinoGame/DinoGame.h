@@ -2,7 +2,7 @@
 #define DINOGAME_H
 
 #include <Arduino.h>
-#include "SSD1306Wire.h"
+#include "DisplayProxy.h"
 #include "ButtonManager.h"
 #include "DinoSprites.h"
 
@@ -17,7 +17,7 @@
  */
 class DinoGame {
 public:
-    DinoGame(SSD1306Wire& display, ButtonManager& btnMgr,
+    DinoGame(ButtonManager& btnMgr,
              int jumpBtnIndex, int duckBtnIndex, int resetBtnIndex);
 
     void update();
@@ -38,7 +38,7 @@ public:
 
 private:
     // Refs
-    SSD1306Wire&   display;
+    DisplayProxy& display;
     ButtonManager& buttonManager;
     int jumpBtnIndex;
     int duckBtnIndex;

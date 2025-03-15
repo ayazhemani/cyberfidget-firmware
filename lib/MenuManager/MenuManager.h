@@ -151,6 +151,11 @@ private:
      */
     void moveHighlightUp();
     void moveHighlightDown();
+
+    /**
+     * @brief Helper to adjust scrollOffset if the highlight goes off-screen
+     */
+    void updateScrollForCurrentIndex(int oldIndex);
 };
 
 #endif

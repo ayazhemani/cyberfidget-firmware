@@ -12,18 +12,18 @@ static const int SCREEN_WIDTH  = 128;
 static const int SCREEN_HEIGHT = 64;
 
 // Row spacing for text in the menu:
-static const int MENU_ITEM_HEIGHT = 20;
-static const int MENU_ITEM_Y_OFFSET = 4;
+static const int MENU_ITEM_HEIGHT = 16;
+static const int MENU_ITEM_Y_OFFSET = 2;
 
 // We’ll offset the highlight bar a bit from the left edge:
-static const int HIGHLIGHT_X_OFFSET = 5;
-static const int HIGHLIGHT_Y_OFFSET = 5;
+static const int HIGHLIGHT_X_OFFSET = 4;
+static const int HIGHLIGHT_Y_OFFSET = 4;
 static const int HIGHLIGHT_WIDTH    = SCREEN_WIDTH - (HIGHLIGHT_X_OFFSET * 2); // just wide enough to look nice
 
 // SCROLLING FIELDS
 static int scrollOffset = 0;   // how many pixels the entire list is shifted up
 static int oldScrollOffset = 0; // used if we want to animate from old→new
-static const int VISIBLE_COUNT    = 3; // how many items can fit on screen at once
+static const int VISIBLE_COUNT = 4; // how many items can fit on screen at once
 
 //-------------------------------------------------------------------
 // Anonymous namespace for local helpers (if needed).
@@ -145,26 +145,79 @@ void MenuManager::moveHighlightUp()
     {
         int oldIndex = currentIndex;
         currentIndex--;
-        animateHighlight(oldIndex);
+        updateScrollForCurrentIndex(oldIndex);
     }
 }
 
 // Private method: move highlight down
 void MenuManager::moveHighlightDown()
 {
-    if (currentIndex < int(currentItemList->size()) - 1)
+    if (currentIndex < (int)currentItemList->size() - 1)
     {
         int oldIndex = currentIndex;
         currentIndex++;
+        updateScrollForCurrentIndex(oldIndex);
+    }
+}
+
+/**
+ * @brief This function checks whether the highlight has moved beyond
+ *        the top or bottom of the visible region, and if so, it animates
+ *        the entire list via scrollOffset. Otherwise, it just animates
+ *        the highlight if the item is still on screen.
+ */
+void MenuManager::updateScrollForCurrentIndex(int oldIndex)
+{
+    // We'll define how many items fit “fully” on screen:
+    // e.g. VISIBLE_COUNT=3 for 3 items (each 20 px tall => 60 px total).
+    // The highlight’s “row index” on screen is currentIndex - scrollOffsetInItems
+    // but we’re doing pixel-based “scrollOffset”. Let’s compute the item’s Y:
+    int itemY = currentIndex * MENU_ITEM_HEIGHT - scrollOffset;
+    int topY  = 0;
+    int bottomY = SCREEN_HEIGHT - MENU_ITEM_HEIGHT;
+
+    if (itemY < topY) {
+        // We need to scroll upward so that the highlight is at or near top
+        // e.g. new scrollOffset = currentIndex * MENU_ITEM_HEIGHT
+        int newScroll = currentIndex * MENU_ITEM_HEIGHT;
+        // We'll animate scrollOffset from oldScrollOffset to newScroll
+        oldScrollOffset = scrollOffset;
+        insertAnimation(
+            // animate the int pointer
+            new Animation(
+                &scrollOffset,
+                LINEAR,
+                newScroll,   // endVal
+                200          // ms
+            )
+        );
+    }
+    else if (itemY > bottomY) {
+        // We need to scroll downward so highlight is near the bottom row
+        // e.g. new scrollOffset = currentIndex * MENU_ITEM_HEIGHT - bottomY
+        int newScroll = currentIndex * MENU_ITEM_HEIGHT - bottomY;
+        oldScrollOffset = scrollOffset;
+        insertAnimation(
+            new Animation(
+                &scrollOffset,
+                LINEAR,
+                newScroll,
+                200
+            )
+        );
+    }
+    else {
+        // The item is fully within the visible area. 
+        // Animate the highlight’s Y only.
         animateHighlight(oldIndex);
     }
 }
 
 void MenuManager::animateHighlight(int oldIndex)
 {
-    // Suppose you store the row positions in itemYPositions[]
-    int oldY = itemYPositions[oldIndex];
-    int newY = itemYPositions[currentIndex];
+    // If we’re not shifting the entire list, we move highlight from old Y→new Y.
+    int oldY = (oldIndex * MENU_ITEM_HEIGHT) - scrollOffset;
+    int newY = (currentIndex * MENU_ITEM_HEIGHT) - scrollOffset;
 
     // 1) Force the highlight element’s “starting” position to oldY,
     //    so the animation engine sees that as the current geometry
@@ -206,7 +259,7 @@ void MenuManager::selectCurrentItem()
         navigationStack.push_back(s);
 
         // 2) Switch to the sub-items 
-        currentItemList = (std::vector<MenuItem> *)&(mi.children);
+        currentItemList = const_cast<std::vector<MenuItem>*>(&mi.children);
         currentIndex    = 0; // start highlighting the first item in that sub-menu
 
         // Move highlight instantly (or animate from old row to row 0 if you prefer)
@@ -232,42 +285,51 @@ void MenuManager::selectCurrentItem()
 // Called on "Back" button
 void MenuManager::goBack()
 {
-    if (navigationStack.empty())
-    {
+    if (navigationStack.empty()) {
         // Already at root. You can choose what "Back" does at root:
         // e.g. do nothing, or possibly go to some default state, or 
         // put the device to sleep. For now we do nothing.
         return;
     }
-
-    // If not empty, pop from stack and restore
     MenuNavState s = navigationStack.back();
     navigationStack.pop_back();
 
-    // Move highlight to the saved location:
     currentItemList = s.itemList;
     currentIndex    = s.index;
-    highlightElement.setY(0);
+
+    // Make sure highlight is physically placed on the correct item
+    int newY = (currentIndex * MENU_ITEM_HEIGHT) - scrollOffset;
+    highlightElement.setY(newY);
+    
+    // If you want to re-check whether scrollOffset is correct for that item:
+    // e.g. updateScrollForCurrentIndex(...) passing an oldIndex just to ensure
+    // the item is in view. But often you'll just snap to no offset or the last offset you had.
+
+    // Possibly keep the same scrollOffset or reset it:
+    // scrollOffset = 0; // if you want to always revert to top
 }
 
-// Actually draw the items and highlight on the screen
+/**
+ * @brief Redraw all items, factoring in scrollOffset for each.
+ *        Also draw highlight if we want a separate highlight rect.
+ */
 void MenuManager::drawMenu()
 {
     // Start by clearing the screen or filling background:
     display.clear();
-    //display.setCursor(0,0);
 
-    itemYPositions.clear();
-    itemYPositions.resize( currentItemList->size(), 0 );
-
-    // For each item in currentItemList, draw it
     for (int i=0; i < (int)currentItemList->size(); i++)
     {
-        int yPos = i * MENU_ITEM_HEIGHT ;
-        itemYPositions[i] = yPos;
-
-        // Draw label. (Your code may differ for actual text rendering)
-        display.drawString(10, yPos + MENU_ITEM_Y_OFFSET, (*currentItemList)[i].label.c_str());
+        // The baseline Y for item i:
+        int yPos = i * MENU_ITEM_HEIGHT - scrollOffset;
+        
+        // If it’s in screen range, we can draw it
+        if (yPos + MENU_ITEM_HEIGHT >= 0 && yPos < SCREEN_HEIGHT) {
+            // e.g. draw text
+            display.setTextAlignment(TEXT_ALIGN_LEFT);
+            display.setFont(ArialMT_Plain_10);
+            display.drawString(10, yPos + MENU_ITEM_Y_OFFSET, (*currentItemList)[i].label.c_str());
+        }
     }
 
     // Optionally draw a highlight rectangle behind the current item 
@@ -345,7 +407,7 @@ void MenuManager::onButtonBackPressed(const ButtonEvent& event)
 void MenuManager::onButtonSelectPressed(const ButtonEvent& event)
 {    
     // Press
-    if (event.eventType == ButtonEvent_Pressed){
+    if (event.eventType == ButtonEvent_Released){  //Released intentionally to avoid carrying into event
         instance().selectCurrentItem();
     }
 }

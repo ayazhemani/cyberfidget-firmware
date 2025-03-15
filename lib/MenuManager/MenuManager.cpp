@@ -1,0 +1,351 @@
+#include "MenuManager.h"
+#include "HAL.h"         // So we can reach buttonManager, display, etc.
+#include "AppManager.h"   // So we can set appActive, appPreviously, etc.
+#include "globals.h"      // If you have global for 'millis_NOW', etc.
+
+// Aliases to hardware
+static auto &display       = HAL::displayProxy();
+static auto &buttonManager = HAL::buttonManager();
+
+// Screen dimension (SSD1306 128×64 example)
+static const int SCREEN_WIDTH  = 128; 
+static const int SCREEN_HEIGHT = 64;
+
+// Row spacing for text in the menu:
+static const int MENU_ITEM_HEIGHT = 20;
+static const int MENU_ITEM_Y_OFFSET = 4;
+
+// We’ll offset the highlight bar a bit from the left edge:
+static const int HIGHLIGHT_X_OFFSET = 5;
+static const int HIGHLIGHT_Y_OFFSET = 5;
+static const int HIGHLIGHT_WIDTH    = SCREEN_WIDTH - (HIGHLIGHT_X_OFFSET * 2); // just wide enough to look nice
+
+// SCROLLING FIELDS
+static int scrollOffset = 0;   // how many pixels the entire list is shifted up
+static int oldScrollOffset = 0; // used if we want to animate from old→new
+static const int VISIBLE_COUNT    = 3; // how many items can fit on screen at once
+
+//-------------------------------------------------------------------
+// Anonymous namespace for local helpers (if needed).
+namespace
+{
+    // Example function to create a category with sub-items.
+    MenuItem makeCategory(
+        const std::string &label,
+        const std::vector<MenuItem> &children
+    )
+    {
+        MenuItem cat;
+        cat.label      = label;
+        cat.isCategory = true;
+        cat.children   = children;
+        cat.appIndex   = APP_FONT_FACE; // meaningless placeholder 
+        return cat;
+    }
+
+    // Example function to create a leaf item that launches a specific App:
+    MenuItem makeApp(const std::string &label, AppIndex idx)
+    {
+        MenuItem m;
+        m.label      = label;
+        m.isCategory = false;
+        m.appIndex   = idx;
+        return m;
+    }
+} // namespace
+
+//-------------------------------------------------------------------
+// Singleton constructor: build root items, set up highlight element, etc.
+MenuManager::MenuManager()
+{
+    // Create sub-items for "Screensavers"
+    std::vector<MenuItem> screensavers {
+        makeApp("Matrix Screensaver", APP_MATRIX_SCREENSAVER),
+        // Add more screensavers as needed
+    };
+
+    // Create sub-items for "Games"
+    std::vector<MenuItem> games {
+        makeApp("Reaction Time", APP_REACTION),
+        makeApp("Dino Game",     APP_DINO_GAME),
+        makeApp("Simon Says",    APP_SIMON_SAYS),
+        makeApp("Breakout",      APP_BREAKOUT),
+        makeApp("Booper",        APP_BOOPER),
+        // Add more or reorder as you wish
+    };
+
+    // Create sub-items for "Tools"
+    std::vector<MenuItem> tools {
+        makeApp("Clock Display",  APP_CLOCK_DISPLAY),
+        makeApp("WiFi Config",    APP_WIFI_CONFIG),
+        makeApp("Power Manager",  APP_POWER_MANAGER),
+        // Add more Tools here
+    };
+
+    // Build the top-level categories:
+    rootMenuItems.push_back( makeCategory("Screensavers", screensavers) );
+    rootMenuItems.push_back( makeCategory("Games",        games) );
+    rootMenuItems.push_back( makeCategory("Tools",        tools) );
+
+    // Our "current" location is the root and index=0
+    currentItemList = &rootMenuItems;
+    currentIndex    = 0;
+
+    // Prepare highlight UIElement for row #0
+    highlightElement.setX(HIGHLIGHT_X_OFFSET);
+    highlightElement.setY(0); // We'll set correct row in begin()
+    highlightElement.setWidth(HIGHLIGHT_WIDTH);
+    highlightElement.setHeight(MENU_ITEM_HEIGHT);
+
+    // Clear itemYPositions (we fill them in drawMenu())
+    itemYPositions.clear();
+    scrollOffset = 0; // top
+}
+
+void MenuManager::begin()
+{
+    // Register the menu callbacks:
+    registerMenuCallbacks();
+
+    // Move the highlight to row #0 immediately (no animation).
+    highlightElement.setY(0);
+
+    // Mark that the menu is active:
+    menuActive = true;
+}
+
+// Called by the main loop to let the menu update animations, etc.
+void MenuManager::update()
+{
+    if (!menuActive) return; // If an app is running, do nothing
+
+    // Update (animate) highlight, etc. 
+    animateAll();    // from your Animation.cpp
+    updateTmp();     // if needed from your code
+
+    // Redraw the menu each frame (or only if something changed).
+    drawMenu();
+}
+
+// Called by an app to hand control back to the menu
+void MenuManager::returnToMenu()
+{
+    // Re-register the menu callbacks
+    registerMenuCallbacks();
+
+    // We remain at the same place in the menu that we left off 
+    // (so the highlight is still on the previously selected item).
+    menuActive = true;
+}
+
+// Private method: move highlight up
+void MenuManager::moveHighlightUp()
+{
+    if (currentIndex > 0)
+    {
+        int oldIndex = currentIndex;
+        currentIndex--;
+        animateHighlight(oldIndex);
+    }
+}
+
+// Private method: move highlight down
+void MenuManager::moveHighlightDown()
+{
+    if (currentIndex < int(currentItemList->size()) - 1)
+    {
+        int oldIndex = currentIndex;
+        currentIndex++;
+        animateHighlight(oldIndex);
+    }
+}
+
+void MenuManager::animateHighlight(int oldIndex)
+{
+    // Suppose you store the row positions in itemYPositions[]
+    int oldY = itemYPositions[oldIndex];
+    int newY = itemYPositions[currentIndex];
+
+    // 1) Force the highlight element’s “starting” position to oldY,
+    //    so the animation engine sees that as the current geometry
+    //    (i.e. the highlight is at oldY *right now*).
+    highlightElement.setY(oldY);
+
+    // 2) Decide what the *final* geometry is going to be:
+    //    - If you only want to move vertically, you can keep the same X, width, height
+    //    - newY is from itemYPositions for the *destination row*
+    int newX      = highlightElement.getX();      // i.e. same X
+    int newWidth  = highlightElement.getWidth();  // same width
+    int newHeight = highlightElement.getHeight(); // same height
+
+    // 3) Insert an animation that moves from the highlight’s *current*
+    //    geometry (X, oldY, width, height) to the *new* geometry in 300ms:
+    insertAnimation(
+        new Animation(
+            &highlightElement,
+            LINEAR,     // or LINEAR, PARALLELOGRAM, etc.
+            newX,       // endX
+            newY,       // endY
+            newWidth,   // endWidth
+            newHeight,  // endHeight
+            200         // totalTime in ms
+        )
+    );
+}
+
+// Called on "Select" button
+void MenuManager::selectCurrentItem()
+{
+    const MenuItem &mi = (*currentItemList)[currentIndex];
+
+    if (mi.isCategory)
+    {
+        // 1) We're drilling into a new sub-menu
+        // push current location on stack
+        MenuNavState s{ currentItemList, currentIndex };
+        navigationStack.push_back(s);
+
+        // 2) Switch to the sub-items 
+        currentItemList = (std::vector<MenuItem> *)&(mi.children);
+        currentIndex    = 0; // start highlighting the first item in that sub-menu
+
+        // Move highlight instantly (or animate from old row to row 0 if you prefer)
+        highlightElement.setY(0);
+    }
+    else
+    {
+        // This item references an actual App in AppManager.
+        // 1) Tell the menu we are no longer active:
+        menuActive = false;
+
+        // 2) Unregister menu callbacks
+        unregisterMenuCallbacks();
+
+        // 3) Launch that app in your existing system:
+        appPreviously = appActive;
+        appActive     = mi.appIndex;  // e.g. APP_DINO_GAME
+
+        // Next time the user calls returnToMenu(), we will come back here.
+    }
+}
+
+// Called on "Back" button
+void MenuManager::goBack()
+{
+    if (navigationStack.empty())
+    {
+        // Already at root. You can choose what "Back" does at root:
+        // e.g. do nothing, or possibly go to some default state, or 
+        // put the device to sleep. For now we do nothing.
+        return;
+    }
+
+    // If not empty, pop from stack and restore
+    MenuNavState s = navigationStack.back();
+    navigationStack.pop_back();
+
+    // Move highlight to the saved location:
+    currentItemList = s.itemList;
+    currentIndex    = s.index;
+    highlightElement.setY(0);
+}
+
+// Actually draw the items and highlight on the screen
+void MenuManager::drawMenu()
+{
+    // Start by clearing the screen or filling background:
+    display.clear();
+    //display.setCursor(0,0);
+
+    itemYPositions.clear();
+    itemYPositions.resize( currentItemList->size(), 0 );
+
+    // For each item in currentItemList, draw it
+    for (int i=0; i < (int)currentItemList->size(); i++)
+    {
+        int yPos = i * MENU_ITEM_HEIGHT ;
+        itemYPositions[i] = yPos;
+
+        // Draw label. (Your code may differ for actual text rendering)
+        display.drawString(10, yPos + MENU_ITEM_Y_OFFSET, (*currentItemList)[i].label.c_str());
+    }
+
+    // Optionally draw a highlight rectangle behind the current item 
+    // (but we’re animating highlightElement, so let's just fill it):
+    //   highlightElement.getX(), highlightElement.getY(), 
+    //   highlightElement.getWidth(), highlightElement.getHeight()
+    display.drawRect(
+        highlightElement.getX(), 
+        highlightElement.getY(),
+        highlightElement.getWidth(),
+        highlightElement.getHeight()
+    );
+
+    // Now commit any buffered drawing:
+    display.display();
+}
+
+// Register our button callbacks:
+void MenuManager::registerMenuCallbacks()
+{
+    // For each hardware button, call the static method we set up:
+    buttonManager.registerCallback(button_TopLeftIndex,    onButtonLeftPressed);
+    buttonManager.registerCallback(button_TopRightIndex,   onButtonRightPressed);
+    buttonManager.registerCallback(button_MiddleLeftIndex, onButtonUpPressed);
+    buttonManager.registerCallback(button_MiddleRightIndex,onButtonDownPressed);
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+    buttonManager.registerCallback(button_BottomRightIndex,onButtonSelectPressed);
+}
+
+// Unregister them:
+void MenuManager::unregisterMenuCallbacks()
+{
+    buttonManager.unregisterCallback(button_TopLeftIndex);
+    buttonManager.unregisterCallback(button_TopRightIndex);
+    buttonManager.unregisterCallback(button_MiddleLeftIndex);
+    buttonManager.unregisterCallback(button_MiddleRightIndex);
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+    buttonManager.unregisterCallback(button_BottomRightIndex);
+}
+
+// Static callback handlers:
+void MenuManager::onButtonLeftPressed(const ButtonEvent& event)
+{
+    // Example: do nothing or implement "move to previous root category"? 
+    // Since it's a nested menu, left/right might not do anything if you only have
+    // vertical list navigation. Feel free to define your own logic.
+}
+void MenuManager::onButtonRightPressed(const ButtonEvent& event)
+{
+    // Press
+    if (event.eventType == ButtonEvent_Pressed){
+        // Same as above
+    }    
+}
+void MenuManager::onButtonUpPressed(const ButtonEvent& event)
+{
+    // Press
+    if (event.eventType == ButtonEvent_Pressed){
+        instance().moveHighlightUp();
+    }
+}
+void MenuManager::onButtonDownPressed(const ButtonEvent& event)
+{
+    // Press
+    if (event.eventType == ButtonEvent_Pressed){
+        instance().moveHighlightDown();
+    }
+}
+void MenuManager::onButtonBackPressed(const ButtonEvent& event)
+{    // Press
+    if (event.eventType == ButtonEvent_Pressed){
+        instance().goBack();
+    } 
+}
+void MenuManager::onButtonSelectPressed(const ButtonEvent& event)
+{    
+    // Press
+    if (event.eventType == ButtonEvent_Pressed){
+        instance().selectCurrentItem();
+    }
+}

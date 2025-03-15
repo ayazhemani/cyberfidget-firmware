@@ -1,5 +1,7 @@
 #include "AppManager.h"
 #include "HAL.h"
+#include "MenuManager.h"
+
 #include "ReactionTimeGame.h"
 #include "DinoGame.h"
 #include "SimonSaysGame.h"
@@ -60,12 +62,22 @@ void AppManager::setup() {
     HAL::initHardware();
     ESP_LOGI(TAG_MAIN, "AppManager setup complete");
     powerManager.begin();
+
+    // Initialize the menu system:
+    MenuManager::instance().begin();
 }
 
 void AppManager::loop() {
     HAL::loopHardware();
-    
+
     processButtonEvents();
+    
+    // If the menu is active, let the menu handle everything:
+    if (MenuManager::instance().isMenuActive())
+    {
+        MenuManager::instance().update();
+        return; 
+    }
 
     if ((millis_NOW - millis_APP_TASK_20MS) >= TASK_20MS) {
         millis_APP_TASK_20MS = millis_NOW;
@@ -94,23 +106,24 @@ void AppManager::processButtonEvents() {
             ButtonCallback cb = buttonManager.getCallback(ev.buttonIndex);
             if (cb) cb(ev);
         } else {
-            switch (ev.eventType) {
-                case ButtonEvent_Pressed:
-                    if (ev.buttonIndex == button_TopLeftIndex) {
-                        appPreviously = appActive;
-                        appActive = (appActive - 1 + APP_COUNT) % APP_COUNT;
-                    }
-                    break;
-                case ButtonEvent_Released:
-                    buttonCounter[ev.buttonIndex]++;
-                    if (ev.buttonIndex == button_TopRightIndex) {
-                        appPreviously = appActive;
-                        appActive = (appActive + 1) % APP_COUNT;
-                    }
-                    break;
-                default:
-                    break;
-            }
+            ESP_LOGD(TAG_MAIN, "Unhandled button event: %d %d", ev.buttonIndex, ev.eventType);
+            // switch (ev.eventType) {
+            //     case ButtonEvent_Pressed:
+            //         if (ev.buttonIndex == button_TopLeftIndex) {
+            //             appPreviously = appActive;
+            //             appActive = (appActive - 1 + APP_COUNT) % APP_COUNT;
+            //         }
+            //         break;
+            //     case ButtonEvent_Released:
+            //         buttonCounter[ev.buttonIndex]++;
+            //         if (ev.buttonIndex == button_TopRightIndex) {
+            //             appPreviously = appActive;
+            //             appActive = (appActive + 1) % APP_COUNT;
+            //         }
+            //         break;
+            //     default:
+            //         break;
+            // }
         }
     }
 }

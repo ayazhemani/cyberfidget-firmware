@@ -1,0 +1,21 @@
+{
+    "name": "ExampleScreens",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "RGBController"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "ExampleScreens"
+        },
+        {
+            "name": "HAL"
+        },
+        {
+            "name": "images"
+        }
+    ]
+}

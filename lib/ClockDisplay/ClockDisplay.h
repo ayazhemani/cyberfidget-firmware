@@ -6,6 +6,7 @@
 #include "DisplayProxy.h"
 #include <time.h>
 #include <Preferences.h>
+#include "ButtonManager.h"
 
 /*
  * Class: ClockDisplay
@@ -36,9 +37,11 @@ public:
     // Optionally, add a reset() method if you want to reinitialize on app switch.
     void reset();
 
+    void end();    // Unregister callbacks and cleanup
 
 private:
     DisplayProxy& m_display;  // Reference to the display instance
+    ButtonManager& buttonManager; // Reference to the button manager instance
 
     Preferences m_preferences;  // For storing time data between deep sleep sessions
 
@@ -62,6 +65,30 @@ private:
 
     // Returns true if the system time is valid (i.e. it has been updated via NTP).
     bool isSystemTimeValid();
+
+    /* Buttons */
+
+    // For handling button presses
+    static ClockDisplay* instance; // To allow static callbacks
+
+    void registerButtonCallbacks();
+    void unregisterButtonCallbacks();
+
+    // Button callback functions
+    static void buttonPressedCallback(const ButtonEvent& event);
+    void handleButtonEvent(const ButtonEvent& event); // Define this function
+
+    // We will have one callback function for each button
+    static void onButtonLeftPressed(const ButtonEvent& event);
+    static void onButtonRightPressed(const ButtonEvent& event);
+    static void onButtonUpPressed(const ButtonEvent& event);
+    static void onButtonDownPressed(const ButtonEvent& event);
+    static void onButtonBackPressed(const ButtonEvent& event);
+    static void onButtonSelectPressed(const ButtonEvent& event);
 };
+
+// Declare that there's a global object called below somewhere for AppDefs to use
+// must be after the reference class definition exists
+extern ClockDisplay clockDisplay;
 
 #endif // CLOCK_DISPLAY_H

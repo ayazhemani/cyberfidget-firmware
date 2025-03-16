@@ -2,6 +2,7 @@
 #include "HAL.h"         // So we can reach buttonManager, display, etc.
 #include "AppManager.h"   // So we can set appActive, appPreviously, etc.
 #include "globals.h"      // If you have global for 'millis_NOW', etc.
+#include "AppDefs.h"      // For AppIndex enum
 
 // Aliases to hardware
 static auto &display       = HAL::displayProxy();
@@ -39,7 +40,7 @@ namespace
         cat.label      = label;
         cat.isCategory = true;
         cat.children   = children;
-        cat.appIndex   = APP_FONT_FACE; // meaningless placeholder 
+        cat.appIndex   = APP_COUNT; // meaningless placeholder 
         return cat;
     }
 
@@ -58,6 +59,13 @@ namespace
 // Singleton constructor: build root items, set up highlight element, etc.
 MenuManager::MenuManager()
 {
+    // std::vector<MenuItem> rootMenuItems = {
+    //     { "Screensavers", true, APP_MATRIX_SCREENSAVER, subItems... },
+    //     { "Games",        true, APP_MENU_GAMES },
+    //     //...
+    //     { "Booper",       false, APP_BOOPER }
+    //  };     
+
     // Create sub-items for "Screensavers"
     std::vector<MenuItem> screensavers {
         makeApp("Matrix Screensaver", APP_MATRIX_SCREENSAVER),
@@ -114,6 +122,21 @@ void MenuManager::begin()
     menuActive = true;
 }
 
+void MenuManager::end()
+{
+    // This item references an actual App in AppManager.
+    // 1) Tell the menu we are no longer active:
+    menuActive = false;
+
+    // 2) Unregister menu callbacks
+    unregisterMenuCallbacks();
+
+    // // 3) Launch that app in your existing system:
+    // appPreviously = appActive;
+    // appActive     = mi.appIndex;  // e.g. APP_DINO_GAME
+}
+
+
 // Called by the main loop to let the menu update animations, etc.
 void MenuManager::update()
 {
@@ -130,12 +153,14 @@ void MenuManager::update()
 // Called by an app to hand control back to the menu
 void MenuManager::returnToMenu()
 {
-    // Re-register the menu callbacks
-    registerMenuCallbacks();
+    // // Re-register the menu callbacks
+    // registerMenuCallbacks();
 
-    // We remain at the same place in the menu that we left off 
-    // (so the highlight is still on the previously selected item).
-    menuActive = true;
+    // // We remain at the same place in the menu that we left off 
+    // // (so the highlight is still on the previously selected item).
+    // menuActive = true;
+
+    AppManager::instance().switchToApp(APP_MENU);
 }
 
 // Private method: move highlight up
@@ -274,11 +299,8 @@ void MenuManager::selectCurrentItem()
         // 2) Unregister menu callbacks
         unregisterMenuCallbacks();
 
-        // 3) Launch that app in your existing system:
-        appPreviously = appActive;
-        appActive     = mi.appIndex;  // e.g. APP_DINO_GAME
-
-        // Next time the user calls returnToMenu(), we will come back here.
+        // Call AppManager::switchToApp() with the appIndex!
+        AppManager::instance().switchToApp(mi.appIndex);
     }
 }
 

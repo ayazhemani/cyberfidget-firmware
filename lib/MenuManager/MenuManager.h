@@ -66,8 +66,16 @@ public:
     void update();
 
     /**
+     * @brief Close the menu system
+     *  - Unregister button callbacks for navigation.
+     */
+    void end();
+
+    /**
      * @brief Called by an app to signal "I am done; go back to the menu."
      * This re-registers the menu's button callbacks and shows the last-known highlight.
+     *  - Can also call a specific app to switch to, including the menu:
+     *  - AppManager::instance().switchToApp(APP_MENU);
      */
     void returnToMenu();
 

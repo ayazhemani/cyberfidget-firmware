@@ -1,0 +1,24 @@
+{
+    "name": "DinoGame",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "DinoSprites"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "DinoGame"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

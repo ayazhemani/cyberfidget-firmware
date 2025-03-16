@@ -1,0 +1,66 @@
+{
+    "name": "AppManager",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "SliderPosition"
+        },
+        {
+            "name": "RGBController"
+        },
+        {
+            "name": "MatrixScreensaver"
+        },
+        {
+            "name": "Flashlight"
+        },
+        {
+            "name": "PowerManager"
+        },
+        {
+            "name": "SimonSaysGame"
+        },
+        {
+            "name": "ExampleScreens"
+        },
+        {
+            "name": "DinoGame"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "SerialDisplay"
+        },
+        {
+            "name": "Booper"
+        },
+        {
+            "name": "ClockDisplay"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "WiFiManagerCF"
+        },
+        {
+            "name": "AppManager"
+        },
+        {
+            "name": "SPHFluidGame"
+        },
+        {
+            "name": "ReactionTimeGame"
+        },
+        {
+            "name": "AppDefs"
+        },
+        {
+            "name": "BreakoutGame"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

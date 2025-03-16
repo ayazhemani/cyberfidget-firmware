@@ -3,6 +3,8 @@
 #include "HAL.h"  // Use our proxy header
 #include "MenuManager.h" // For returning back to menu
 
+Booper booper(HAL::buttonManager(), HAL::audioManager());
+
 Booper* Booper::instance = nullptr;
 
 Booper::Booper(ButtonManager& btnMgr, AudioManager& audioMgr) :
@@ -32,11 +34,6 @@ void Booper::update() {
     // Update volume from slider
     updateVolumeFromSlider();
 
-    // No need to manage toneStopTime if tone plays only while button is pressed
-    // Remove toneStopTime handling if not used
-}
-
-void Booper::draw() {
     display.clear();
 
     // Display current volume and octave
@@ -188,7 +185,7 @@ void Booper::updateVolumeFromSlider() {
 void Booper::onButtonBackPressed(const ButtonEvent& event)
 {    // Press
     if (event.eventType == ButtonEvent_Released){
-        ESP_LOGI(TAG_MAIN, "[Booper] onButtonBackPressed => calling end() + returning to menu...");
+        ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
         instance->end();
         MenuManager::instance().returnToMenu();
     } 

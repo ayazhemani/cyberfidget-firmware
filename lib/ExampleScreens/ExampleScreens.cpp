@@ -156,22 +156,22 @@ void drawSliderProgressBar() {
 }
 
 void drawAccelerometerScreen() {
-  if (accelerometerScreenEnabled) {
-    display.clear();
-    display.setFont(ArialMT_Plain_10);
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 20, "X: " + String(accelX) + " Y: " + String(accelY) + " Z: " + String(accelZ));
+  display.clear();
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, 20, "X: " + String(accelX) + " Y: " + String(accelY) + " Z: " + String(accelZ));
 
-    uint8_t redMap = map(accelX, -1030, 1030, 0, 255);
-    uint8_t greenMap = map(accelY, -1030, 1030, 0, 255);
-    uint8_t blueMap = map(accelZ, -1030, 1030, 0, 255);
+  uint8_t redMap = map(accelX, -1030, 1030, 0, 255);
+  uint8_t greenMap = map(accelY, -1030, 1030, 0, 255);
+  uint8_t blueMap = map(accelZ, -1030, 1030, 0, 255);
 
-    setDeterminedColorsFront(redMap, greenMap, blueMap, 0); 
+  setDeterminedColorsFront(redMap, greenMap, blueMap, 0); 
 
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 10, "R: " + String(redMap) + " G: " + String(greenMap) + " B: " + String(blueMap));
-    display.display();
-  }
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, 10, "R: " + String(redMap) + " G: " + String(greenMap) + " B: " + String(blueMap));
+  display.display();
+
+  // Don't forget setColorsOff(); when exiting
 }
 
 void drawButtonCounters() {

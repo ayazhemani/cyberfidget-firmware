@@ -1,0 +1,15 @@
+{
+    "name": "MatrixScreensaverDither",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "MatrixScreensaver"
+        },
+        {
+            "name": "fontNotoSansJPReg"
+        }
+    ]
+}

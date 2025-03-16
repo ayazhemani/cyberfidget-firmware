@@ -1,0 +1,15 @@
+{
+    "name": "ButtonManager",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "globals"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "Preferences"
+        }
+    ]
+}

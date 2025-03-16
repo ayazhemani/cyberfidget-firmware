@@ -1,0 +1,27 @@
+{
+    "name": "WiFiManagerCF",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "WiFiManagerCF"
+        },
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "WiFiManager"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "ESPAsyncWebServer"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

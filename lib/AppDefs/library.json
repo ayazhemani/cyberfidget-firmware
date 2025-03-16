@@ -1,0 +1,24 @@
+{
+    "name": "AppDefs",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "DinoGame"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "Booper"
+        },
+        {
+            "name": "AppDefs"
+        },
+        {
+            "name": "functional"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

@@ -1,0 +1,33 @@
+{
+    "name": "ClockDisplay",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "Preferences"
+        },
+        {
+            "name": "time"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "sys/time"
+        },
+        {
+            "name": "ClockDisplay"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

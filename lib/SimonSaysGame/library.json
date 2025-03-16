@@ -1,0 +1,24 @@
+{
+    "name": "SimonSaysGame",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "AudioManager"
+        },
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "SimonSaysGame"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

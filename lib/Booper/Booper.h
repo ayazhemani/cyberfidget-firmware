@@ -5,13 +5,14 @@
 #include "AudioManager.h"
 #include "DisplayProxy.h"
 
+
+
 class Booper {
 public:
     Booper(ButtonManager& btnMgr, AudioManager& audioMgr);
 
     void begin();
     void update(); // Call this in the main loop
-    void draw();   // Draw on the display
     void end();    // Unregister callbacks and cleanup
 
 private:
@@ -51,5 +52,9 @@ private:
     static void onButtonBackPressed(const ButtonEvent& event);
     static void onButtonSelectPressed(const ButtonEvent& event);
 };
+
+// Declare that there's a global object called below somewhere for AppDefs to use
+// must be after the reference class definition exists
+extern Booper booper;
 
 #endif // BOOPER_H

@@ -1,0 +1,18 @@
+{
+    "name": "ReactionTimeGame",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "ReactionTimeGame"
+        },
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

@@ -10,10 +10,10 @@ License Placeholder
 
 
 void setup() {
-  AppManager::setup();
+  AppManager::instance().setup();
 }
 void loop() {
-  AppManager::loop();
+  AppManager::instance().loop();
 }
 
 // //Comment out above code and remove comments below for One Application setup

@@ -1,0 +1,15 @@
+{
+    "name": "SliderPosition",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "SliderPosition"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

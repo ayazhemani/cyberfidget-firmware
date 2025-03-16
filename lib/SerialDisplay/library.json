@@ -1,0 +1,15 @@
+{
+    "name": "SerialDisplay",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "SerialDisplay"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

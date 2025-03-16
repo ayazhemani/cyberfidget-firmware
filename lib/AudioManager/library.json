@@ -1,0 +1,15 @@
+{
+    "name": "AudioManager",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "AudioTools"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "AudioManager"
+        }
+    ]
+}

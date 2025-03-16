@@ -1,0 +1,21 @@
+{
+    "name": "SPHFluidGame",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "math"
+        },
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "SPHFluidGame"
+        },
+        {
+            "name": "vector"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

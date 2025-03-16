@@ -1,0 +1,54 @@
+{
+    "name": "MenuManager",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "math"
+        },
+        {
+            "name": "list"
+        },
+        {
+            "name": "UIElement"
+        },
+        {
+            "name": "AppManager"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "Animation"
+        },
+        {
+            "name": "../Utils/Macropad"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "../Utils/Util"
+        },
+        {
+            "name": "string"
+        },
+        {
+            "name": "../Utils/Keyboard"
+        },
+        {
+            "name": "AppDefs"
+        },
+        {
+            "name": "map"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "vector"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

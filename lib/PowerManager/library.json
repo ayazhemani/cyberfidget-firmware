@@ -1,0 +1,24 @@
+{
+    "name": "PowerManager",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "PowerManager"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "ClockDisplay"
+        },
+        {
+            "name": "HAL"
+        }
+    ]
+}

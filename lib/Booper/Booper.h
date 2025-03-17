@@ -5,8 +5,6 @@
 #include "AudioManager.h"
 #include "DisplayProxy.h"
 
-
-
 class Booper {
 public:
     Booper(ButtonManager& btnMgr, AudioManager& audioMgr);

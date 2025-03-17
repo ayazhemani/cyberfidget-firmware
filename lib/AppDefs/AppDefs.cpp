@@ -3,6 +3,8 @@
 #include "Booper.h"
 #include "DinoGame.h"
 #include "ClockDisplay.h"
+#include "Flashlight.h"
+
 // etc.
 
 AppDefinition appRegistry[APP_COUNT] = {
@@ -29,11 +31,18 @@ AppDefinition appRegistry[APP_COUNT] = {
     },
     /* [APP_CLOCK_DISPLAY] */
     {
-        "Clock",
-        [](){ clockDisplay.begin(); },
-        [](){ clockDisplay.end();   },
-        [](){ clockDisplay.update();   },
-        },
+      "Clock",
+      [](){ clockDisplay.begin(); },
+      [](){ clockDisplay.end();   },
+      [](){ clockDisplay.update();   },
+      },
+   /* [APP_FLASHLIGHT] */
+    {
+      "Flashlight",
+      [](){ flashlight.begin(); },
+      [](){ flashlight.end();   },
+      [](){ flashlight.update();   },
+      },
     // ...
 };
 

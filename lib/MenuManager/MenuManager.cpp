@@ -87,6 +87,8 @@ MenuManager::MenuManager()
         makeApp("Clock Display",  APP_CLOCK_DISPLAY),
         makeApp("WiFi Config",    APP_WIFI_CONFIG),
         makeApp("Power Manager",  APP_POWER_MANAGER),
+        makeApp("Flashlight",     APP_FLASHLIGHT),
+
         // Add more Tools here
     };
 

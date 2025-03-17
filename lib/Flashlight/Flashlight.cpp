@@ -2,11 +2,28 @@
 #include "RGBController.h"   // For LED strip control and pixel definitions
 #include "globals.h"         // For sliderPosition_8Bits, flashlightStatus, etc.
 #include "HAL.h"           // For HAL::displayProxy()
+#include "MenuManager.h"     // For returning to the menu
 
-bool flashlightStatus = false;  // Whether the flashlight is on or off
+Flashlight flashlight(HAL::buttonManager());
 
-void flashlightController() {
+Flashlight* Flashlight::instance = nullptr;
 
+Flashlight::Flashlight(ButtonManager& btnMgr) :
+    buttonManager(btnMgr),
+    display(HAL::displayProxy())  // Use the DisplayProxy from HAL
+{
+    instance = this;
+}
+
+void Flashlight::update() {
+
+     // Clear and set up the display for the flashlight screen
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_CENTER);
+    display.setFont(ArialMT_Plain_16);
+    display.drawString(64, 18, "Flashlight");
+    display.display();
+    
     // Use brightness derived from sliderPosition_8Bits for consistency
     uint8_t brightness = sliderPosition_8Bits_Inverted_Filtered;
 
@@ -17,21 +34,34 @@ void flashlightController() {
     // strip.setPixelColor(pixel_Front_Bottom, strip.Color(brightness, brightness, brightness, brightness));
     // strip.show();
     setDeterminedColorsAll(0, 0, 0, brightness);
-    
-    flashlightStatus = true;
-
 }
 
-void drawFlashlight() {
-    DisplayProxy& display = HAL::displayProxy();
+void Flashlight::onButtonBackPressed(const ButtonEvent& event)
+{    // Press
+    if (event.eventType == ButtonEvent_Released){
+        ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    } 
+}
 
-     // Clear and set up the display for the flashlight screen
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
-    display.setFont(ArialMT_Plain_16);
-    display.drawString(64, 18, "Flashlight");
-    display.display();
-    
-    // Enable the flashlight
-    flashlightController();
+void Flashlight::begin() {
+    ESP_LOGI(TAG_MAIN, "begin() => registering app callbacks...");
+    registerButtonCallbacks();
+}
+
+void Flashlight::end() {
+    ESP_LOGI(TAG_MAIN, "end() => unregistering app callbacks...");
+    setColorsOff();
+    unregisterButtonCallbacks();
+}
+
+void Flashlight::registerButtonCallbacks() {
+    // Register callbacks for the buttons
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void Flashlight::unregisterButtonCallbacks() {
+    // Unregister callbacks
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
 }

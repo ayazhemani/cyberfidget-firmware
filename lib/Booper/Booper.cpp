@@ -19,12 +19,12 @@ Booper::Booper(ButtonManager& btnMgr, AudioManager& audioMgr) :
 }
 
 void Booper::begin() {
-    ESP_LOGI(TAG_MAIN, "[Booper] begin() => registering booper callbacks...");
+    ESP_LOGI(TAG_MAIN, "begin() => registering booper callbacks...");
     registerButtonCallbacks();
 }
 
 void Booper::end() {
-    ESP_LOGI(TAG_MAIN, "[Booper] end() => unregistering booper callbacks...");
+    ESP_LOGI(TAG_MAIN, "end() => unregistering booper callbacks...");
     unregisterButtonCallbacks();
     // Stop any playing tones
     audioManager.stopTone();

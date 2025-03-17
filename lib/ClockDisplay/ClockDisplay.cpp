@@ -5,16 +5,11 @@
 #include "globals.h"
 
 #include <WiFi.h>   // We use WiFi.status() to see if we're connected
-
-// For accessing the system time functions
-extern "C" {
-  #include <sys/time.h>
-}
+#include <sys/time.h>
 
 // Define a minimum valid epoch (here we assume any time after Sept 2020 is valid)
 #define MIN_VALID_EPOCH 1600000000UL
 
-#include "globals.h"
 extern const uint8_t suiGenerisRg_20[];  // Font used 
 
 ClockDisplay clockDisplay;
@@ -34,7 +29,7 @@ ClockDisplay::ClockDisplay()
       m_internalBaseTime(0),
       m_internalBaseMillis(0)
 {
-    // Nothing else to do here.
+        instance = this;
 }
 
 // ---------------------------------------------------------------------
@@ -43,6 +38,9 @@ ClockDisplay::ClockDisplay()
 // It loads saved time from Preferences and initiates an NTP sync if WiFi is connected.
 // ---------------------------------------------------------------------
 void ClockDisplay::begin() {
+
+    ESP_LOGI(TAG_MAIN, "begin() => registering app callbacks...");
+    registerButtonCallbacks();
 
     // If already initialized, simply return.
     if (m_initialized) {
@@ -237,28 +235,28 @@ void ClockDisplay::onButtonBackPressed(const ButtonEvent& event)
 // Internally and externally callable function to unregister callbacks and cleanup.
 // ---------------------------------------------------------------------
 void ClockDisplay::end() {
-    ESP_LOGI(TAG_MAIN, "end() => unregistering booper callbacks...");
+    ESP_LOGI(TAG_MAIN, "end() => unregistering app callbacks...");
     unregisterButtonCallbacks();
 }
 
 void ClockDisplay::registerButtonCallbacks() {
     // Register callbacks for the buttons
-    buttonManager.registerCallback(button_TopLeftIndex,     buttonPressedCallback);
-    buttonManager.registerCallback(button_TopRightIndex,    buttonPressedCallback);
-    buttonManager.registerCallback(button_MiddleLeftIndex,  buttonPressedCallback);
-    buttonManager.registerCallback(button_MiddleRightIndex, buttonPressedCallback);
+    //buttonManager.registerCallback(button_TopLeftIndex,     buttonPressedCallback);
+    //buttonManager.registerCallback(button_TopRightIndex,    buttonPressedCallback);
+    //buttonManager.registerCallback(button_MiddleLeftIndex,  buttonPressedCallback);
+    //buttonManager.registerCallback(button_MiddleRightIndex, buttonPressedCallback);
 
     // Exit App
     buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
-    buttonManager.registerCallback(button_BottomRightIndex,onButtonSelectPressed);
+    //buttonManager.registerCallback(button_BottomRightIndex,onButtonSelectPressed);
 }
 
 void ClockDisplay::unregisterButtonCallbacks() {
     // Unregister callbacks
-    buttonManager.unregisterCallback(button_TopLeftIndex);
-    buttonManager.unregisterCallback(button_TopRightIndex);
-    buttonManager.unregisterCallback(button_MiddleLeftIndex);
-    buttonManager.unregisterCallback(button_MiddleRightIndex);
+    //buttonManager.unregisterCallback(button_TopLeftIndex);
+    //buttonManager.unregisterCallback(button_TopRightIndex);
+    //buttonManager.unregisterCallback(button_MiddleLeftIndex);
+    //buttonManager.unregisterCallback(button_MiddleRightIndex);
     buttonManager.unregisterCallback(button_BottomLeftIndex);
-    buttonManager.unregisterCallback(button_BottomRightIndex);
+    //buttonManager.unregisterCallback(button_BottomRightIndex);
 }

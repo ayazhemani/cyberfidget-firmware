@@ -1,7 +1,6 @@
 #ifndef MENU_MANAGER_H
 #define MENU_MANAGER_H
 
-#include <Arduino.h>
 #include <vector>
 #include <string>
 
@@ -13,21 +12,19 @@
 #include "ButtonManager.h" // For button callbacks
 
 /**
- * @brief A struct to represent a single menu item.
- *
- * If isCategory == true, then "children" are sub-items to display
- * when this category is selected.
- *
- * If isCategory == false, then this item is actually an "app." 
- * Selecting it will launch the associated appIndex from your existing
- * AppManager (the enumerated “AppIndex”).
+ * @brief A basic menu item. 
+ * If isCategory=true, "children" hold sub-items.
+ * If isCategory=false, it's a leaf item referencing a particular AppIndex.
  */
-struct MenuItem
-{
-    std::string label;
-    bool isCategory;
-    AppIndex appIndex;              // Used only if isCategory == false
-    std::vector<MenuItem> children; // Sub-items if this is a category
+struct MenuItem {
+    std::string  label;
+    bool         isCategory;
+    AppIndex     appIndex;        // used if isCategory=false
+    std::vector<MenuItem> children;
+
+    MenuItem(const std::string &lbl, bool cat, AppIndex idx)
+        : label(lbl), isCategory(cat), appIndex(idx)
+    {}
 };
 
 /**
@@ -46,11 +43,17 @@ public:
      * @brief Singleton accessor (optional).
      * We often want a single global MenuManager.
      */
-    static MenuManager &instance()
-    {
-        static MenuManager _instance;
-        return _instance;
-    }
+    static MenuManager &instance();
+
+    /**
+     * @brief Register an app in the menu system.
+     * @param path The category path, e.g., "Tools/WiFi"
+     * @param label The display name for the app, e.g., "WiFi Config."
+     * @param index The AppIndex for this app.
+     */ 
+    void registerApp(const std::string &path, 
+                     const std::string &label, 
+                     AppIndex index);
 
     /**
      * @brief Initialize the menu system. 
@@ -91,6 +94,18 @@ private:
 
     // The "root" vector of top-level categories: Screensavers, Games, Tools
     std::vector<MenuItem> rootMenuItems;
+
+    // Helpers for registerApp
+    // parseCategoryPath => splits "Tools/WiFi" into ["Tools", "WiFi"]
+    std::vector<std::string> parseCategoryPath(const std::string &path);
+    
+    // findOrCreateCategory => navigates or creates subcategories
+    std::vector<MenuItem> &findOrCreateCategory(std::vector<MenuItem> &currentLevel,
+                                                const std::string &categoryLabel);
+
+
+
+
 
     // Current "path" in the menu. For instance:
     //   If we're at root and have 3 categories, we have rootMenuItems for each category

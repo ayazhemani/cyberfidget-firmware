@@ -4,6 +4,10 @@
 #include "globals.h"      // If you have global for 'millis_NOW', etc.
 #include "AppDefs.h"      // For AppIndex enum
 
+#include <sstream>        // For path parsing
+#include <algorithm>  // for std::min/max if needed
+#include <string>
+
 // Aliases to hardware
 static auto &display       = HAL::displayProxy();
 static auto &buttonManager = HAL::buttonManager();
@@ -26,78 +30,66 @@ static int scrollOffset = 0;   // how many pixels the entire list is shifted up
 static int oldScrollOffset = 0; // used if we want to animate from old→new
 static const int VISIBLE_COUNT = 4; // how many items can fit on screen at once
 
-//-------------------------------------------------------------------
-// Anonymous namespace for local helpers (if needed).
-namespace
+// Helper to parse path like "Tools/WiFi" => ["Tools","WiFi"]
+static std::vector<std::string> parseCategoryPath(const std::string &path)
 {
-    // Example function to create a category with sub-items.
-    MenuItem makeCategory(
-        const std::string &label,
-        const std::vector<MenuItem> &children
-    )
-    {
-        MenuItem cat;
-        cat.label      = label;
-        cat.isCategory = true;
-        cat.children   = children;
-        cat.appIndex   = APP_COUNT; // meaningless placeholder 
-        return cat;
+    std::vector<std::string> result;
+    if (path.empty()) {
+        return result; // no subcategories
     }
+    std::stringstream ss(path);
+    std::string segment;
+    while (std::getline(ss, segment, '/')) {
+        if (!segment.empty()) {
+            result.push_back(segment);
+        }
+    }
+    return result;
+}
 
-    // Example function to create a leaf item that launches a specific App:
-    MenuItem makeApp(const std::string &label, AppIndex idx)
-    {
-        MenuItem m;
-        m.label      = label;
-        m.isCategory = false;
-        m.appIndex   = idx;
-        return m;
+/**
+ * @brief Locates or creates a subcategory with name catName 
+ * in currentLevel, returning a reference to that subcategory's children vector.
+ */
+std::vector<MenuItem>& MenuManager::findOrCreateCategory(std::vector<MenuItem> &currentLevel,
+                                                         const std::string &catName)
+{
+    // see if catName already exists
+    for (auto &mi : currentLevel) {
+        if (mi.isCategory && mi.label == catName) {
+            return mi.children; 
+        }
     }
-} // namespace
+    // not found => create new category
+    // must pass 3 args to constructor
+    MenuItem newCat(catName, true, APP_COUNT); 
+    // or APP_MENU or a "dummy" index for categories
+    currentLevel.push_back(newCat);
+
+    return currentLevel.back().children;
+}
+
+// This method is called from buildNestedMenu() to add a single app’s entry
+static void addAppToMenu(const char* label, const char* path, int appIndex)
+{
+    MenuManager::instance().registerApp(path, label, (AppIndex)appIndex);
+}
+
+
+//-------------------------------------------------------------------
+// Singleton
+MenuManager &MenuManager::instance()
+{
+    static MenuManager single;
+    return single;
+}
 
 //-------------------------------------------------------------------
 // Singleton constructor: build root items, set up highlight element, etc.
 MenuManager::MenuManager()
 {
-    // std::vector<MenuItem> rootMenuItems = {
-    //     { "Screensavers", true, APP_MATRIX_SCREENSAVER, subItems... },
-    //     { "Games",        true, APP_MENU_GAMES },
-    //     //...
-    //     { "Booper",       false, APP_BOOPER }
-    //  };     
-
-    // Create sub-items for "Screensavers"
-    std::vector<MenuItem> screensavers {
-        makeApp("Matrix Screensaver", APP_MATRIX_SCREENSAVER),
-        // Add more screensavers as needed
-    };
-
-    // Create sub-items for "Games"
-    std::vector<MenuItem> games {
-        makeApp("Reaction Time", APP_REACTION),
-        makeApp("Dino Game",     APP_DINO_GAME),
-        makeApp("Simon Says",    APP_SIMON_SAYS),
-        makeApp("Breakout",      APP_BREAKOUT),
-        makeApp("Booper",        APP_BOOPER),
-        // Add more or reorder as you wish
-    };
-
-    // Create sub-items for "Tools"
-    std::vector<MenuItem> tools {
-        makeApp("Clock Display",  APP_CLOCK_DISPLAY),
-        makeApp("WiFi Config",    APP_WIFI_CONFIG),
-        makeApp("Power Manager",  APP_POWER_MANAGER),
-        makeApp("Flashlight",     APP_FLASHLIGHT),
-
-        // Add more Tools here
-    };
-
-    // Build the top-level categories:
-    rootMenuItems.push_back( makeCategory("Screensavers", screensavers) );
-    rootMenuItems.push_back( makeCategory("Games",        games) );
-    rootMenuItems.push_back( makeCategory("Tools",        tools) );
-
     // Our "current" location is the root and index=0
+    scrollOffset = 0; // top
     currentItemList = &rootMenuItems;
     currentIndex    = 0;
 
@@ -109,7 +101,7 @@ MenuManager::MenuManager()
 
     // Clear itemYPositions (we fill them in drawMenu())
     itemYPositions.clear();
-    scrollOffset = 0; // top
+    
 }
 
 void MenuManager::begin()
@@ -117,25 +109,26 @@ void MenuManager::begin()
     // Register the menu callbacks:
     registerMenuCallbacks();
 
-    // Move the highlight to row #0 immediately (no animation).
+    // Clear any existing root items if you want a fresh build
+    rootMenuItems.clear();
+    navigationStack.clear();
+    currentIndex = 0;
+    scrollOffset=0;
     highlightElement.setY(0);
 
-    // Mark that the menu is active:
+    // parse each line's path, build the categories
+    buildNestedMenu(); 
+    // buildNestedMenu calls something like:
+    // for i in [0..APP_COUNT-1]:
+    //    addAppToMenu(appDefs[i].name, appDefs[i].categoryPath, i);
+
     menuActive = true;
 }
 
 void MenuManager::end()
 {
-    // This item references an actual App in AppManager.
-    // 1) Tell the menu we are no longer active:
     menuActive = false;
-
-    // 2) Unregister menu callbacks
     unregisterMenuCallbacks();
-
-    // // 3) Launch that app in your existing system:
-    // appPreviously = appActive;
-    // appActive     = mi.appIndex;  // e.g. APP_DINO_GAME
 }
 
 
@@ -155,15 +148,29 @@ void MenuManager::update()
 // Called by an app to hand control back to the menu
 void MenuManager::returnToMenu()
 {
-    // // Re-register the menu callbacks
-    // registerMenuCallbacks();
-
-    // // We remain at the same place in the menu that we left off 
-    // // (so the highlight is still on the previously selected item).
-    // menuActive = true;
-
     AppManager::instance().switchToApp(APP_MENU);
 }
+
+// This is the function that actually registers an app in the data structure
+// by parsing the path. e.g. "Tools/WiFi" => sub-cat "Tools", sub-cat "WiFi", then leaf.
+void MenuManager::registerApp(const std::string &path,
+                                const std::string &label,
+                                AppIndex index)
+{
+    // parse
+    auto categories = parseCategoryPath(path);
+    // start at root
+    std::vector<MenuItem> *level = &rootMenuItems;
+
+    for (auto &catName : categories) {
+        level = &findOrCreateCategory(*level, catName);
+    }
+
+    // now add a leaf item
+    // we must pass 3 arguments: (label, isCategory=false, index)
+    MenuItem leaf(label, false, index);
+    level->push_back(leaf);
+}   
 
 // Private method: move highlight up
 void MenuManager::moveHighlightUp()
@@ -276,6 +283,7 @@ void MenuManager::animateHighlight(int oldIndex)
 // Called on "Select" button
 void MenuManager::selectCurrentItem()
 {
+    if (currentItemList->empty()) return;
     const MenuItem &mi = (*currentItemList)[currentIndex];
 
     if (mi.isCategory)
@@ -294,14 +302,10 @@ void MenuManager::selectCurrentItem()
     }
     else
     {
-        // This item references an actual App in AppManager.
-        // 1) Tell the menu we are no longer active:
+        // leaf => an app
         menuActive = false;
-
-        // 2) Unregister menu callbacks
         unregisterMenuCallbacks();
 
-        // Call AppManager::switchToApp() with the appIndex!
         AppManager::instance().switchToApp(mi.appIndex);
     }
 }

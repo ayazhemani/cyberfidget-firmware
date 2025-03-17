@@ -1,132 +1,40 @@
 #include "AppDefs.h"
-#include "MenuManager.h" // If you keep your menu code in a single file
-#include "Booper.h"
-#include "DinoGame.h"
-#include "ClockDisplay.h"
-#include "Flashlight.h"
+#include "MenuManager.h"  // if you want to insert items into the menu
+#include <vector>
+#include <string>
+#include <cstring>
 
-// etc.
+// 1) Build the array with the lines from "AppManifest.h"
+#define APP_ENTRY(ID, LABEL, CATPATH, BEGINF, ENDF, RUNF) \
+    { LABEL, CATPATH, BEGINF, ENDF, RUNF },
 
-AppDefinition appRegistry[APP_COUNT] = {
-    /* [APP_MENU] */
-    {
-       "Menu",
-       [](){ MenuManager::instance().begin(); }, // beginFunc
-       [](){ MenuManager::instance().end(); },   // endFunc
-       [](){ MenuManager::instance().update(); } // runFunc
-    },
-    /* [APP_BOOPER] */
-    {
-       "Booper",
-       [](){ booper.begin(); },         // or [](){ appNameGlobalReference.begin(); }
-       [](){ booper.end();   },         // or [](){ appNameGlobalReference.end(); }
-       [](){ booper.update();   },      // or appNameGlobalReference, etc.
-    },
-    /* [APP_DINO] */
-    {
-       "Dino",
-       [](){ dinoGame.begin(); },
-       [](){ dinoGame.end();   },
-       [](){ dinoGame.update();   },
-    },
-    /* [APP_CLOCK_DISPLAY] */
-    {
-      "Clock",
-      [](){ clockDisplay.begin(); },
-      [](){ clockDisplay.end();   },
-      [](){ clockDisplay.update();   },
-      },
-   /* [APP_FLASHLIGHT] */
-    {
-      "Flashlight",
-      [](){ flashlight.begin(); },
-      [](){ flashlight.end();   },
-      [](){ flashlight.update();   },
-      },
-    // ...
+AppDefinition appDefs[APP_COUNT] = {
+    #include "AppManifest.h"  // each line expands into { LABEL, PATH, begin..., end..., run... }
 };
 
+#undef APP_ENTRY
 
-/*
-TEMPLATE GUIDE
----
+// 2) (Optional) A function to parse each categoryPath
+static void addAppToMenu(const char* label, const char* path, int appIndex)
+{
+    // For example, pass it to your MenuManager or something. We'll do a minimal example:
+    // We might store in some global data structure “menuRoot”
+    // Then parse path by splitting on '/'
+    // E.g. "Tools/WiFi" => [ "Tools", "WiFi" ]
+    // Then go create subcategories if needed, etc.
 
-1) If you have in Booper.h:
+    // Pseudocode for path splitting:
+    // Tools => Subcategory "WiFi" => add item "label" => appIndex
+    // We'll keep it simple:
+    // MenuManager::instance().addItem(path, label, (AppIndex)appIndex);
 
-class Booper {
-public:
-   void begin();
-   void update();
-   void end();
-   ...
-};
+    // We'll do a simple placeholder:
+    MenuManager::instance().registerApp(path, label, (AppIndex)appIndex);
+}
 
-// some global
-extern Booper booper;  // declared in Booper.h
-
----
-2) Then in Booper.cpp:
-
-#include "Booper.h"
-#include "HAL.h"
-Booper booper(HAL::buttonManager(), HAL::audioManager());
-
-Booper::Booper(ButtonManager&, AudioManager&) { ... }
-void Booper::begin() { ... }
-void Booper::update() { ... }
-void Booper::end() { ... }
-
----
-3) Finally in AppDefs.cpp:
-
-#include "Booper.h"  // so we see extern Booper booper
-#include "AppDefs.h"
-
-AppDefinition appRegistry[APP_COUNT] = {
-    // ...
-    [APP_BOOPER] = {
-        "Booper",
-        [](){ booper.begin(); },
-        [](){ booper.end();   },
-        [](){ booper.update();}
-    },
-    // ...
-};
-
--------
-
-Extra Hints
-
-either do lambdas in AppDefs.cpp:
-
-[APP_BOOPER] = {
-   "Booper",
-   [](){ booper.begin(); },
-   [](){ booper.end(); },
-   [](){ booper.update(); }
-};
-
-Or define free functions:
-
-// In BooperApp.h
-void booperBegin();
-void booperEnd();
-void booperUpdate();
-
-// In BooperApp.cpp
-#include "Booper.h"
-Booper booper(...);
-
-void booperBegin()  { booper.begin(); }
-void booperEnd()    { booper.end(); }
-void booperUpdate() { booper.update(); }
-
-// Then in AppDefs.cpp
-[APP_BOOPER] = {
-   "Booper",
-   booperBegin,
-   booperEnd,
-   booperUpdate
-};
-
-*/
+void buildNestedMenu()
+{
+    for (int i = 0; i < (int)APP_COUNT; i++) {
+        addAppToMenu(appDefs[i].name, appDefs[i].categoryPath, i);
+    }
+}

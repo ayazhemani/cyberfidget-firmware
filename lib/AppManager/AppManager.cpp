@@ -30,7 +30,7 @@ void AppManager::setup() {
     appPreviously = APP_MENU;
 
     // Start the menu
-    appRegistry[appActive].beginFunc();
+    appDefs[appActive].beginFunc();
 }
 
 void AppManager::loop() {
@@ -68,7 +68,7 @@ void AppManager::loop() {
 void AppManager::runActiveApp()
 {
     // calls the runFunc for the currently active app
-    appRegistry[appActive].runFunc();
+    appDefs[appActive].runFunc();
 }
 
 void AppManager::processButtonEvents()
@@ -91,11 +91,11 @@ void AppManager::switchToApp(AppIndex newApp)
     if (newApp == appActive) return;
 
     // end old
-    appRegistry[appActive].endFunc();
+    appDefs[appActive].endFunc();
 
     appPreviously = appActive;
     appActive     = newApp;
 
     // begin new
-    appRegistry[appActive].beginFunc();
+    appDefs[appActive].beginFunc();
 }

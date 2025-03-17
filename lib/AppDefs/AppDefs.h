@@ -1,54 +1,47 @@
+// AppDefs.h
 #ifndef APP_DEFS_H
 #define APP_DEFS_H
 
 #include <functional>
+#include <vector>
+#include <string>
 
 /**
- * @brief Each app implements these three functions:
- *   begin()  -> registers callbacks, initializes
- *   end()    -> unregisters callbacks, tear-down
- *   run()    -> or draw(), called periodically (like your 20ms cycle)
- *
- * The function pointers below let us store them all in a table.
+ * @brief The function pointer types for an app's lifecycle
  */
 using AppBeginFunc = std::function<void()>;
 using AppEndFunc   = std::function<void()>;
 using AppRunFunc   = std::function<void()>;
 
-
-// 1) The enumerated list of all apps, 
-//    including the Menu if you like:
-enum AppIndex {
-    APP_MENU = 0,
-    APP_BOOPER,
-    APP_DINO_GAME,
-    APP_CLOCK_DISPLAY,
-    APP_FLASHLIGHT,
-    APP_MATRIX_SCREENSAVER,
-    APP_REACTION,
-    APP_SIMON_SAYS,
-    APP_BREAKOUT,
-    APP_WIFI_CONFIG,
-    APP_POWER_MANAGER,
-    
-    APP_COUNT // must be last
-};
-
-/**
- * @brief A struct describing a single app. 
- */
 struct AppDefinition {
-    const char*    name;      // optional: app name if you want
-    AppBeginFunc   beginFunc;
-    AppEndFunc     endFunc;
-    AppRunFunc     runFunc;   // or "drawFunc"
+    const char*  name;       // "Matrix Screensaver"
+    const char*  categoryPath; // e.g. "Screensavers", or "Tools/WiFi"
+    AppBeginFunc beginFunc;
+    AppEndFunc   endFunc;
+    AppRunFunc   runFunc;
 };
 
+/**
+ * We'll generate the enum from the lines in AppManifest.h
+ */
+enum AppIndex {
+    #define APP_ENTRY(ID, LABEL, CATPATH, BEGINF, ENDF, RUNF) ID,
+    #include "AppManifest.h"
+    #undef APP_ENTRY
+
+    APP_COUNT  // final sentinel
+};
 
 /**
- * @brief The actual registry array. 
- * We’ll define it in AppDefs.cpp
+ * We'll also declare a global array appDefs, 
+ * each entry has (name, categoryPath, beginFunc, endFunc, runFunc)
  */
-extern AppDefinition appRegistry[APP_COUNT];
+extern AppDefinition appDefs[APP_COUNT];
 
-#endif
+/**
+ * We'll define a function to build the nested menu from these definitions. 
+ * We'll show an example of how to parse the categoryPath into subcategories.
+ */
+void buildNestedMenu();
+
+#endif // APP_DEFS_H

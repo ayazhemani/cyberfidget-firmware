@@ -31,7 +31,7 @@ static int oldScrollOffset = 0; // used if we want to animate from old→new
 static const int VISIBLE_COUNT = 4; // how many items can fit on screen at once
 
 // Helper to parse path like "Tools/WiFi" => ["Tools","WiFi"]
-static std::vector<std::string> parseCategoryPath(const std::string &path)
+std::vector<std::string> MenuManager::parseCategoryPath(const std::string &path)
 {
     std::vector<std::string> result;
     if (path.empty()) {
@@ -88,6 +88,7 @@ MenuManager &MenuManager::instance()
 // Singleton constructor: build root items, set up highlight element, etc.
 MenuManager::MenuManager()
 {
+    ESP_LOGI(TAG_MAIN, "MenuManager constructor start");
     // Our "current" location is the root and index=0
     scrollOffset = 0; // top
     currentItemList = &rootMenuItems;
@@ -101,23 +102,25 @@ MenuManager::MenuManager()
 
     // Clear itemYPositions (we fill them in drawMenu())
     itemYPositions.clear();
-    
+    ESP_LOGI(TAG_MAIN, "MenuManager constructor end");
 }
 
 void MenuManager::begin()
 {
-    // Register the menu callbacks:
+    // // Register the menu callbacks:
     registerMenuCallbacks();
 
-    // Clear any existing root items if you want a fresh build
-    rootMenuItems.clear();
-    navigationStack.clear();
-    currentIndex = 0;
-    scrollOffset=0;
-    highlightElement.setY(0);
+    // // Clear any existing root items if you want a fresh build
+    // rootMenuItems.clear();
+    // navigationStack.clear();
+    // currentIndex = 0;
+    // scrollOffset=0;
+    // highlightElement.setY(0);
 
     // parse each line's path, build the categories
+    ESP_LOGI(TAG_MAIN, "MenuManager.cpp - Pre buildNestedMenu");
     buildNestedMenu(); 
+    ESP_LOGI(TAG_MAIN, "MenuManager.cpp - Post buildNestedMenu");
     // buildNestedMenu calls something like:
     // for i in [0..APP_COUNT-1]:
     //    addAppToMenu(appDefs[i].name, appDefs[i].categoryPath, i);
@@ -438,4 +441,25 @@ void MenuManager::onButtonSelectPressed(const ButtonEvent& event)
     if (event.eventType == ButtonEvent_Released){  //Released intentionally to avoid carrying into event
         instance().selectCurrentItem();
     }
+}
+
+
+// these are free (standalone) functions, not in the class
+extern "C" void menuBegin() __attribute__((used));
+extern "C" void menuBegin() {
+    ESP_LOGI(TAG_MAIN, "menuBegin start");
+    MenuManager::instance().begin();
+}
+
+extern "C" void menuEnd() __attribute__((used));
+extern "C" void menuEnd() {
+    ESP_LOGI(TAG_MAIN, "menuEnd start");
+    MenuManager::instance().end();
+}
+
+extern "C" void menuRun() __attribute__((used));
+extern "C" void menuRun() {
+    // logs so we see if it's actually called
+    ESP_LOGI(TAG_MAIN, "menuRun start");
+    MenuManager::instance().update();
 }

@@ -3,6 +3,20 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <iostream>
+#include "esp_log.h"
+
+// Print APP_COUNT value when the program starts
+void printAppCount() {
+    std::cout << "APP_COUNT is " << APP_COUNT << std::endl;
+}
+
+// This definition should only exist in ONE .cpp file
+PrintAppCount<APP_COUNT> appCountPrinter;
+
+extern "C"  void menuBegin();
+extern "C"  void menuEnd();
+extern "C"  void menuRun();
 
 // 1) Build the array with the lines from "AppManifest.h"
 #define APP_ENTRY(ID, LABEL, CATPATH, BEGINF, ENDF, RUNF) \
@@ -13,6 +27,21 @@ AppDefinition appDefs[APP_COUNT] = {
 };
 
 #undef APP_ENTRY
+
+// Debugging
+static_assert(sizeof(appDefs)/sizeof(appDefs[0]) == APP_COUNT, 
+              "Mismatch between appDefs and APP_COUNT?");
+
+//__attribute__((constructor)) // Ensures it runs at startup
+void debugAppDefs() {
+   for (int i = 0; i < (int)APP_COUNT; i++) {
+       ESP_LOGI(TAG_MAIN, "Index=%d name=%s path=%s beginFunc=%p",
+                i,
+                (appDefs[i].name ? appDefs[i].name : "(null)"),
+                (appDefs[i].categoryPath ? appDefs[i].categoryPath : "(null)"),
+                (void*)(appDefs[i].beginFunc));
+   }
+}
 
 // 2) (Optional) A function to parse each categoryPath
 static void addAppToMenu(const char* label, const char* path, int appIndex)
@@ -32,9 +61,11 @@ static void addAppToMenu(const char* label, const char* path, int appIndex)
     MenuManager::instance().registerApp(path, label, (AppIndex)appIndex);
 }
 
-void buildNestedMenu()
-{
-    for (int i = 0; i < (int)APP_COUNT; i++) {
-        addAppToMenu(appDefs[i].name, appDefs[i].categoryPath, i);
-    }
+void buildNestedMenu() {
+   for (int i=0; i<(int)APP_COUNT; i++){
+       ESP_LOGI("AppDefs","i=%d name=%s path=%s beginFunc? %s",
+                i, appDefs[i].name, appDefs[i].categoryPath,
+                (appDefs[i].beginFunc ? "YES":"NO"));
+       addAppToMenu(appDefs[i].name, appDefs[i].categoryPath, i);
+   }
 }

@@ -181,4 +181,9 @@ private:
     void updateScrollForCurrentIndex(int oldIndex);
 };
 
+// Then declare the free functions if you want them visible:
+extern "C" void menuBegin();  // free function
+extern "C" void menuEnd(); 
+extern "C" void menuRun();
+
 #endif

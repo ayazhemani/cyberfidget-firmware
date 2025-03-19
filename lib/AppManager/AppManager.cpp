@@ -4,6 +4,9 @@
 #include "globals.h"
 #include "PowerManager.h"
 #include "ClockDisplay.h"
+#include "AppDefs.h"
+
+void (*keep_functions[])() = {menuBegin, menuEnd, menuRun};
 
 static auto& buttonManager = HAL::buttonManager();
 static PowerManager powerManager(buttonManager, clockDisplay);
@@ -25,12 +28,29 @@ void AppManager::setup() {
     HAL::initHardware();
     ESP_LOGI(TAG_MAIN, "AppManager setup complete");
 
+    ESP_LOGI(TAG_MAIN, "AppManager setup start");
+    // Force creation of MenuManager now, so we can see if it bombs
+    MenuManager &m = MenuManager::instance(); 
+    ESP_LOGI(TAG_MAIN, "MenuManager::instance() returned: %p", (void*)&m);
+
     // Default to menu
     appActive     = APP_MENU;
     appPreviously = APP_MENU;
 
+    printAppCount(); // Debugging
+    ESP_LOGI(TAG_MAIN, "About to call debugAppDefs() for appActive=%d", (int)appActive);
+    debugAppDefs();
+
+    ESP_LOGI(TAG_MAIN, "App active index = %d", (int)appActive);
+    ESP_LOGI(TAG_MAIN, "beginFunc is %s", (appDefs[appActive].beginFunc ? "set" : "null"));
+    ESP_LOGI(TAG_MAIN, "menuBegin address: %p", (void*)menuBegin);
+    ESP_LOGI(TAG_MAIN, "menuEnd address: %p", (void*)menuEnd);
+    ESP_LOGI(TAG_MAIN, "menuRun address: %p", (void*)menuRun);
+    
     // Start the menu
     appDefs[appActive].beginFunc();
+
+    ESP_LOGI(TAG_MAIN, "Returned from beginFunc() for appActive=%d", (int)appActive);
 }
 
 void AppManager::loop() {

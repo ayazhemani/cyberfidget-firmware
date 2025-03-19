@@ -15,6 +15,7 @@ Booper::Booper(ButtonManager& btnMgr, AudioManager& audioMgr) :
     octave(0),
     toneStopTime(0)
 {
+    ESP_LOGI(TAG_MAIN, "Booper constructor! volume=%.2f, &this=%p", volume, this);
     instance = this;
 }
 

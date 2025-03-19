@@ -1,14 +1,7 @@
 #ifndef UIELEMENT_H
 #define UIELEMENT_H
 
-// #include "../Utils/Util.h"
-// #include "../Utils/Keyboard.h"
-// #include "../Utils/Macropad.h"
 #include <vector>
-
-// extern Keyboard kb;
-// extern MacroPad calcLayout;
-// extern std::string clipboard;
 
 
 /*

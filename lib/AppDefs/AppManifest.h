@@ -37,8 +37,8 @@
 
 APP_ENTRY(
     APP_MENU, 
-    "Menu", 
-    "Menu", 
+    "", 
+    "", 
     [](){ MenuManager::instance().begin(); },
     [](){ MenuManager::instance().end(); },
     [](){ MenuManager::instance().update();}
@@ -53,14 +53,14 @@ APP_ENTRY(
 //     [](){ Booper::instance().update();}
 // )
 
-// APP_ENTRY(
-//     APP_BOOPER,
-//     "Booper",
-//     "Games",
-//     [](){ booper.begin(); },
-//     [](){ booper.end(); },
-//     [](){ booper.update(); }
-// )
+APP_ENTRY(
+    APP_BOOPER,
+    "Booper",
+    "Games",
+    [](){ booper.begin(); },
+    [](){ booper.end(); },
+    [](){ booper.update(); }
+)
 
 // APP_ENTRY(
 //     APP_MENU,
@@ -71,12 +71,21 @@ APP_ENTRY(
 //     menuRun
 // )
 
-// APP_ENTRY(
-//     APP_FLASHLIGHT, 
-//     "Flashlight", 
-//     "Tools", 
-//     [](){ Flashlight::instance().begin(); },
-//     [](){ Flashlight::instance().end(); },
-//     [](){ Flashlight::instance().update();}
-// )
+APP_ENTRY(
+    APP_FLASHLIGHT,
+    "Flashlight",
+    "Tools/LEDs",
+    flashlightBegin,
+    flashlightEnd,
+    flashlightUpdate
+)
+
+APP_ENTRY(
+    APP_POWER_MANAGER,
+    "Power Manager",
+    "Tools",
+    powerManagerBegin,
+    powerManagerEnd,
+    powerManagerUpdate
+)
 

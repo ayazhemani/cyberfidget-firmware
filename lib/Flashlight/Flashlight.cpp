@@ -65,3 +65,16 @@ void Flashlight::unregisterButtonCallbacks() {
     // Unregister callbacks
     buttonManager.unregisterCallback(button_BottomLeftIndex);
 }
+
+// Global functions for the app system
+void flashlightBegin() {
+    flashlight.begin();
+}
+
+void flashlightEnd() {
+    flashlight.end();
+}
+
+void flashlightUpdate() {
+    flashlight.update();
+}

@@ -111,11 +111,11 @@ void MenuManager::begin()
     registerMenuCallbacks();
 
     // // Clear any existing root items if you want a fresh build
-    // rootMenuItems.clear();
-    // navigationStack.clear();
-    // currentIndex = 0;
-    // scrollOffset=0;
-    // highlightElement.setY(0);
+    rootMenuItems.clear();
+    navigationStack.clear();
+    currentIndex = 0;
+    scrollOffset=0;
+    highlightElement.setY(0);
 
     // parse each line's path, build the categories
     ESP_LOGI(TAG_MAIN, "MenuManager.cpp - Pre buildNestedMenu");
@@ -445,20 +445,20 @@ void MenuManager::onButtonSelectPressed(const ButtonEvent& event)
 
 
 // these are free (standalone) functions, not in the class
-extern "C" void menuBegin() __attribute__((used));
-extern "C" void menuBegin() {
+extern void menuBegin() __attribute__((used));
+extern void menuBegin() {
     ESP_LOGI(TAG_MAIN, "menuBegin start");
     MenuManager::instance().begin();
 }
 
-extern "C" void menuEnd() __attribute__((used));
-extern "C" void menuEnd() {
+extern void menuEnd() __attribute__((used));
+extern void menuEnd() {
     ESP_LOGI(TAG_MAIN, "menuEnd start");
     MenuManager::instance().end();
 }
 
-extern "C" void menuRun() __attribute__((used));
-extern "C" void menuRun() {
+extern void menuRun() __attribute__((used));
+extern void menuRun() {
     // logs so we see if it's actually called
     ESP_LOGI(TAG_MAIN, "menuRun start");
     MenuManager::instance().update();

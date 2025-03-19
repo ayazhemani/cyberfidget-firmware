@@ -31,4 +31,9 @@ private:
 // must be after the reference class definition exists
 extern Flashlight flashlight;
 
+// Declare global functions
+void flashlightBegin();
+void flashlightEnd();
+void flashlightUpdate();
+
 #endif  // FLASHLIGHT_H

@@ -19,6 +19,8 @@ public:
     // Function to handle shutdown screen updates
     void update();
 
+    void end();
+
     // Register button callback for shutdown
     void registerShutdownCallback();
 
@@ -34,6 +36,7 @@ private:
     
     // The callback function for button press event
     static void onButtonPressCallback(const ButtonEvent &event);
+    static void onButtonBackPressed(const ButtonEvent& event);
 
     // Reference to display and buttonManager
     DisplayProxy& display;
@@ -48,5 +51,14 @@ private:
     unsigned long lastTapTime;
     static const unsigned long DOUBLE_TAP_THRESHOLD_MS = 500; // Time window in milliseconds for double-tap
 };
+
+// Declare that there's a global object called below somewhere for AppDefs to use
+// must be after the reference class definition exists
+extern PowerManager powermanager;
+
+// Declare global functions
+void powerManagerBegin();
+void powerManagerEnd();
+void powerManagerUpdate();
 
 #endif  // POWERMANAGER_H

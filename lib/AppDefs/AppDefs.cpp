@@ -1,10 +1,11 @@
 #include "AppDefs.h"
-#include "MenuManager.h"  // if you want to insert items into the menu
 #include <vector>
 #include <string>
 #include <cstring>
 #include <iostream>
 #include "esp_log.h"
+
+#include "AppManifest_Includes.h"
 
 // Print APP_COUNT value when the program starts
 void printAppCount() {
@@ -14,9 +15,9 @@ void printAppCount() {
 // This definition should only exist in ONE .cpp file
 PrintAppCount<APP_COUNT> appCountPrinter;
 
-extern "C"  void menuBegin();
-extern "C"  void menuEnd();
-extern "C"  void menuRun();
+extern void menuBegin();
+extern void menuEnd();
+extern void menuRun();
 
 // 1) Build the array with the lines from "AppManifest.h"
 #define APP_ENTRY(ID, LABEL, CATPATH, BEGINF, ENDF, RUNF) \

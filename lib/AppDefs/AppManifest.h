@@ -89,3 +89,11 @@ APP_ENTRY(
     powerManagerUpdate
 )
 
+APP_ENTRY(
+    APP_MATRIX_SCREENSAVER,
+    "Matrix Screensaver",
+    "Screensavers",
+    [](){ matrixScreensaver.begin(); },
+    [](){ matrixScreensaver.end(); },
+    [](){ matrixScreensaver.update(); }
+)

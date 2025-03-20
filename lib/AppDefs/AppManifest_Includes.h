@@ -2,3 +2,4 @@
 #include "Flashlight.h"
 #include "Booper.h"
 #include "PowerManager.h"
+#include "MatrixScreensaver.h"

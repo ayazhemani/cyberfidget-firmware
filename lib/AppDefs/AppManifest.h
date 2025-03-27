@@ -97,3 +97,39 @@ APP_ENTRY(
     [](){ matrixScreensaver.end(); },
     [](){ matrixScreensaver.update(); }
 )
+
+APP_ENTRY(
+    APP_BREAKOUT_GAME,
+    "Breakout",
+    "Games",
+    [](){ breakoutGame.begin(); },
+    [](){ breakoutGame.end(); },
+    [](){ breakoutGame.update(); }
+)
+
+APP_ENTRY(
+    APP_DINO_GAME,
+    "Dino Run",
+    "Games",
+    [](){ dinoGame.begin(); },
+    [](){ dinoGame.end(); },
+    [](){ dinoGame.update(); }
+)
+
+APP_ENTRY(
+    APP_CLOCK_DISPLAY,
+    "Clock",
+    "Tools",
+    [](){ clockDisplay.begin(); },
+    [](){ clockDisplay.end(); },
+    [](){ clockDisplay.update(); }
+)
+
+APP_ENTRY(
+    APP_SIMON_SAYS_GAME,
+    "Simon Says",
+    "Games",
+    [](){ simonSaysGame.begin(); },
+    [](){ simonSaysGame.end(); },
+    [](){ simonSaysGame.update(); }
+)

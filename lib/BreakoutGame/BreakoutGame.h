@@ -14,7 +14,7 @@ public:
     BreakoutGame(ButtonManager& buttonManager, AudioManager& audioManager);
 
     void begin();  // Start the game
-    void update(float accelX); // Update game logic
+    void update(); // Update game logic
     void end();    // Cleanup and unregister callbacks
     void draw();   // Draw the game
 
@@ -22,6 +22,12 @@ public:
     static BreakoutGame* instance;
 
 private:
+    // AppManager Integration
+    void registerButtonCallbacks();
+    void unregisterButtonCallbacks();
+    static void buttonPressedCallback(const ButtonEvent& event);
+    static void onButtonBackPressed(const ButtonEvent& event);
+
     // References to hardware components
     DisplayProxy& display;
     ButtonManager& buttonManager;
@@ -77,5 +83,7 @@ private:
     // Static button event handler
     static void onButtonEvent(const ButtonEvent& event);
 };
+
+extern BreakoutGame breakoutGame;
 
 #endif // BREAKOUT_GAME_H

@@ -1,7 +1,7 @@
 #include "Booper.h"
 #include "globals.h" // For slider position and button indices
 #include "HAL.h"  // Use our proxy header
-#include "MenuManager.h" // For returning back to menu
+#include "MenuManager.h" // AppManager integration
 
 Booper booper(HAL::buttonManager(), HAL::audioManager());
 

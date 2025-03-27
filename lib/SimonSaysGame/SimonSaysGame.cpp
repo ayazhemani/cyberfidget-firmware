@@ -2,15 +2,16 @@
 #include "globals.h"  // Replace with your actual global button index definitions
 #include "HAL.h"
 
+SimonSaysGame simonSaysGame(HAL::buttonManager(), HAL::audioManager()); // AppManager Integration
 // Initialize static instance pointer
 SimonSaysGame* SimonSaysGame::instance = nullptr;
 
 // Define how the Simon game indexes map to your actual hardware buttons
 const int SimonSaysGame::buttonMappings[4] = {
-    button_MiddleLeftIndex,  // game button 0 = this physical button
-    button_MiddleRightIndex, // game button 1 = ...
-    button_BottomLeftIndex,  // game button 2 = ...
-    button_BottomRightIndex  // game button 3 = ...
+    button_TopLeftIndex,  // game button 0 = this physical button
+    button_TopRightIndex, // game button 1 = ...
+    button_MiddleLeftIndex,  // game button 2 = ...
+    button_MiddleRightIndex  // game button 3 = ...
 };
 
 //--------------------- Constructor / Setup ---------------------------
@@ -47,6 +48,7 @@ void SimonSaysGame::begin() {
     for (int i = 0; i < 4; i++) {
         buttonManager.registerCallback(buttonMappings[i], SimonSaysGame::onButtonEvent);
     }
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
 
     // Reset the game state
     resetGame();
@@ -58,6 +60,7 @@ void SimonSaysGame::end() {
         buttonManager.unregisterCallback(buttonMappings[i]);
     }
 
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
     // Stop any playing tones
     audioManager.stopTone();
 }
@@ -350,4 +353,13 @@ void SimonSaysGame::playBeepOnUserPress(int sq) {
     if (sq >= 0 && sq < 4) {
         audioManager.playTone(frequencies[sq]);
     }
+}
+
+void SimonSaysGame::onButtonBackPressed(const ButtonEvent& event)
+{    // Press
+    if (event.eventType == ButtonEvent_Released){
+        ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    } 
 }

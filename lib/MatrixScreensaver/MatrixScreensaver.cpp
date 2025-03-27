@@ -1,7 +1,7 @@
 #include "MatrixScreensaver.h"
 #include "HAL.h"
 
-MatrixScreensaver matrixScreensaver(HAL::buttonManager());
+MatrixScreensaver matrixScreensaver(HAL::buttonManager()); // AppManager Integration
 MatrixScreensaver* MatrixScreensaver::instance = nullptr;
 
 // Just an example set

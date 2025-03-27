@@ -17,7 +17,7 @@ public:
     SPHFluidGame();
 
     // Updates the simulation by one step, taking external acceleration (e.g., from an IMU).
-    void update(float accelX, float accelY);
+    void update();
 
     // Resets/re-randomizes particles.
     void resetParticles();

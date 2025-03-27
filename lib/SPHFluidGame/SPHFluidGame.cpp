@@ -79,7 +79,7 @@ SPHFluidGame::SPHFluidGame()
 //--------------------------------------------------------------------------------
 // Main update function
 //--------------------------------------------------------------------------------
-void SPHFluidGame::update(float accelX, float accelY)
+void SPHFluidGame::update()
 {
     // Combine tilt acceleration with gravity
     // Tweak scale if you want weaker/stronger tilt

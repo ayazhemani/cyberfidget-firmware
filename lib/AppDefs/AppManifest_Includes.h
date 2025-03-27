@@ -3,3 +3,7 @@
 #include "Booper.h"
 #include "PowerManager.h"
 #include "MatrixScreensaver.h"
+#include "BreakoutGame.h"
+#include "DinoGame.h"
+#include "ClockDisplay.h"
+#include "SimonSaysGame.h"

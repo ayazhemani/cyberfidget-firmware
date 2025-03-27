@@ -2,6 +2,7 @@
 #include "HAL.h"
 
 MatrixScreensaver matrixScreensaver(HAL::buttonManager());
+MatrixScreensaver* MatrixScreensaver::instance = nullptr;
 
 // Just an example set
 const char MatrixScreensaver::ALIEN_CHARS[16] = {

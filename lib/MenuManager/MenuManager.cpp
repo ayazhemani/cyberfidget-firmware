@@ -107,6 +107,14 @@ MenuManager::MenuManager()
 
 void MenuManager::begin()
 {
+    // If we've already built the menu, do NOT rebuild
+    if (!rootMenuItems.empty()) {
+        ESP_LOGI(TAG_MAIN, "Menu already built; not rebuilding");
+        registerMenuCallbacks();
+        menuActive = true;
+        return;
+    }
+
     // // Register the menu callbacks:
     registerMenuCallbacks();
 
@@ -114,7 +122,7 @@ void MenuManager::begin()
     rootMenuItems.clear();
     navigationStack.clear();
     currentIndex = 0;
-    scrollOffset=0;
+    scrollOffset = 0;
     highlightElement.setY(0);
 
     // parse each line's path, build the categories
@@ -160,7 +168,12 @@ void MenuManager::registerApp(const std::string &path,
                                 const std::string &label,
                                 AppIndex index)
 {
-    // parse
+    // If this is the menu app, skip adding a leaf item
+    if (index == APP_MENU) {
+        return;
+    }
+
+    // parse path, create subcategories
     auto categories = parseCategoryPath(path);
     // start at root
     std::vector<MenuItem> *level = &rootMenuItems;

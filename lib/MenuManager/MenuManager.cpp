@@ -244,7 +244,7 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
             // animate the int pointer
             new Animation(
                 &scrollOffset,
-                BOUNCE,
+                INDENT,
                 newScroll,   // endVal
                 300          // ms
             )
@@ -258,7 +258,7 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
         insertAnimation(
             new Animation(
                 &scrollOffset,
-                BOUNCE,
+                INDENT,
                 newScroll,
                 300
             )
@@ -288,7 +288,7 @@ void MenuManager::animateHighlight(int oldIndex)
     insertAnimation(
         new Animation(
             &highlightElement,
-            BOUNCE,        // or BOUNCE, etc.
+            INDENT,        // or BOUNCE, etc.
             highlightElement.getX(),
             newY,
             highlightElement.getWidth(),

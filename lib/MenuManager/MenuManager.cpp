@@ -226,6 +226,14 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
     int topY  = 0;
     int bottomY = SCREEN_HEIGHT - MENU_ITEM_HEIGHT;
 
+    auto it = animationsInt.find(&scrollOffset);
+    if (it != animationsInt.end()) {
+        Animation* oldAni = it->second;
+        oldAni->updateToCurrentValue(); 
+        delete oldAni;
+        animationsInt.erase(it);
+    }
+
     if (itemY < topY) {
         // We need to scroll upward so that the highlight is at or near top
         // e.g. new scrollOffset = currentIndex * MENU_ITEM_HEIGHT
@@ -265,35 +273,47 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
 
 void MenuManager::animateHighlight(int oldIndex)
 {
-    // If we’re not shifting the entire list, we move highlight from old Y→new Y.
-    int oldY = (oldIndex * MENU_ITEM_HEIGHT) - scrollOffset;
+    // 1) Force any existing highlight animation to jump to its partial position
+    finalizeHighlightAnimation(&highlightElement);
+
+    // 2) Now read the highlight’s current Y (it’s updated by the partial step above)
+    int curY = highlightElement.getY();
+
+    // 3) Compute the new target Y based on currentIndex
     int newY = (currentIndex * MENU_ITEM_HEIGHT) - scrollOffset;
 
-    // 1) Force the highlight element’s “starting” position to oldY,
-    //    so the animation engine sees that as the current geometry
-    //    (i.e. the highlight is at oldY *right now*).
-    highlightElement.setY(oldY);
-
-    // 2) Decide what the *final* geometry is going to be:
-    //    - If you only want to move vertically, you can keep the same X, width, height
-    //    - newY is from itemYPositions for the *destination row*
-    int newX      = highlightElement.getX();      // i.e. same X
-    int newWidth  = highlightElement.getWidth();  // same width
-    int newHeight = highlightElement.getHeight(); // same height
-
-    // 3) Insert an animation that moves from the highlight’s *current*
-    //    geometry (X, oldY, width, height) to the *new* geometry in 300ms:
+    // 4) Insert a brand-new animation from curY to newY (over 200ms, for instance)
+    //    Because highlightElement’s .getY() is already curY, we only have to call
+    //    insertAnimation() with the new final Y.
     insertAnimation(
         new Animation(
             &highlightElement,
-            LINEAR,     // or LINEAR, PARALLELOGRAM, etc.
-            newX,       // endX
-            newY,       // endY
-            newWidth,   // endWidth
-            newHeight,  // endHeight
-            200         // totalTime in ms
+            LINEAR,        // or BOUNCE, etc.
+            highlightElement.getX(),
+            newY,
+            highlightElement.getWidth(),
+            highlightElement.getHeight(),
+            200
         )
     );
+}
+
+
+void finalizeHighlightAnimation(UIElement* e)
+{
+    // Look up the UIElement in the map of active animations:
+    auto it = animationsUI.find(e);
+    if (it != animationsUI.end())
+    {
+        Animation* oldAni = it->second;
+
+        // Force it to update once to its "current" position:
+        oldAni->updateToCurrentValue();
+
+        // We then remove this animation from the map so it doesn’t keep running:
+        delete oldAni;
+        animationsUI.erase(it);
+    }
 }
 
 // Called on "Select" button
@@ -304,16 +324,22 @@ void MenuManager::selectCurrentItem()
 
     if (mi.isCategory)
     {
-        // 1) We're drilling into a new sub-menu
-        // push current location on stack
-        MenuNavState s{ currentItemList, currentIndex };
+        // 1) Push the old layer’s info
+        MenuNavState s;
+        s.itemList          = currentItemList;
+        s.index             = currentIndex;
+        s.savedScrollOffset = scrollOffset;  // store the offset
         navigationStack.push_back(s);
 
-        // 2) Switch to the sub-items 
+        // 2) Switch to the sub-items
         currentItemList = const_cast<std::vector<MenuItem>*>(&mi.children);
-        currentIndex    = 0; // start highlighting the first item in that sub-menu
+        currentIndex    = 0;
 
-        // Move highlight instantly (or animate from old row to row 0 if you prefer)
+        // 3) Reset the scroll offset for the new sub-menu
+        //    (or do something else if you want to restore last known offset for that sub-menu)
+        scrollOffset = 0;
+
+        // 4) Place the highlight at row 0, or animate from old position if you prefer
         highlightElement.setY(0);
     }
     else
@@ -321,36 +347,31 @@ void MenuManager::selectCurrentItem()
         // leaf => an app
         menuActive = false;
         unregisterMenuCallbacks();
-
         AppManager::instance().switchToApp(mi.appIndex);
     }
 }
+
 
 // Called on "Back" button
 void MenuManager::goBack()
 {
     if (navigationStack.empty()) {
-        // Already at root. You can choose what "Back" does at root:
-        // e.g. do nothing, or possibly go to some default state, or 
-        // put the device to sleep. For now we do nothing.
+        // Already at root
         return;
     }
     MenuNavState s = navigationStack.back();
     navigationStack.pop_back();
 
+    // Restore everything
     currentItemList = s.itemList;
     currentIndex    = s.index;
+    scrollOffset    = s.savedScrollOffset;
 
-    // Make sure highlight is physically placed on the correct item
-    int newY = (currentIndex * MENU_ITEM_HEIGHT) - scrollOffset;
-    highlightElement.setY(newY);
-    
-    // If you want to re-check whether scrollOffset is correct for that item:
-    // e.g. updateScrollForCurrentIndex(...) passing an oldIndex just to ensure
-    // the item is in view. But often you'll just snap to no offset or the last offset you had.
+    // If you want, finalize the old highlight animation
+    finalizeHighlightAnimation(&highlightElement);
 
-    // Possibly keep the same scrollOffset or reset it:
-    // scrollOffset = 0; // if you want to always revert to top
+    // Now place the highlight at the correct Y (or animate)
+    highlightElement.setY( (currentIndex * MENU_ITEM_HEIGHT) - scrollOffset );
 }
 
 /**

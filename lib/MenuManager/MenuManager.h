@@ -118,6 +118,7 @@ private:
     struct MenuNavState {
         std::vector<MenuItem> *itemList;
         int index;
+        int savedScrollOffset;
     };
     std::vector<MenuNavState> navigationStack;
 
@@ -179,11 +180,18 @@ private:
      * @brief Helper to adjust scrollOffset if the highlight goes off-screen
      */
     void updateScrollForCurrentIndex(int oldIndex);
+
+
 };
 
 // Then declare the free functions if you want them visible:
 extern void menuBegin();  // free function
 extern void menuEnd(); 
 extern void menuRun();
+
+/**
+ * @brief Helper to animate the highlight element to its new Y position.
+ */
+static void finalizeHighlightAnimation(UIElement* e);
 
 #endif

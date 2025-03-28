@@ -609,3 +609,124 @@ void updateTmp()
         }
     }
 }
+
+void Animation::updateToCurrentValue()
+{
+    // If not even started, we must init (this sets createTime, etc.)
+    if (!isStarted)
+    {
+        init();  // sets isStarted=true, createTime=millis()
+    }
+
+    // If we haven't passed the delayTime yet, there is no partial progress
+    if (!checkTime())
+    {
+        // i.e. the animation is still waiting for its delay to expire,
+        // so the target remains at the start.
+        return;
+    }
+
+    // If it hasn’t begun the actual motion yet, we do that now
+    if (!isAnimating)
+    {
+        initAni(); // sets startTime=millis(), isAnimating=true
+    }
+
+    // Now compute how far along (0..1) we *should* be
+    unsigned long now  = millis();
+    float elapsed = float(now - startTime);
+    float t       = (totalTime == 0) ? 1.0f : (elapsed / float(totalTime));
+    if (t < 0.f) t = 0.f;
+    if (t > 1.f) t = 1.f;
+
+    // We will use the same easing formula as animate(),
+    // but we skip the "if (getCurDuration()>10)" throttle. We want an immediate update.
+    float easingVal = 0.f;
+    switch (aniType)
+    {
+        case LINEAR:
+            easingVal = t;
+            break;
+        case INDENT: // "ease-out" style
+            // 1.0 - 2^(-10 * t)
+            easingVal = 1.0f - powf(2.f, -10.f * t);
+            break;
+        case INDENTINV: // "ease-in" style
+            // 2^(10*(t-1))
+            easingVal = powf(2.f, 10.f * (t - 1.f));
+            break;
+        case BOUNCE:
+        {
+            // same bounce formula from animateBounce()
+            float bounce = powf(2.f, -10.f * t) *
+                           sinf((t * 10.f - 0.75f) * (2.f * float(M_PI) / 3.f)) + 1.f;
+            easingVal = bounce;
+            break;
+        }
+        case PARALLELOGRAM: // "easeInOutBack"
+        {
+            float c1 = 1.70158f;
+            float c2 = c1 * 1.525f;
+            if (t < 0.5f)
+            {
+                float tw = 2.f * t;
+                easingVal = 0.5f * (tw * tw * ((c2 + 1.f) * tw - c2));
+            }
+            else
+            {
+                float tw = (2.f * t - 2.f);
+                easingVal = 0.5f * (tw * tw * ((c2 + 1.f) * tw + c2) + 2.f);
+            }
+            break;
+        }
+        default:
+            // fallback to linear
+            easingVal = t;
+            break;
+    }
+
+    // Update the actual target:
+    if (!type) // UIElement
+    {
+        int newX = startX + int(easingVal * (endX - startX));
+        int newY = startY + int(easingVal * (endY - startY));
+        int newW = startWidth  + int(easingVal * (endWidth  - startWidth));
+        int newH = startHeight + int(easingVal * (endHeight - startHeight));
+        targetUI->setX(newX);
+        targetUI->setY(newY);
+        targetUI->setWidth(newW);
+        targetUI->setHeight(newH);
+
+        if (useSkew)
+        {
+            float newSkew = startSkew + easingVal * (endSkew - startSkew);
+            targetUI->setSkew(newSkew);
+        }
+    }
+    else // animating an int*
+    {
+        int newVal = startVal + int(easingVal * (endVal - startVal));
+        *targetVal = newVal;
+    }
+
+    // If t is fully at 1.0 => we’re finished, snap exactly to end
+    if (t >= 1.0f)
+    {
+        if (!type)
+        {
+            targetUI->setX(endX);
+            targetUI->setY(endY);
+            targetUI->setWidth(endWidth);
+            targetUI->setHeight(endHeight);
+            if (useSkew)
+            {
+                targetUI->setSkew(endSkew);
+            }
+        }
+        else
+        {
+            *targetVal = endVal;
+        }
+        isFinished = true;
+    }
+}

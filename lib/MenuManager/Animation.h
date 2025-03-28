@@ -20,7 +20,7 @@ enum AnimationType {
     INDENT,
     INDENTINV,
     BOUNCE,
-    PARALLELOGRAM  // <--- NEW
+    PARALLELOGRAM
 };
 
 class Animation {
@@ -136,6 +136,17 @@ public:
      */
     UIElement* getTargetElement();
     int* getTargetVal();
+
+    /**
+     * @brief Forces a one-time update of this animation to whatever fraction
+     *        of time has elapsed (0..1). This is useful if you want to get the
+     *        "in-between" position before starting a brand-new animation.
+     *
+     *        After this call, the target’s X/Y (or int) is set to the correct
+     *        partial position. If the animation has fully elapsed, it is marked
+     *        finished and the target is snapped to the final.
+     */
+    void updateToCurrentValue();
 
 private:
     // Internal helpers

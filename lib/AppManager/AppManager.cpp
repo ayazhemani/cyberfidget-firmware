@@ -57,13 +57,6 @@ void AppManager::loop() {
     HAL::loopHardware();
 
     processButtonEvents();
-    
-    // // If the menu is active, let the menu handle everything:
-    // if (MenuManager::instance().isMenuActive())
-    // {
-    //     MenuManager::instance().update();
-    //     return; 
-    // }
 
     if ((millis_NOW - millis_APP_TASK_20MS) >= TASK_20MS) {
         millis_APP_TASK_20MS = millis_NOW;

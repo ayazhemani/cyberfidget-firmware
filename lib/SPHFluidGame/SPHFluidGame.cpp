@@ -1,11 +1,15 @@
 #include "SPHFluidGame.h"
 #include "HAL.h"
 
+SPHFluidGame sphFluidGame(HAL::buttonManager()); // App Manager Integration
+SPHFluidGame* SPHFluidGame::instance = nullptr; // App Manager Integration
+
 //--------------------------------------------------------------------------------
 // Constructor
 //--------------------------------------------------------------------------------
-SPHFluidGame::SPHFluidGame()
-    : display(HAL::displayProxy())
+SPHFluidGame::SPHFluidGame(ButtonManager& btnMgr)
+    : display(HAL::displayProxy()),
+    buttonManager(btnMgr) // AppManager Integration
 {
     // Initialize simulation parameters
 
@@ -54,7 +58,7 @@ SPHFluidGame::SPHFluidGame()
     dt, smoothing length, etc.) might be out of balance or your IMU feed is 
     returning very large values.
     */
-
+    currentCount     = 100;        // Default to 100 particles
     numParticles     = 100;        // Try small first to keep it real-time on MCU
     smoothingLength  = 5.0f;       // h
     restDensity      = 1.0f;       // ρ0
@@ -74,6 +78,7 @@ SPHFluidGame::SPHFluidGame()
     particleRadius   = 2.0f; 
 
     resetParticles();
+    instance = this; // AppManager Integration   
 }
 
 //--------------------------------------------------------------------------------
@@ -81,6 +86,12 @@ SPHFluidGame::SPHFluidGame()
 //--------------------------------------------------------------------------------
 void SPHFluidGame::update()
 {
+    int targetCount = sliderPosition_Percentage_Inverted_Filtered;
+    if (targetCount != currentCount) {
+        sphFluidGame.setParticleCount(targetCount);
+        currentCount = targetCount;
+    }
+
     // Combine tilt acceleration with gravity
     // Tweak scale if you want weaker/stronger tilt
     float ax = gravityX + accelX * -0.10f;
@@ -346,4 +357,24 @@ void SPHFluidGame::render()
     }
 
     display.display();
+}
+
+void SPHFluidGame::begin() {
+    // Register button callbacks
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void SPHFluidGame::end() {
+    // Unregister callbacks
+    ESP_LOGI(TAG_MAIN, "end() => unregistering button callbacks...");
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void SPHFluidGame::onButtonBackPressed(const ButtonEvent& event)
+{    // Press
+    if (event.eventType == ButtonEvent_Released){
+        ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    } 
 }

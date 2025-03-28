@@ -7,3 +7,8 @@
 #include "DinoGame.h"
 #include "ClockDisplay.h"
 #include "SimonSaysGame.h"
+#include "SPHFluidGame.h"
+#include "ExampleScreens.h"
+#include "ReactionTimeGame.h"
+#include "WiFiManagerCF.h"
+#include "SerialDisplayApp.h"

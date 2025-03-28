@@ -11,6 +11,27 @@
 #include "AppManager.h"    // We need to launch apps from here
 #include "ButtonManager.h" // For button callbacks
 
+// Enums for highlight shapes
+enum HighlightShape {
+    HIGHLIGHT_RECTANGLE,
+    HIGHLIGHT_PARALLELOGRAM,
+    HIGHLIGHT_SLANTED_CORNERS,
+    // ... add more shape types if desired ...
+};
+
+// Enums for menu transition states into/out of submenus
+enum MenuTransitionState {
+    TRANSITION_NONE,
+
+    // Forward (selecting a sub-category):
+    TRANSITION_OLD_MENU_SLIDE_OUT, 
+    TRANSITION_NEW_MENU_SLIDE_IN,
+
+    // Backward (goBack):
+    TRANSITION_SUBMENU_SLIDE_OUT,  // sub-menu slides out to the right
+    TRANSITION_PARENT_MENU_SLIDE_IN // parent slides in from the left
+};
+
 /**
  * @brief A basic menu item. 
  * If isCategory=true, "children" hold sub-items.
@@ -88,9 +109,17 @@ public:
      */
     bool isMenuActive() const { return menuActive; }
 
+    /**
+     * @brief Helper to set the highlight shape.
+     */
+    void setHighlightShape(HighlightShape shape) { highlightShape = shape; }
+
 private:
     // Private constructor: we use the singleton pattern above
     MenuManager();
+
+    // Default highlight shape
+    HighlightShape highlightShape = HIGHLIGHT_RECTANGLE; // default
 
     // The "root" vector of top-level categories: Screensavers, Games, Tools
     std::vector<MenuItem> rootMenuItems;
@@ -102,10 +131,6 @@ private:
     // findOrCreateCategory => navigates or creates subcategories
     std::vector<MenuItem> &findOrCreateCategory(std::vector<MenuItem> &currentLevel,
                                                 const std::string &categoryLabel);
-
-
-
-
 
     // Current "path" in the menu. For instance:
     //   If we're at root and have 3 categories, we have rootMenuItems for each category
@@ -181,7 +206,18 @@ private:
      */
     void updateScrollForCurrentIndex(int oldIndex);
 
+    /// Helper to handle menu transitions (slide in/out) when going into/out of submenus.
+    void handleMenuTransition();
+    void startSlideOutToSubmenu(const MenuItem &subCategory);
+    void startSlideOutToParent();
 
+    // Transition style into/out of submenus
+    MenuTransitionState transitionState = TRANSITION_NONE;
+
+    std::vector<MenuItem>* pendingItemList = nullptr;
+    int pendingIndex = 0;
+
+    int menuXOffset = 0; // X offset for menu transition animation
 };
 
 // Then declare the free functions if you want them visible:

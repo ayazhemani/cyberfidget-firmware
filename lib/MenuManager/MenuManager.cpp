@@ -30,6 +30,7 @@ static int scrollOffset = 0;   // how many pixels the entire list is shifted up
 static int oldScrollOffset = 0; // used if we want to animate from old→new
 static const int VISIBLE_COUNT = 4; // how many items can fit on screen at once
 
+
 // Helper to parse path like "Tools/WiFi" => ["Tools","WiFi"]
 std::vector<std::string> MenuManager::parseCategoryPath(const std::string &path)
 {
@@ -76,6 +77,77 @@ static void addAppToMenu(const char* label, const char* path, int appIndex)
 }
 
 
+// Forward-declare a private helper (or just put it static inside .cpp):
+static void drawHighlightShape(int x, int y, 
+                               int w, int h,
+                               HighlightShape shape)
+{
+    switch(shape)
+    {
+        case HIGHLIGHT_RECTANGLE:
+        default:
+        {
+            // Standard rectangle
+            display.drawRect(x, y, w, h);
+            break;
+        }
+
+        case HIGHLIGHT_PARALLELOGRAM:
+        {
+            // Example: shift the top edge and bottom edge horizontally to create a parallelogram
+            // Let's define a small horizontal offset:
+            int offset = 8; // tweak as needed
+
+            // We'll draw it using four drawLine calls:
+            // top edge line (slanted):
+            display.drawLine(x + offset,     y, x + w,          y);
+            // right edge line (vertical):
+            display.drawLine(x + w,          y, x + w - offset, y + h);
+            // bottom edge line (slanted):
+            display.drawLine(x + w - offset, y + h, x, y + h);
+            // left edge line (vertical):
+            display.drawLine(x, y + h, x + offset, y);
+            break;
+        }
+
+        case HIGHLIGHT_SLANTED_CORNERS:
+        {
+            int corner = 4; // How many pixels to clip into the corner
+        
+            // We'll define rightX = x + w - 1, bottomY = y + h - 1
+            // drawLine differs from drawRect by 1 pixel, must compensate to prevent overscan
+            int rightX  = x + w - 1; 
+            int bottomY = y + h - 1;
+        
+            // top-left diagonal
+            display.drawLine(x,          y + corner, 
+                             x + corner, y);
+        
+            // top edge
+            display.drawLine(x + corner, y, 
+                             rightX,     y);
+        
+            // right edge
+            display.drawLine(rightX,     y, 
+                             rightX,     bottomY - corner);
+        
+            // bottom-right diagonal
+            display.drawLine(rightX,          bottomY - corner,
+                             rightX - corner, bottomY);
+        
+            // bottom edge
+            display.drawLine(rightX - corner, bottomY,
+                             x,               bottomY);
+        
+            // left edge
+            display.drawLine(x, bottomY, 
+                             x, y + corner);
+        
+            break;
+        }
+    }
+}
+
 //-------------------------------------------------------------------
 // Singleton
 MenuManager &MenuManager::instance()
@@ -99,6 +171,9 @@ MenuManager::MenuManager()
     highlightElement.setY(0); // We'll set correct row in begin()
     highlightElement.setWidth(HIGHLIGHT_WIDTH);
     highlightElement.setHeight(MENU_ITEM_HEIGHT);
+
+    // Set the highlight shape
+    highlightShape = HIGHLIGHT_SLANTED_CORNERS;
 
     // Clear itemYPositions (we fill them in drawMenu())
     itemYPositions.clear();
@@ -151,6 +226,8 @@ void MenuManager::update()
     // Update (animate) highlight, etc. 
     animateAll();    // from your Animation.cpp
     updateTmp();     // if needed from your code
+
+    handleMenuTransition(); // Handle any menu transitions (e.g., back to menu)
 
     // Redraw the menu each frame (or only if something changed).
     drawMenu();
@@ -246,7 +323,7 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
                 &scrollOffset,
                 INDENT,
                 newScroll,   // endVal
-                300          // ms
+                250          // ms
             )
         );
     }
@@ -260,7 +337,7 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
                 &scrollOffset,
                 INDENT,
                 newScroll,
-                300
+                250
             )
         );
     }
@@ -293,7 +370,7 @@ void MenuManager::animateHighlight(int oldIndex)
             newY,
             highlightElement.getWidth(),
             highlightElement.getHeight(),
-            300
+            250
         )
     );
 }
@@ -322,25 +399,15 @@ void MenuManager::selectCurrentItem()
     if (currentItemList->empty()) return;
     const MenuItem &mi = (*currentItemList)[currentIndex];
 
+    // If it’s a sub-category, do NOT immediately switch.
+    // Instead, start the slide-out animation. handleMenuTransition() will do the actual switch.
     if (mi.isCategory)
     {
-        // 1) Push the old layer’s info
-        MenuNavState s;
-        s.itemList          = currentItemList;
-        s.index             = currentIndex;
-        s.savedScrollOffset = scrollOffset;  // store the offset
-        navigationStack.push_back(s);
-
-        // 2) Switch to the sub-items
-        currentItemList = const_cast<std::vector<MenuItem>*>(&mi.children);
-        currentIndex    = 0;
-
-        // 3) Reset the scroll offset for the new sub-menu
-        //    (or do something else if you want to restore last known offset for that sub-menu)
-        scrollOffset = 0;
-
-        // 4) Place the highlight at row 0, or animate from old position if you prefer
-        highlightElement.setY(0);
+        // Only start the transition if we aren’t already mid-transition
+        if (transitionState == TRANSITION_NONE)
+        {
+            startSlideOutToSubmenu(mi);
+        }
     }
     else
     {
@@ -355,23 +422,128 @@ void MenuManager::selectCurrentItem()
 // Called on "Back" button
 void MenuManager::goBack()
 {
+    // Don’t do anything if we’re mid-transition or at root:
+    if (transitionState != TRANSITION_NONE) return;
     if (navigationStack.empty()) {
-        // Already at root
+        // Already at root, no parent
         return;
     }
-    MenuNavState s = navigationStack.back();
-    navigationStack.pop_back();
 
-    // Restore everything
-    currentItemList = s.itemList;
-    currentIndex    = s.index;
-    scrollOffset    = s.savedScrollOffset;
+    // Otherwise, start sliding this sub-menu out to the right:
+    startSlideOutToParent();
+}
 
-    // If you want, finalize the old highlight animation
-    finalizeHighlightAnimation(&highlightElement);
+void MenuManager::startSlideOutToParent()
+{
+    // Animate the current sub-menu from offset=0 -> offset=+SCREEN_WIDTH
+    insertAnimation(new Animation(
+        &menuXOffset,     // <== again, an int*
+        INDENT,
+        SCREEN_WIDTH,
+        1000
+    ));
 
-    // Now place the highlight at the correct Y (or animate)
-    highlightElement.setY( (currentIndex * MENU_ITEM_HEIGHT) - scrollOffset );
+    transitionState = TRANSITION_SUBMENU_SLIDE_OUT;
+}
+
+void MenuManager::startSlideOutToSubmenu(const MenuItem &subCategory)
+{
+    // Save the child pointer so we can switch once the old menu slides out
+    pendingItemList = const_cast<std::vector<MenuItem>*>(&subCategory.children);
+    pendingIndex    = 0;
+
+    // Make sure we’re starting from offset=0 if you want
+    menuXOffset = 0;
+
+    // Animate from 0 → -SCREEN_WIDTH
+    insertAnimation(new Animation(
+        &menuXOffset,
+        INDENT,
+        -SCREEN_WIDTH,
+        1000
+    ));
+
+    transitionState = TRANSITION_OLD_MENU_SLIDE_OUT;
+}
+
+void MenuManager::handleMenuTransition()
+{
+    // 1) Forward logic
+    if (transitionState == TRANSITION_OLD_MENU_SLIDE_OUT)
+    {
+        if (isFinished(&menuXOffset))
+        {
+            // old menu is off-screen => do final switch
+            MenuNavState s;
+            s.itemList          = currentItemList;
+            s.index             = currentIndex;
+            s.savedScrollOffset = scrollOffset;
+            navigationStack.push_back(s);
+    
+            // Now switch to the child we stored in pendingItemList
+            currentItemList = pendingItemList;
+            currentIndex    = pendingIndex;
+            scrollOffset    = 0;
+            highlightElement.setY(0);
+    
+            // Animate sub-menu from +SCREEN_WIDTH → 0
+            menuXOffset = SCREEN_WIDTH;
+            insertAnimation(new Animation(
+                &menuXOffset,
+                INDENT,
+                0,
+                1000
+            ));
+    
+            transitionState = TRANSITION_NEW_MENU_SLIDE_IN;
+        }
+    }
+    else if (transitionState == TRANSITION_NEW_MENU_SLIDE_IN)
+    {
+        if (isFinished(&menuXOffset))
+        {
+            transitionState = TRANSITION_NONE;
+        }
+    }
+
+    // 2) Backward logic
+    else if (transitionState == TRANSITION_SUBMENU_SLIDE_OUT)
+    {
+        if (isFinished(&menuXOffset))
+        {
+            // The sub-menu is now off-screen to the right. 
+            // Switch back to the parent from navigationStack:
+            MenuNavState s = navigationStack.back();
+            navigationStack.pop_back();
+
+            currentItemList = s.itemList;
+            currentIndex    = s.index;
+            scrollOffset    = s.savedScrollOffset;
+            finalizeHighlightAnimation(&highlightElement); 
+            highlightElement.setY( (currentIndex * MENU_ITEM_HEIGHT) - scrollOffset );
+
+            // Now set the parent menu offset to off-screen left:
+            menuXOffset = -SCREEN_WIDTH;
+
+            // Animate from -SCREEN_WIDTH -> 0
+            insertAnimation(new Animation(
+                &menuXOffset,
+                INDENT, 
+                0,
+                1000
+            ));
+
+            transitionState = TRANSITION_PARENT_MENU_SLIDE_IN;
+        }
+    }
+    else if (transitionState == TRANSITION_PARENT_MENU_SLIDE_IN)
+    {
+        if (isFinished(&menuXOffset))
+        {
+            // Done with the back transition
+            transitionState = TRANSITION_NONE;
+        }
+    }
 }
 
 /**
@@ -380,35 +552,36 @@ void MenuManager::goBack()
  */
 void MenuManager::drawMenu()
 {
-    // Start by clearing the screen or filling background:
     display.clear();
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
 
-    for (int i=0; i < (int)currentItemList->size(); i++)
+    // Draw the menu items:
+    for (int i = 0; i < (int)currentItemList->size(); i++)
     {
-        // The baseline Y for item i:
         int yPos = i * MENU_ITEM_HEIGHT - scrollOffset;
-        
-        // If it’s in screen range, we can draw it
-        if (yPos + MENU_ITEM_HEIGHT >= 0 && yPos < SCREEN_HEIGHT) {
-            // e.g. draw text
-            display.setTextAlignment(TEXT_ALIGN_LEFT);
-            display.setFont(ArialMT_Plain_10);
-            display.drawString(10, yPos + MENU_ITEM_Y_OFFSET, (*currentItemList)[i].label.c_str());
+        if (yPos + MENU_ITEM_HEIGHT >= 0 && yPos < SCREEN_HEIGHT)
+        {
+            // Shift the X position of the text by menuXOffset to animate
+            int drawX = 10 + menuXOffset;
+            int drawY = yPos + MENU_ITEM_Y_OFFSET;
+
+            display.drawString(drawX, drawY, (*currentItemList)[i].label.c_str());
         }
     }
 
-    // Optionally draw a highlight rectangle behind the current item 
-    // (but we’re animating highlightElement, so let's just fill it):
-    //   highlightElement.getX(), highlightElement.getY(), 
-    //   highlightElement.getWidth(), highlightElement.getHeight()
-    display.drawRect(
-        highlightElement.getX(), 
-        highlightElement.getY(),
+    // Also offset the highlight’s X by menuXOffset, so it slides too:
+    int hlX = highlightElement.getX() + menuXOffset;
+    int hlY = highlightElement.getY();
+
+    drawHighlightShape(
+        hlX, 
+        hlY,
         highlightElement.getWidth(),
-        highlightElement.getHeight()
+        highlightElement.getHeight(),
+        highlightShape
     );
 
-    // Now commit any buffered drawing:
     display.display();
 }
 

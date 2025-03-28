@@ -16,11 +16,11 @@
  */
 
 // MUST include app in AppManifest_Includes.h if it is not already included
-
+//        APP_NAME                   "Menu Label",          "Menu/Path",      beginFunc,                                     endFunc,                                           runFunc
 APP_ENTRY(APP_MENU,                  "",                    "",               [](){ MenuManager::instance().begin();         }, [](){ MenuManager::instance().end();         }, [](){ MenuManager::instance().update();         })
 APP_ENTRY(APP_BOOPER,                "Booper",              "Games",          [](){ booper.begin();                          }, [](){ booper.end();                          }, [](){ booper.update();                          })
-APP_ENTRY(APP_FLASHLIGHT,            "Flashlight",          "Tools/LEDs",     flashlightBegin,                                flashlightEnd,                                flashlightUpdate                                )
-APP_ENTRY(APP_POWER_MANAGER,         "Power Manager",       "Tools",          powerManagerBegin,                              powerManagerEnd,                              powerManagerUpdate                              )
+APP_ENTRY(APP_FLASHLIGHT,            "Flashlight",          "Tools/LEDs",           flashlightBegin,                                  flashlightEnd,                                  flashlightUpdate                           )
+APP_ENTRY(APP_POWER_MANAGER,         "Power Manager",       "Tools",                powerManagerBegin,                                powerManagerEnd,                                powerManagerUpdate                         )
 APP_ENTRY(APP_MATRIX_SCREENSAVER,    "Matrix Screensaver",  "Screensavers",   [](){ matrixScreensaver.begin();               }, [](){ matrixScreensaver.end();               }, [](){ matrixScreensaver.update();               })
 APP_ENTRY(APP_BREAKOUT_GAME,         "Breakout",            "Games",          [](){ breakoutGame.begin();                    }, [](){ breakoutGame.end();                    }, [](){ breakoutGame.update();                    })
 APP_ENTRY(APP_DINO_GAME,             "Dino Run",            "Games",          [](){ dinoGame.begin();                        }, [](){ dinoGame.end();                        }, [](){ dinoGame.update();                        })
@@ -36,7 +36,7 @@ APP_ENTRY(APP_EXAMPLE_IMG1,          "Image Demo 1",        "Examples",       []
 APP_ENTRY(APP_EXAMPLE_IMG2,          "Image Demo 2",        "Examples",       [](){ imageDemo2App.begin();                   }, [](){ imageDemo2App.end();                   }, [](){ imageDemo2App.update();                   })
 APP_ENTRY(APP_EXAMPLE_IMG3,          "Image Demo 3",        "Examples",       [](){ imageDemo3App.begin();                   }, [](){ imageDemo3App.end();                   }, [](){ imageDemo3App.update();                   })
 APP_ENTRY(APP_EXAMPLE_IMG4,          "Image Demo 4",        "Examples",       [](){ imageDemo4App.begin();                   }, [](){ imageDemo4App.end();                   }, [](){ imageDemo4App.update();                   })
-APP_ENTRY(APP_EXAMPLE_BATTERYBAR,    "Battery Progress",    "Examples",       [](){ batteryBarApp.begin();                   }, [](){ batteryBarApp.end();                   }, [](){ batteryBarApp.update();                   })
+APP_ENTRY(APP_EXAMPLE_BATTERYBAR,    "Battery Level",       "Tools",          [](){ batteryBarApp.begin();                   }, [](){ batteryBarApp.end();                   }, [](){ batteryBarApp.update();                   })
 APP_ENTRY(APP_EXAMPLE_SLIDERBAR,     "Slider Progress",     "Examples",       [](){ sliderBarApp.begin();                    }, [](){ sliderBarApp.end();                    }, [](){ sliderBarApp.update();                    })
 APP_ENTRY(APP_EXAMPLE_ACCELEROMETER, "Accelerometer Demo",  "Tools/LEDs",     [](){ accelerometerApp.begin();                }, [](){ accelerometerApp.end();                }, [](){ accelerometerApp.update();                })
 APP_ENTRY(APP_EXAMPLE_BUTTONCOUNTERS,"Button Counters",     "Examples",       [](){ buttonCountersApp.begin();               }, [](){ buttonCountersApp.end();               }, [](){ buttonCountersApp.update();               })

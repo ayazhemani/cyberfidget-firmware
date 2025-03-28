@@ -244,9 +244,9 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
             // animate the int pointer
             new Animation(
                 &scrollOffset,
-                LINEAR,
+                BOUNCE,
                 newScroll,   // endVal
-                200          // ms
+                300          // ms
             )
         );
     }
@@ -258,9 +258,9 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
         insertAnimation(
             new Animation(
                 &scrollOffset,
-                LINEAR,
+                BOUNCE,
                 newScroll,
-                200
+                300
             )
         );
     }
@@ -288,12 +288,12 @@ void MenuManager::animateHighlight(int oldIndex)
     insertAnimation(
         new Animation(
             &highlightElement,
-            LINEAR,        // or BOUNCE, etc.
+            BOUNCE,        // or BOUNCE, etc.
             highlightElement.getX(),
             newY,
             highlightElement.getWidth(),
             highlightElement.getHeight(),
-            200
+            300
         )
     );
 }

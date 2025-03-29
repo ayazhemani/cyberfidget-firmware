@@ -3,13 +3,13 @@
     "version": "1.0.0",
     "dependencies": [
         {
+            "name": "AudioManager"
+        },
+        {
             "name": "AudioTools"
         },
         {
             "name": "globals"
-        },
-        {
-            "name": "AudioManager"
         }
     ]
 }

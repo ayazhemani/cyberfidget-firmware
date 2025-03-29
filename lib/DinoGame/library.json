@@ -3,22 +3,22 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "MenuManager"
+            "name": "DinoGame"
+        },
+        {
+            "name": "HAL"
         },
         {
             "name": "DisplayProxy"
         },
         {
-            "name": "DinoSprites"
+            "name": "MenuManager"
         },
         {
             "name": "ButtonManager"
         },
         {
-            "name": "DinoGame"
-        },
-        {
-            "name": "HAL"
+            "name": "DinoSprites"
         }
     ]
 }

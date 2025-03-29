@@ -3,43 +3,31 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "math"
-        },
-        {
-            "name": "list"
+            "name": "sstream"
         },
         {
             "name": "UIElement"
         },
         {
-            "name": "AppManager"
+            "name": "HAL"
         },
         {
-            "name": "MenuManager"
-        },
-        {
-            "name": "Animation"
-        },
-        {
-            "name": "../Utils/Macropad"
-        },
-        {
-            "name": "globals"
-        },
-        {
-            "name": "../Utils/Util"
-        },
-        {
-            "name": "string"
-        },
-        {
-            "name": "../Utils/Keyboard"
+            "name": "math"
         },
         {
             "name": "AppDefs"
         },
         {
-            "name": "map"
+            "name": "string"
+        },
+        {
+            "name": "algorithm"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "list"
         },
         {
             "name": "ButtonManager"
@@ -48,7 +36,16 @@
             "name": "vector"
         },
         {
-            "name": "HAL"
+            "name": "AppManager"
+        },
+        {
+            "name": "globals"
+        },
+        {
+            "name": "Animation"
+        },
+        {
+            "name": "map"
         }
     ]
 }

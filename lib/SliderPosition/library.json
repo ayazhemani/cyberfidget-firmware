@@ -3,13 +3,13 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "SliderPosition"
+            "name": "HAL"
         },
         {
             "name": "globals"
         },
         {
-            "name": "HAL"
+            "name": "SliderPosition"
         }
     ]
 }

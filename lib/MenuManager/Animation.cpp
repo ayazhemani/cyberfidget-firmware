@@ -524,10 +524,10 @@ void insertAnimation(Animation* animation)
         animationsInt[valPtr] = animation;
         getTargetType = 2; // int*
     }
-    ESP_LOGI(TAG_MAIN, "Inserted UIElement* animation for %p", animation->getTargetElement());
-    ESP_LOGI(TAG_MAIN, "Inserted int* for %p", animation->getTargetVal());
-    ESP_LOGI(TAG_MAIN, "AnimationsUI size = %d", animationsUI.size());
-    ESP_LOGI(TAG_MAIN, "getTargetType = %d", getTargetType);
+    // ESP_LOGI(TAG_MAIN, "Inserted UIElement* animation for %p", animation->getTargetElement());
+    // ESP_LOGI(TAG_MAIN, "Inserted int* for %p", animation->getTargetVal());
+    // ESP_LOGI(TAG_MAIN, "AnimationsUI size = %d", animationsUI.size());
+    // ESP_LOGI(TAG_MAIN, "getTargetType = %d", getTargetType);
 }
 
 /**

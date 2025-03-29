@@ -3,13 +3,19 @@
     "version": "1.0.0",
     "dependencies": [
         {
+            "name": "HAL"
+        },
+        {
             "name": "DisplayProxy"
         },
         {
-            "name": "MatrixScreensaver"
+            "name": "MenuManager"
         },
         {
-            "name": "HAL"
+            "name": "ButtonManager"
+        },
+        {
+            "name": "MatrixScreensaver"
         }
     ]
 }

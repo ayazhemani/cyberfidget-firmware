@@ -6,10 +6,13 @@
             "name": "AudioManager"
         },
         {
+            "name": "HAL"
+        },
+        {
             "name": "DisplayProxy"
         },
         {
-            "name": "globals"
+            "name": "MenuManager"
         },
         {
             "name": "SimonSaysGame"
@@ -18,7 +21,7 @@
             "name": "ButtonManager"
         },
         {
-            "name": "HAL"
+            "name": "globals"
         }
     ]
 }

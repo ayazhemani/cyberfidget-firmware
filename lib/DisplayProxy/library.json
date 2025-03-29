@@ -6,13 +6,13 @@
             "name": "BatteryManager"
         },
         {
+            "name": "icons"
+        },
+        {
             "name": "SSD1306Wire"
         },
         {
             "name": "DisplayProxy"
-        },
-        {
-            "name": "icons"
         }
     ]
 }

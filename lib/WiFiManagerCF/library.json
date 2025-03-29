@@ -3,13 +3,13 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "WiFiManagerCF"
+            "name": "HAL"
         },
         {
             "name": "DisplayProxy"
         },
         {
-            "name": "globals"
+            "name": "MenuManager"
         },
         {
             "name": "WiFiManager"
@@ -18,10 +18,13 @@
             "name": "ButtonManager"
         },
         {
+            "name": "WiFiManagerCF"
+        },
+        {
             "name": "ESPAsyncWebServer"
         },
         {
-            "name": "HAL"
+            "name": "globals"
         }
     ]
 }

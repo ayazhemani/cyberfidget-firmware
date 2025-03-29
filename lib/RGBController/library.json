@@ -6,13 +6,13 @@
             "name": "Adafruit_NeoPixel"
         },
         {
+            "name": "RGBController"
+        },
+        {
             "name": "HAL"
         },
         {
             "name": "globals"
-        },
-        {
-            "name": "RGBController"
         }
     ]
 }

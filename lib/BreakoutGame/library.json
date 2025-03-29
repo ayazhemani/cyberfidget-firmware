@@ -3,25 +3,28 @@
     "version": "1.0.0",
     "dependencies": [
         {
+            "name": "functional"
+        },
+        {
             "name": "AudioManager"
+        },
+        {
+            "name": "HAL"
         },
         {
             "name": "DisplayProxy"
         },
         {
-            "name": "globals"
+            "name": "MenuManager"
         },
         {
             "name": "BreakoutGame"
         },
         {
-            "name": "functional"
-        },
-        {
             "name": "ButtonManager"
         },
         {
-            "name": "HAL"
+            "name": "globals"
         }
     ]
 }

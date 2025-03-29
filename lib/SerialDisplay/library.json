@@ -3,13 +3,22 @@
     "version": "1.0.0",
     "dependencies": [
         {
+            "name": "SerialDisplayApp"
+        },
+        {
+            "name": "HAL"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
             "name": "SerialDisplay"
         },
         {
             "name": "globals"
-        },
-        {
-            "name": "HAL"
         }
     ]
 }

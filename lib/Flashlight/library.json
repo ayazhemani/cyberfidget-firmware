@@ -6,13 +6,22 @@
             "name": "HAL"
         },
         {
-            "name": "globals"
-        },
-        {
             "name": "Flashlight"
         },
         {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
             "name": "RGBController"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "globals"
         }
     ]
 }

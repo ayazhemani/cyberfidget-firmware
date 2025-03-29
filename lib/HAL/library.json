@@ -3,16 +3,34 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "Adafruit_NeoPixel"
+            "name": "SliderPosition"
         },
         {
             "name": "AudioManager"
         },
         {
+            "name": "Adafruit_NeoPixel"
+        },
+        {
+            "name": "HAL"
+        },
+        {
+            "name": "Flashlight"
+        },
+        {
+            "name": "SparkFun_LIS2DH12"
+        },
+        {
             "name": "BatteryManager"
         },
         {
-            "name": "SliderPosition"
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "RGBController"
+        },
+        {
+            "name": "ButtonManager"
         },
         {
             "name": "WiFiManagerCF"
@@ -21,25 +39,7 @@
             "name": "AppManager"
         },
         {
-            "name": "RGBController"
-        },
-        {
-            "name": "DisplayProxy"
-        },
-        {
             "name": "SSD1306Wire"
-        },
-        {
-            "name": "SparkFun_LIS2DH12"
-        },
-        {
-            "name": "ButtonManager"
-        },
-        {
-            "name": "Flashlight"
-        },
-        {
-            "name": "HAL"
         }
     ]
 }

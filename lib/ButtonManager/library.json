@@ -3,13 +3,13 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "globals"
+            "name": "Preferences"
         },
         {
             "name": "ButtonManager"
         },
         {
-            "name": "Preferences"
+            "name": "globals"
         }
     ]
 }

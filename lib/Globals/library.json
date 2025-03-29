@@ -3,16 +3,16 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "time"
-        },
-        {
-            "name": "globals"
+            "name": "fontSuiGenerisRg"
         },
         {
             "name": "HAL"
         },
         {
-            "name": "fontSuiGenerisRg"
+            "name": "globals"
+        },
+        {
+            "name": "time"
         }
     ]
 }

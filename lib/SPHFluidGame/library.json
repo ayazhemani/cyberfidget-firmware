@@ -3,19 +3,25 @@
     "version": "1.0.0",
     "dependencies": [
         {
+            "name": "HAL"
+        },
+        {
             "name": "math"
         },
         {
             "name": "DisplayProxy"
         },
         {
-            "name": "SPHFluidGame"
+            "name": "MenuManager"
+        },
+        {
+            "name": "ButtonManager"
         },
         {
             "name": "vector"
         },
         {
-            "name": "HAL"
+            "name": "SPHFluidGame"
         }
     ]
 }

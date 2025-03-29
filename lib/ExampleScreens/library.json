@@ -3,19 +3,25 @@
     "version": "1.0.0",
     "dependencies": [
         {
+            "name": "HAL"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
             "name": "RGBController"
         },
         {
-            "name": "globals"
+            "name": "ButtonManager"
         },
         {
             "name": "ExampleScreens"
         },
         {
-            "name": "HAL"
+            "name": "images"
         },
         {
-            "name": "images"
+            "name": "globals"
         }
     ]
 }

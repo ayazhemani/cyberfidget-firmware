@@ -3,22 +3,70 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "DinoGame"
+            "name": "AppManifest"
         },
         {
-            "name": "MenuManager"
+            "name": "iostream"
+        },
+        {
+            "name": "SerialDisplayApp"
         },
         {
             "name": "Booper"
         },
         {
-            "name": "AppDefs"
+            "name": "string"
+        },
+        {
+            "name": "MatrixScreensaver"
         },
         {
             "name": "functional"
         },
         {
-            "name": "HAL"
+            "name": "PowerManager"
+        },
+        {
+            "name": "DinoGame"
+        },
+        {
+            "name": "ReactionTimeGame"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "BreakoutGame"
+        },
+        {
+            "name": "cstring"
+        },
+        {
+            "name": "AppManifest_Includes"
+        },
+        {
+            "name": "vector"
+        },
+        {
+            "name": "WiFiManagerCF"
+        },
+        {
+            "name": "ExampleScreens"
+        },
+        {
+            "name": "SPHFluidGame"
+        },
+        {
+            "name": "AppDefs"
+        },
+        {
+            "name": "Flashlight"
+        },
+        {
+            "name": "ClockDisplay"
+        },
+        {
+            "name": "SimonSaysGame"
         }
     ]
 }

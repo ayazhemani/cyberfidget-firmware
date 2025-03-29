@@ -3,16 +3,19 @@
     "version": "1.0.0",
     "dependencies": [
         {
-            "name": "ReactionTimeGame"
+            "name": "HAL"
         },
         {
             "name": "DisplayProxy"
         },
         {
-            "name": "ButtonManager"
+            "name": "ReactionTimeGame"
         },
         {
-            "name": "HAL"
+            "name": "MenuManager"
+        },
+        {
+            "name": "ButtonManager"
         }
     ]
 }

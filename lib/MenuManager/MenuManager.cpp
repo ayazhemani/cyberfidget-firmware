@@ -479,6 +479,9 @@ void MenuManager::crossSlideForward(const MenuItem &child)
     s.savedScrollOffset = scrollOffset;  // if you have vertical scrolling
     navigationStack.push_back(s);
 
+    // We want the child highlight at row 0 from the start:
+    highlightElement.setY(0); 
+
     // 3) We start with old at x=0, new at x=+SCREEN_WIDTH (off right)
     oldMenuX = 0;
     newMenuX = SCREEN_WIDTH;

@@ -11,6 +11,33 @@
 #include "AppManager.h"    // We need to launch apps from here
 #include "ButtonManager.h" // For button callbacks
 
+// Highlight shapes
+enum HighlightShape {
+    HIGHLIGHT_RECTANGLE,
+    HIGHLIGHT_PARALLELOGRAM,
+    HIGHLIGHT_SLANTED_CORNERS,
+};
+
+// Menu left/right animation transition states
+enum CrossSlideState {
+    CROSS_SLIDE_NONE,
+    CROSS_SLIDE_FORWARD,  // going into child
+    CROSS_SLIDE_BACK      // going to parent
+};
+
+// // Menu transition states into/out of submenus
+// enum MenuTransitionState {
+//     TRANSITION_NONE,
+
+//     // Forward (selecting a sub-category):
+//     TRANSITION_OLD_MENU_SLIDE_OUT, 
+//     TRANSITION_NEW_MENU_SLIDE_IN,
+
+//     // Backward (goBack):
+//     TRANSITION_SUBMENU_SLIDE_OUT,  // sub-menu slides in from the right
+//     TRANSITION_PARENT_MENU_SLIDE_IN // parent slides in from the left
+// };
+
 /**
  * @brief A basic menu item. 
  * If isCategory=true, "children" hold sub-items.
@@ -88,31 +115,35 @@ public:
      */
     bool isMenuActive() const { return menuActive; }
 
+    /**
+     * @brief Helper to set the highlight shape.
+     */
+    void setHighlightShape(HighlightShape shape) { highlightShape = shape; }
+
 private:
     // Private constructor: we use the singleton pattern above
     MenuManager();
 
+    // ========== DATA STRUCTURES ==========
+
     // The "root" vector of top-level categories: Screensavers, Games, Tools
     std::vector<MenuItem> rootMenuItems;
 
-    // Helpers for registerApp
-    // parseCategoryPath => splits "Tools/WiFi" into ["Tools", "WiFi"]
-    std::vector<std::string> parseCategoryPath(const std::string &path);
-    
-    // findOrCreateCategory => navigates or creates subcategories
-    std::vector<MenuItem> &findOrCreateCategory(std::vector<MenuItem> &currentLevel,
-                                                const std::string &categoryLabel);
-
-
-
-
-
-    // Current "path" in the menu. For instance:
-    //   If we're at root and have 3 categories, we have rootMenuItems for each category
-    //   If we select "Games," we move deeper to the children inside "Games."
-    // We keep track of the "current vector of items" and "current selected index" at each level.
     std::vector<MenuItem> *currentItemList = nullptr;
-    int currentIndex = 0;      // which item is highlighted in the currentItemList
+    // Which item in the current list is highlighted
+    int currentIndex = 0;
+
+    // Keep track of where each item is drawn on screen.
+    // This example: each item is drawn in rows, so we store item Y positions.
+    // That way we can animate the highlight from row to row.
+    std::vector<int> itemYPositions; 
+
+    // Our highlight UIElement for the current selected item
+    // We'll animate its position whenever the user moves up/down.
+    UIElement highlightElement;
+
+    // Are we in the menu (true) or inside an app (false)?
+    bool menuActive = true;
 
     // If we navigate into a sub-menu, we push state here so we can go back
     struct MenuNavState {
@@ -122,53 +153,27 @@ private:
     };
     std::vector<MenuNavState> navigationStack;
 
-    // Our highlight UIElement for the current selected item
-    // We'll animate its position whenever the user moves up/down.
-    UIElement highlightElement;
+    // ========== CROSS-SLIDE ==========
 
-    // Keep track of where each item is drawn on screen.
-    // This example: each item is drawn in rows, so we store item Y positions.
-    // That way we can animate the highlight from row to row.
-    std::vector<int> itemYPositions; 
+    CrossSlideState crossSlideState = CROSS_SLIDE_NONE;
 
-    // Are we in the menu (true) or inside an app (false)?
-    bool menuActive = true;
+    // These store pointers to old vs. new lists
+    std::vector<MenuItem>* oldItemList = nullptr;
+    std::vector<MenuItem>* newItemList = nullptr;
 
-    // We will have one callback function for each button (some might share).
-    static void onButtonLeftPressed(const ButtonEvent& event);
-    static void onButtonRightPressed(const ButtonEvent& event);
-    static void onButtonUpPressed(const ButtonEvent& event);
-    static void onButtonDownPressed(const ButtonEvent& event);
-    static void onButtonBackPressed(const ButtonEvent& event);
-    static void onButtonSelectPressed(const ButtonEvent& event);
+    // Offsets for old vs. new menu
+    int oldMenuX = 0;
+    int newMenuX = 0;
 
-    /**
-     * @brief Register or unregister all six callbacks. 
-     * We do this so that the app itself can take over the same hardware buttons.
-     */
-    void registerMenuCallbacks();
-    void unregisterMenuCallbacks();
+    // We'll store the highlight shape
+    HighlightShape highlightShape = HIGHLIGHT_RECTANGLE;
 
-    /**
-     * @brief Re-draw the menu: items and highlight.
-     * This is called from update().
-     */
-    void drawMenu();
+    // Cross-slide transitions
+    void crossSlideForward(const MenuItem &child);
+    void crossSlideBackward();
+    void handleCrossSlide(); // check if done, finalize
 
-    /**
-     * @brief Animate highlight from its current location to the newly selected item row.
-     */
-    void animateHighlight(int oldIndex);
-
-    /**
-     * @brief Helper to go deeper into a category or launch an app if it’s not a category.
-     */
-    void selectCurrentItem();
-
-    /**
-     * @brief Helper to go back up one level in the navigation stack.
-     */
-    void goBack();
+    // ========== SCROLLING / HIGHLIGHT ==========
 
     /**
      * @brief Helper to move the highlight up/down within the current item list.
@@ -181,6 +186,53 @@ private:
      */
     void updateScrollForCurrentIndex(int oldIndex);
 
+    /**
+     * @brief Animate highlight from its current location to the newly selected item row.
+     */
+    void animateHighlight(int oldIndex);
+
+    // ========== NAVIGATION ==========
+
+    /**
+     * @brief Helper to go deeper into a category or launch an app if it’s not a category.
+     */
+    void selectCurrentItem();
+
+    /**
+     * @brief Helper to go back up one level in the navigation stack.
+     */
+    void goBack();
+
+    // ========== DRAWING ==========
+
+    /**
+     * @brief Re-draw the menu: items and highlight.
+     * This is called from update().
+     */
+    void drawMenu();
+
+    // Helpers for building the nested menu
+    // parseCategoryPath => splits "Tools/WiFi" into ["Tools", "WiFi"]
+    std::vector<std::string> parseCategoryPath(const std::string &path);
+    
+    // findOrCreateCategory => navigates or creates subcategories
+    std::vector<MenuItem> &findOrCreateCategory(std::vector<MenuItem> &currentLevel,
+                                                const std::string &categoryLabel);
+
+    /**
+     * @brief Register or unregister all six callbacks. 
+     * We do this so that the app itself can take over the same hardware buttons.
+     */
+    void registerMenuCallbacks();
+    void unregisterMenuCallbacks();
+
+    // We will have one callback function for each button (some might share).
+    static void onButtonLeftPressed(const ButtonEvent& event);
+    static void onButtonRightPressed(const ButtonEvent& event);
+    static void onButtonUpPressed(const ButtonEvent& event);
+    static void onButtonDownPressed(const ButtonEvent& event);
+    static void onButtonBackPressed(const ButtonEvent& event);
+    static void onButtonSelectPressed(const ButtonEvent& event);
 
 };
 

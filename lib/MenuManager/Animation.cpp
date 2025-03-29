@@ -1,10 +1,11 @@
 #include "Animation.h"
 #include <math.h>
+#include "globals.h"  // Logging
 
 // Keep track of active animations:
 std::map<UIElement*, Animation*> animationsUI;
 std::map<int*, Animation*>       animationsInt;
-std::list<UIElement*>           tmpAnimationUI;
+std::list<UIElement*>            tmpAnimationUI;
 
 static int durationWhole = 0; // used in animateAll() for small throttling
 
@@ -19,6 +20,7 @@ Animation::Animation(UIElement* targetUI,
 {
     this->type = false; // 0 => animating a UIElement
     this->targetUI = targetUI;
+    this->targetVal = nullptr;
     this->aniType  = aniType;
 
     // Capture start
@@ -47,6 +49,7 @@ Animation::Animation(UIElement* targetUI,
 {
     this->type = false;
     this->targetUI = targetUI;
+    this->targetVal = nullptr;
     this->aniType  = aniType;
 
     this->startX   = targetUI->getX();
@@ -71,6 +74,7 @@ Animation::Animation(int* targetVal,
 {
     this->type = true; // animating an int
     this->targetVal = targetVal;
+    this->targetUI  = nullptr;
     this->aniType   = aniType;
 
     this->startVal  = *targetVal;
@@ -122,6 +126,7 @@ Animation::Animation(UIElement* targetUI,
 {
     this->type = false; // UIElement
     this->targetUI = targetUI;
+    this->targetVal = nullptr;
     this->aniType  = aniType;
 
     // Capture start
@@ -494,6 +499,7 @@ void Animation::animate()
  */
 void insertAnimation(Animation* animation)
 {
+    static int getTargetType = 0; // 0=init, 1=UIElement, 2=int*
     // If it’s animating a UIElement
     if (animation->getTargetElement() != nullptr) {
         UIElement* tgt = animation->getTargetElement();
@@ -505,6 +511,7 @@ void insertAnimation(Animation* animation)
         }
         // Insert the new one
         animationsUI[tgt] = animation;
+        getTargetType = 1; // UIElement
     }
     else {
         // Otherwise, it’s an int*
@@ -515,7 +522,12 @@ void insertAnimation(Animation* animation)
             animationsInt.erase(it);
         }
         animationsInt[valPtr] = animation;
+        getTargetType = 2; // int*
     }
+    ESP_LOGI(TAG_MAIN, "Inserted UIElement* animation for %p", animation->getTargetElement());
+    ESP_LOGI(TAG_MAIN, "Inserted int* for %p", animation->getTargetVal());
+    ESP_LOGI(TAG_MAIN, "AnimationsUI size = %d", animationsUI.size());
+    ESP_LOGI(TAG_MAIN, "getTargetType = %d", getTargetType);
 }
 
 /**

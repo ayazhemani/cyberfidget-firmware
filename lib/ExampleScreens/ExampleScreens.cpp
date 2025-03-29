@@ -4,20 +4,19 @@
 #include "RGBController.h"
 #include "HAL.h"
 
-static auto& strip         = HAL::strip();  // NeoPixels
-static auto& display       = HAL::displayProxy();
 
+// The same hardware references (NeoPixels, display)
+static auto& strip   = HAL::strip();
+static auto& display = HAL::displayProxy();
+
+// --------------------------------------------------------------------
+// Original draw functions remain as-is
+// --------------------------------------------------------------------
 void drawFontFaceDemo() {
   display.clear();
-  // Font Demo1
-  // create more fonts at http://oleddisplay.squix.ch/
   display.setTextAlignment(TEXT_ALIGN_CENTER);
-  //display.setFont(ArialMT_Plain_10);
-  //display.drawString(0, 0, "Hello world");
   display.setFont(ArialMT_Plain_16);
   display.drawString(64, 18, "Hello world");
-  //display.setFont(ArialMT_Plain_24);
-  //display.drawString(0, 26, "Hello world");
   display.display();
 }
 
@@ -25,25 +24,23 @@ void drawTextFlowDemo() {
   display.clear();
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.drawStringMaxWidth(0, 0, 128,
-  "Lorem ipsum confused the non-super nerds so here is some plain english filler to demo text wrapping" );
+  display.drawStringMaxWidth(
+      0, 0, 128,
+      "Lorem ipsum confused the non-super nerds so here is some plain english filler to demo text wrapping"
+  );
   display.display();
 }
 
 void drawTextAlignmentDemo() {
   display.clear();
-  // Text alignment demo
   display.setFont(ArialMT_Plain_10);
 
-  // The coordinates define the left starting point of the text
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(0, 10, "Left aligned (0,10)");
 
-  // The coordinates define the center of the text
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 22, "Center aligned (64,22)");
 
-  // The coordinates define the right end of the text
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.drawString(128, 33, "Right aligned (128,33)");
   display.display();
@@ -51,20 +48,13 @@ void drawTextAlignmentDemo() {
 
 void drawRectDemo() {
   display.clear();
-  // Draw a pixel at given position
   for (int i = 0; i < 10; i++) {
     display.setPixel(i, i);
     display.setPixel(10 - i, i);
   }
   display.drawRect(12, 12, 20, 20);
-
-  // Fill the rectangle
   display.fillRect(14, 14, 17, 17);
-
-  // Draw a line horizontally
   display.drawHorizontalLine(0, 40, 20);
-
-  // Draw a line horizontally
   display.drawVerticalLine(40, 0, 20);
   display.display();
 }
@@ -84,11 +74,7 @@ void drawCircleDemo() {
 
 void drawImageDemo_1() {
   display.clear();
-  // see http://blog.squix.org/2015/05/esp8266-nodemcu-how-to-create-xbm.html or https://github.com/ThingPulse/esp8266-oled-ssd1306
-  // on how to create xbm files
-  //display.drawXbm(34, 14, WiFi_Logo_width, WiFi_Logo_height, WiFi_Logo_bits);
   display.drawXbm(40, 0, Logo_Round_Tilted_width, Logo_Round_Tilted_height, Logo_Round_Tilted_bits);
-  //display.drawXbm(0, 0, 128, 64, epd_bitmap_cf_logo_w_icon);
   display.display();
 }
 
@@ -112,35 +98,21 @@ void drawImageDemo_4() {
 
 void drawBatteryProgressBar() {
   display.clear();
-  // draw the progress bar
   display.drawProgressBar(0, 30, 120, 10, batteryVoltagePercentage);
-
-  // draw the percentage as String
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 15, "Battery: " + String(batteryVoltagePercentage) + "%");
-
-  // Battery Voltage
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(70, 40, "Battery (V): " + String(batteryVoltage));
-
   display.display();
 }
 
 void drawSliderProgressBar() {
   display.clear();
   display.setFont(ArialMT_Plain_10);
-
-  // draw the percentage as String
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 4, "Slider: " + String(sliderPosition_Percentage_Inverted_Filtered) + "%");
-
-  // draw the progress bar
-  display.setFont(ArialMT_Plain_10);
   display.drawProgressBar(9, 18, 108, 10, sliderPosition_Percentage_Inverted_Filtered);
-
-  // Battery Voltage
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 30, "Slider (mV): " + String(sliderPosition_Millivolts));
   display.drawString(64, 40, "Slider (bits): " + String(sliderPosition_12Bits));
   display.drawString(64, 50, "Slider Filt (bits): " + String(sliderPosition_12Bits_Filtered));
@@ -156,43 +128,37 @@ void drawSliderProgressBar() {
 }
 
 void drawAccelerometerScreen() {
-  if (accelerometerScreenEnabled) {
-    display.clear();
-    display.setFont(ArialMT_Plain_10);
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 20, "X: " + String(accelX) + " Y: " + String(accelY) + " Z: " + String(accelZ));
+  display.clear();
+  display.setFont(ArialMT_Plain_10);
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(0, 20, "X: " + String(accelX) + " Y: " + String(accelY) + " Z: " + String(accelZ));
 
-    uint8_t redMap = map(accelX, -1030, 1030, 0, 255);
-    uint8_t greenMap = map(accelY, -1030, 1030, 0, 255);
-    uint8_t blueMap = map(accelZ, -1030, 1030, 0, 255);
+  uint8_t redMap   = map(accelX, -1030, 1030, 0, 255);
+  uint8_t greenMap = map(accelY, -1030, 1030, 0, 255);
+  uint8_t blueMap  = map(accelZ, -1030, 1030, 0, 255);
+  setDeterminedColorsFront(redMap, greenMap, blueMap, 0); 
 
-    setDeterminedColorsFront(redMap, greenMap, blueMap, 0); 
-
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 10, "R: " + String(redMap) + " G: " + String(greenMap) + " B: " + String(blueMap));
-    display.display();
-  }
+  display.drawString(0, 10, "R: " + String(redMap) + " G: " + String(greenMap) + " B: " + String(blueMap));
+  display.display();
 }
 
 void drawButtonCounters() {
   display.clear();
-  // Button Counters
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.drawString(0, 10, 
-    "Btns: 0="  + String(buttonCounter[0])
-    + ", 1=" + String(buttonCounter[1])
-    + ", 2=" + String(buttonCounter[2]));
+    "Btns: 0=" + String(buttonCounter[0]) +
+    ", 1=" + String(buttonCounter[1]) +
+    ", 2=" + String(buttonCounter[2]));
   display.drawString(0, 20, 
-    ", 3=" + String(buttonCounter[3])
-    + ", 4=" + String(buttonCounter[4])
-    + ", 5=" + String(buttonCounter[5]));
+    " 3=" + String(buttonCounter[3]) +
+    ", 4=" + String(buttonCounter[4]) +
+    ", 5=" + String(buttonCounter[5]));
   display.display();
 }
 
 void drawTimeOnCounter() {
   display.clear();
-  // Time On Counter
   display.setFont(ArialMT_Plain_10);
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.drawString(128, 20, String(millis()));
@@ -202,11 +168,473 @@ void drawTimeOnCounter() {
 void drawProgressBarDemo() {
   display.clear();
   int progress = (buttonCounter[5] / 5) % 100;
-  // draw the progress bar
   display.drawProgressBar(0, 30, 120, 10, progress);
-
-  // draw the percentage as String
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 15, String(progress) + "%");
   display.display();
 }
+
+// --------------------------------------------------------------------
+// Now define the actual app classes that wrap the above draw functions
+// --------------------------------------------------------------------
+
+// ========== 1) FontFaceApp ==========
+FontFaceApp* FontFaceApp::instance = nullptr;
+
+FontFaceApp::FontFaceApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void FontFaceApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void FontFaceApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void FontFaceApp::update() {
+    drawFontFaceDemo();
+}
+
+void FontFaceApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[FontFaceApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+FontFaceApp fontFaceApp(HAL::buttonManager());
+
+// ========== 2) TextFlowApp ==========
+TextFlowApp* TextFlowApp::instance = nullptr;
+
+TextFlowApp::TextFlowApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void TextFlowApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void TextFlowApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void TextFlowApp::update() {
+    drawTextFlowDemo();
+}
+
+void TextFlowApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[TextFlowApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+TextFlowApp textFlowApp(HAL::buttonManager());
+
+// ========== 3) TextAlignmentApp ==========
+TextAlignmentApp* TextAlignmentApp::instance = nullptr;
+
+TextAlignmentApp::TextAlignmentApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void TextAlignmentApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void TextAlignmentApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void TextAlignmentApp::update() {
+    drawTextAlignmentDemo();
+}
+
+void TextAlignmentApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[TextAlignmentApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+TextAlignmentApp textAlignmentApp(HAL::buttonManager());
+
+// ========== 4) RectApp ==========
+RectApp* RectApp::instance = nullptr;
+
+RectApp::RectApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void RectApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void RectApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void RectApp::update() {
+    drawRectDemo();
+}
+
+void RectApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[RectApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+RectApp rectApp(HAL::buttonManager());
+
+// ========== 5) CircleApp ==========
+CircleApp* CircleApp::instance = nullptr;
+
+CircleApp::CircleApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void CircleApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void CircleApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void CircleApp::update() {
+    drawCircleDemo();
+}
+
+void CircleApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[CircleApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+CircleApp circleApp(HAL::buttonManager());
+
+// ========== 6) ImageDemo1App ==========
+ImageDemo1App* ImageDemo1App::instance = nullptr;
+
+ImageDemo1App::ImageDemo1App(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void ImageDemo1App::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void ImageDemo1App::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void ImageDemo1App::update() {
+    drawImageDemo_1();
+}
+
+void ImageDemo1App::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[ImageDemo1App] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+ImageDemo1App imageDemo1App(HAL::buttonManager());
+
+// ========== 7) ImageDemo2App ==========
+ImageDemo2App* ImageDemo2App::instance = nullptr;
+
+ImageDemo2App::ImageDemo2App(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void ImageDemo2App::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void ImageDemo2App::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void ImageDemo2App::update() {
+    drawImageDemo_2();
+}
+
+void ImageDemo2App::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[ImageDemo2App] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+ImageDemo2App imageDemo2App(HAL::buttonManager());
+
+// ========== 8) ImageDemo3App ==========
+ImageDemo3App* ImageDemo3App::instance = nullptr;
+
+ImageDemo3App::ImageDemo3App(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void ImageDemo3App::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void ImageDemo3App::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void ImageDemo3App::update() {
+    drawImageDemo_3();
+}
+
+void ImageDemo3App::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[ImageDemo3App] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+ImageDemo3App imageDemo3App(HAL::buttonManager());
+
+// ========== 9) ImageDemo4App ==========
+ImageDemo4App* ImageDemo4App::instance = nullptr;
+
+ImageDemo4App::ImageDemo4App(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void ImageDemo4App::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void ImageDemo4App::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void ImageDemo4App::update() {
+    drawImageDemo_4();
+}
+
+void ImageDemo4App::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[ImageDemo4App] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+ImageDemo4App imageDemo4App(HAL::buttonManager());
+
+// ========== 10) BatteryBarApp ==========
+BatteryBarApp* BatteryBarApp::instance = nullptr;
+
+BatteryBarApp::BatteryBarApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void BatteryBarApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void BatteryBarApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void BatteryBarApp::update() {
+    drawBatteryProgressBar();
+}
+
+void BatteryBarApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[BatteryBarApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+BatteryBarApp batteryBarApp(HAL::buttonManager());
+
+// ========== 11) SliderBarApp ==========
+// This one calls strip.setPixelColor() so we’ll call setColorsOff() on end().
+SliderBarApp* SliderBarApp::instance = nullptr;
+
+SliderBarApp::SliderBarApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void SliderBarApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void SliderBarApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+
+    // Turn off any LEDs we manipulated
+    setColorsOff();
+    updateStrip();
+}
+
+void SliderBarApp::update() {
+    drawSliderProgressBar();
+}
+
+void SliderBarApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[SliderBarApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+SliderBarApp sliderBarApp(HAL::buttonManager());
+
+// ========== 12) AccelerometerApp ==========
+// Also manipulates colors, so setColorsOff() on end().
+AccelerometerApp* AccelerometerApp::instance = nullptr;
+
+AccelerometerApp::AccelerometerApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void AccelerometerApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void AccelerometerApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+
+    // Turn off any LEDs we manipulated
+    setColorsOff();
+    updateStrip();
+}
+
+void AccelerometerApp::update() {
+    drawAccelerometerScreen();
+}
+
+void AccelerometerApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[AccelerometerApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+AccelerometerApp accelerometerApp(HAL::buttonManager());
+
+// ========== 13) ButtonCountersApp ==========
+ButtonCountersApp* ButtonCountersApp::instance = nullptr;
+
+ButtonCountersApp::ButtonCountersApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void ButtonCountersApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void ButtonCountersApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void ButtonCountersApp::update() {
+    drawButtonCounters();
+}
+
+void ButtonCountersApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[ButtonCountersApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+ButtonCountersApp buttonCountersApp(HAL::buttonManager());
+
+// ========== 14) TimeOnCounterApp ==========
+TimeOnCounterApp* TimeOnCounterApp::instance = nullptr;
+
+TimeOnCounterApp::TimeOnCounterApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void TimeOnCounterApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void TimeOnCounterApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void TimeOnCounterApp::update() {
+    drawTimeOnCounter();
+}
+
+void TimeOnCounterApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[TimeOnCounterApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+TimeOnCounterApp timeOnCounterApp(HAL::buttonManager());
+
+// ========== 15) ProgressBarApp ==========
+ProgressBarApp* ProgressBarApp::instance = nullptr;
+
+ProgressBarApp::ProgressBarApp(ButtonManager& btnMgr)
+    : buttonManager(btnMgr)
+{
+    instance = this;
+}
+
+void ProgressBarApp::begin() {
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void ProgressBarApp::end() {
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void ProgressBarApp::update() {
+    drawProgressBarDemo();
+}
+
+void ProgressBarApp::onButtonBackPressed(const ButtonEvent& event) {
+    if (event.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[ProgressBarApp] Back pressed => returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    }
+}
+ProgressBarApp progressBarApp(HAL::buttonManager());
+

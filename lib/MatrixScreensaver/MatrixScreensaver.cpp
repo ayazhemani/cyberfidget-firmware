@@ -1,6 +1,9 @@
 #include "MatrixScreensaver.h"
 #include "HAL.h"
 
+MatrixScreensaver matrixScreensaver(HAL::buttonManager()); // AppManager Integration
+MatrixScreensaver* MatrixScreensaver::instance = nullptr;
+
 // Just an example set
 const char MatrixScreensaver::ALIEN_CHARS[16] = {
     '@', '#', '$', '%', '*', '+', '=','?',
@@ -55,8 +58,9 @@ uint16_t MatrixScreensaver::findGlyphOffset(char c) {
 }
 
 // Constructor
-MatrixScreensaver::MatrixScreensaver()
-: display(HAL::displayProxy())
+MatrixScreensaver::MatrixScreensaver(ButtonManager& btnMgr)
+    : display(HAL::displayProxy()),
+    buttonManager(btnMgr) // AppManager Integration
 {
     // e.g. update the state machine every 30ms
     frameInterval = 30;
@@ -65,9 +69,11 @@ MatrixScreensaver::MatrixScreensaver()
     // for example, 30ms means each pixel line lights up or down each 30ms
     // => 8 lines * 30ms = 240ms to fully light a row
     rowPixelDelay = 30;
+    instance = this; // AppManager Integration    
 }
 
 void MatrixScreensaver::begin() {
+    registerButtonCallbacks(); // AppManager integration
     unsigned long now = millis();
 
     for (int i = 0; i < NUM_COLUMNS; i++) {
@@ -178,6 +184,7 @@ void MatrixScreensaver::update() {
             } break;
         }
     }
+    draw();
 }
 
 void MatrixScreensaver::draw() {
@@ -298,3 +305,38 @@ void MatrixScreensaver::drawCharPartial(int x, int y, char c, int litPixels, boo
         }
     }
 }
+
+// AppManager integration
+
+void MatrixScreensaver::registerButtonCallbacks() {
+    // Exit App
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void MatrixScreensaver::unregisterButtonCallbacks() {
+    // Unregister callbacks
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void MatrixScreensaver::end() {
+    ESP_LOGI(TAG_MAIN, "end() => unregistering booper callbacks...");
+    unregisterButtonCallbacks();
+}
+
+
+void MatrixScreensaver::onButtonBackPressed(const ButtonEvent& event)
+{    // Press
+    if (event.eventType == ButtonEvent_Released){
+        ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    } 
+}
+void MatrixScreensaver::onButtonSelectPressed(const ButtonEvent& event)
+{    
+    // Press
+    if (event.eventType == ButtonEvent_Pressed){
+        //instance().selectCurrentItem();
+    }
+}
+

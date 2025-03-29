@@ -1,0 +1,45 @@
+{
+    "name": "HAL",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "SliderPosition"
+        },
+        {
+            "name": "AudioManager"
+        },
+        {
+            "name": "Adafruit_NeoPixel"
+        },
+        {
+            "name": "HAL"
+        },
+        {
+            "name": "Flashlight"
+        },
+        {
+            "name": "SparkFun_LIS2DH12"
+        },
+        {
+            "name": "BatteryManager"
+        },
+        {
+            "name": "DisplayProxy"
+        },
+        {
+            "name": "RGBController"
+        },
+        {
+            "name": "ButtonManager"
+        },
+        {
+            "name": "WiFiManagerCF"
+        },
+        {
+            "name": "AppManager"
+        },
+        {
+            "name": "SSD1306Wire"
+        }
+    ]
+}

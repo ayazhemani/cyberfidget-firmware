@@ -188,6 +188,6 @@ void drawDefaultInfoScreen() {
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.setFont(ArialMT_Plain_10); // Use an appropriate font size
     display.drawString(64, 12, "Serial Data Display");
-    display.drawString(64, 22, "Waiting for Data...");
+    display.drawString(64, 22, "Waiting for Data Stream...");
     display.display();
   }

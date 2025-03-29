@@ -11,7 +11,6 @@ public:
 
     void begin();
     void update(); // Call this in the main loop
-    void draw();   // Draw on the display
     void end();    // Unregister callbacks and cleanup
 
 private:
@@ -42,6 +41,18 @@ private:
     // Time to stop tone after button release
     unsigned long toneStopTime;
     static const unsigned long TONE_DURATION_MS = 0; // 0 for continuous tone while button is held
+
+    // We will have one callback function for each button
+    static void onButtonLeftPressed(const ButtonEvent& event);
+    static void onButtonRightPressed(const ButtonEvent& event);
+    static void onButtonUpPressed(const ButtonEvent& event);
+    static void onButtonDownPressed(const ButtonEvent& event);
+    static void onButtonBackPressed(const ButtonEvent& event);
+    static void onButtonSelectPressed(const ButtonEvent& event);
 };
+
+// Declare that there's a global object called below somewhere for AppDefs to use
+// must be after the reference class definition exists
+extern Booper booper;
 
 #endif // BOOPER_H

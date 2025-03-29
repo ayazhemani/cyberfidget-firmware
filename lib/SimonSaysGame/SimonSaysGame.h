@@ -5,6 +5,7 @@
 #include <DisplayProxy.h>
 #include "ButtonManager.h"
 #include "AudioManager.h"
+#include "MenuManager.h" // For returning back to menu
 
 /**
  * @brief Simon Says Game Class
@@ -105,6 +106,11 @@ private:
     // Audio methods
     void playBeepForSquare(int sq);
     void playBeepOnUserPress(int sq);
+
+    // App Manager Integration
+    static void onButtonBackPressed(const ButtonEvent& event);
 };
+
+extern SimonSaysGame simonSaysGame;
 
 #endif

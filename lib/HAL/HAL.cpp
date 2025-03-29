@@ -91,7 +91,6 @@ float    batteryChangeRate          = 0.0f;
 namespace {
     // For example:
     static AudioManager       s_audioManager;
-    static WiFiManagerCF      s_wifiManager;
     
     // If you have 6 buttons, pass them in accordingly:
     constexpr int numButtons = 6;
@@ -115,6 +114,9 @@ namespace {
         20UL,    // Debounce ms
         1500UL   // Hold threshold ms
     );
+
+    // WiFi
+    //static WiFiManagerCF      s_wifiManager(s_buttonManager); // Commented out to prevent conflict with AppManager loading
 
     // Accelerometer
     static SPARKFUN_LIS2DH12 s_accel;
@@ -184,7 +186,7 @@ namespace HAL
         s_batteryManager.init();
 
         // Initialize WiFi manager
-        s_wifiManager.init();
+        //s_wifiManager.init(); // Commented out to prevent conflict with AppManager loading
 
         // Initalize slider
         pinMode(VOLT_READ_PIN, INPUT); // Slider Input
@@ -246,7 +248,7 @@ namespace HAL
     ButtonManager& buttonManager()      { return s_buttonManager; }
     SSD1306Wire& realDisplay()          { return s_realDisplay; }
     SPARKFUN_LIS2DH12& accelerometer()  { return s_accel; }
-    WiFiManagerCF& wifiManagerCF()      { return s_wifiManager; }
+    //WiFiManagerCF& wifiManagerCF()      { return s_wifiManager; } // Commented out to prevent conflict with AppManager loading
     Adafruit_NeoPixel& strip()          { return s_rgbStrip; }
     
 

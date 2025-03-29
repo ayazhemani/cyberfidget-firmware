@@ -3,7 +3,9 @@
 #include "BreakoutGame.h"
 #include "globals.h" // For button indices
 #include "HAL.h"
+#include "MenuManager.h" // AppManager integration
 
+BreakoutGame breakoutGame(HAL::buttonManager(), HAL::audioManager()); // AppManager Integration
 // Initialize the static instance pointer
 BreakoutGame* BreakoutGame::instance = nullptr;
 
@@ -16,6 +18,7 @@ BreakoutGame::BreakoutGame(ButtonManager& btnMgr, AudioManager& audioMgr)
 }
 
 void BreakoutGame::begin() {
+    registerButtonCallbacks(); // AppManager integration
     // Reset the game state
     resetGame();
 
@@ -25,7 +28,7 @@ void BreakoutGame::begin() {
 
 void BreakoutGame::end() {
     // Unregister the button callback
-    buttonManager.unregisterCallback(resetButtonIndex);
+    unregisterButtonCallbacks();
 
     // Stop any playing sounds
     audioManager.stopTone();
@@ -72,7 +75,7 @@ void BreakoutGame::resetGame() {
 }
 
 // Update method to be called in the main loop
-void BreakoutGame::update(float accelX) {
+void BreakoutGame::update() {
     if (gameWon) {
         // Game over; just draw the game
         drawGame();
@@ -269,4 +272,25 @@ void BreakoutGame::drawGame() {
     display.drawString(64, 20, deathMsg);
 
     display.display();
+}
+
+// AppManager integration
+
+void BreakoutGame::registerButtonCallbacks() {
+    // Exit App
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+}
+
+void BreakoutGame::unregisterButtonCallbacks() {
+    // Unregister callbacks
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+void BreakoutGame::onButtonBackPressed(const ButtonEvent& event)
+{    // Press
+    if (event.eventType == ButtonEvent_Released){
+        ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    } 
 }

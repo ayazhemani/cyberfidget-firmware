@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include "DisplayProxy.h"
+#include "ButtonManager.h" // For returning back to menu
+#include "MenuManager.h" // For returning back to menu
 
 class MatrixScreensaver {
 public:
@@ -15,13 +17,23 @@ public:
 
     static const char ALIEN_CHARS[16];
 
-    MatrixScreensaver();
+    MatrixScreensaver(ButtonManager& btnMgr);
 
     void begin();  // Initialize state
     void update(); // Step state machine
     void draw();   // Render to the display
+    void end(); // AppManager integration
 
 private:
+    // AppManager Integration
+    ButtonManager& buttonManager;
+    void registerButtonCallbacks();
+    void unregisterButtonCallbacks();
+    static void buttonPressedCallback(const ButtonEvent& event);
+    static void onButtonBackPressed(const ButtonEvent& event);
+    static void onButtonSelectPressed(const ButtonEvent& event);
+    static MatrixScreensaver* instance; // To allow static callbacks
+
     DisplayProxy& display;
 
     // We do small stepping every frameInterval ms
@@ -83,5 +95,7 @@ private:
     // findGlyphOffset(c) -> returns the index in MY_FONT for char c
     uint16_t findGlyphOffset(char c);
 };
+
+extern MatrixScreensaver matrixScreensaver;
 
 #endif

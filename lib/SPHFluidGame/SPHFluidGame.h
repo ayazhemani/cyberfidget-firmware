@@ -4,6 +4,8 @@
 #include <math.h>
 #include <Arduino.h>
 #include "DisplayProxy.h" 
+#include "ButtonManager.h" // For returning back to menu
+#include "MenuManager.h" // For returning back to menu
 
 class SPHFluidGame {
 public:
@@ -14,10 +16,12 @@ public:
         float pressure;
     };
 
-    SPHFluidGame();
+    SPHFluidGame(ButtonManager& btnMgr);
 
     // Updates the simulation by one step, taking external acceleration (e.g., from an IMU).
-    void update(float accelX, float accelY);
+    void update();
+    void begin(); // AppManager integration
+    void end(); // AppManager integration
 
     // Resets/re-randomizes particles.
     void resetParticles();
@@ -26,6 +30,8 @@ public:
     void setParticleCount(int newCount);
 
 private:
+    int currentCount; // For tracking the current number of particles
+
     // ---- SPH parameters ----
     int   numParticles;       // e.g., 100 or 200 for microcontroller
     float smoothingLength;    // h
@@ -55,4 +61,12 @@ private:
     void resolveParticleCollisions();
     void integrate();
     void render();
+
+    // AppManager Integration
+    ButtonManager& buttonManager;
+    static void buttonPressedCallback(const ButtonEvent& event);
+    static void onButtonBackPressed(const ButtonEvent& event);
+    static SPHFluidGame* instance; // To allow static callbacks
 };
+
+extern SPHFluidGame sphFluidGame; // App Manager integration

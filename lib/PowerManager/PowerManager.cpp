@@ -2,12 +2,19 @@
 #include "PowerManager.h"
 #include "globals.h"
 #include "HAL.h"
+#include "MenuManager.h"
+
+PowerManager powermanager(HAL::buttonManager(), clockDisplay);
 
 // Initialize the static instance reference
 PowerManager* PowerManager::instance = nullptr;
 
 PowerManager::PowerManager(ButtonManager& btnMgr, ClockDisplay& clkDsply)
-    : display(HAL::displayProxy()), buttonManager(btnMgr), clockDisplay(clkDsply), lastTapTime(0) {
+    : display(HAL::displayProxy()), 
+    buttonManager(btnMgr), 
+    clockDisplay(clkDsply), 
+    lastTapTime(0) 
+{
     // Set the static instance to this object
     instance = this;
 }
@@ -20,12 +27,18 @@ void PowerManager::update() {
     drawShutdownScreen();
 }
 
+void PowerManager::end() {
+    unregisterShutdownCallback();
+}
+
 void PowerManager::registerShutdownCallback() {
-    buttonManager.registerCallback(button_BottomLeftIndex, onButtonPressCallback);
+    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
+    buttonManager.registerCallback(button_BottomRightIndex, onButtonPressCallback);
 }
 
 void PowerManager::unregisterShutdownCallback() {
     buttonManager.unregisterCallback(button_BottomLeftIndex);
+    buttonManager.unregisterCallback(button_BottomRightIndex);
 }
 
 void PowerManager::drawShutdownScreen() {
@@ -34,7 +47,7 @@ void PowerManager::drawShutdownScreen() {
     display.setFont(ArialMT_Plain_16);
     display.drawString(64, 10, "Shutdown");
     display.setFont(ArialMT_Plain_10);
-    display.drawString(64, 30, "Double-tap Bottom Left");
+    display.drawString(64, 30, "Double-tap Bottom Right");
     display.drawString(64, 40, "to power off");
     display.display();
 }
@@ -65,6 +78,15 @@ void PowerManager::onButtonPressCallback(const ButtonEvent &event) {
     }
 }
 
+void PowerManager::onButtonBackPressed(const ButtonEvent& event)
+{    // Press
+    if (event.eventType == ButtonEvent_Released){
+        ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
+    } 
+}
+
 void PowerManager::deepSleep() {
     // Go to deep sleep
     if(preventSleepWhileCharging){
@@ -81,14 +103,27 @@ void PowerManager::deepSleep() {
             esp_deep_sleep_start();
         }
         } else {
-        ESP_LOGI(TAG_MAIN, "Going to sleep now...");
-    
-        display.clear();
-        display.setFont(ArialMT_Plain_10);
-        display.drawString(64, 20, "Going to sleep now...");
-        display.display();
-    
-        delay(3000);
-        esp_deep_sleep_start();
+            ESP_LOGI(TAG_MAIN, "Going to sleep now...");
+        
+            display.clear();
+            display.setFont(ArialMT_Plain_10);
+            display.drawString(64, 20, "Going to sleep now...");
+            display.display();
+        
+            delay(3000);
+            esp_deep_sleep_start();
         }
+}
+
+// Global functions for the app system
+void powerManagerBegin() {
+    powermanager.begin();
+}
+
+void powerManagerEnd() {
+    powermanager.end();
+}
+
+void powerManagerUpdate() {
+    powermanager.update();
 }

@@ -29,7 +29,6 @@ extern int  appActiveSaved;
 extern int  appPreviously;
 
 // Some booleans for states
-extern bool accelerometerScreenEnabled;
 extern bool reactionGameEnabled;
 extern volatile bool buttonPressed;
 

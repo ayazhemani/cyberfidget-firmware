@@ -5,10 +5,13 @@
 // Initialize static instance pointer
 ReactionTimeGame* ReactionTimeGame::instance = nullptr;
 
-// Implement the callback with event type filtering
+/**
+ * @brief Static callback for the reaction-game button.
+ *        Only handles Pressed event; calls instance->handleButtonPress().
+ */
 void ReactionTimeGame::reactionButtonPressedCallback(const ButtonEvent& ev) {
-    Serial.println("ReactionTimeGame callback fired for button " + String(ev.buttonIndex) + " with event type " + String(ev.eventType));
-    
+    ESP_LOGI(TAG_MAIN, "ReactionTimeGame callback fired for button %d with event type %d", ev.buttonIndex, ev.eventType);
+
     // Handle only the Pressed event
     if (ev.eventType == ButtonEvent_Pressed) {
         if (ReactionTimeGame::instance) {
@@ -17,31 +20,74 @@ void ReactionTimeGame::reactionButtonPressedCallback(const ButtonEvent& ev) {
     }
 }
 
-ReactionTimeGame::ReactionTimeGame(int btnIndex, ButtonManager& btnManager)
-    : display(HAL::displayProxy()), buttonIndex(btnIndex), buttonManager(btnManager), 
-      gameStarted(false), waitingForReaction(false), delayActive(false), messageDisplayed(false) {
-    
-    // Register the callback for the specific button
-    // Do NOT register the callback here
-    //buttonManager.registerCallback(buttonIndex, ReactionTimeGame::reactionButtonPressedCallback);
-    
-    // Store the instance pointer
+/**
+ * @brief Static callback for the "Back to menu" button
+ */
+void ReactionTimeGame::onButtonBackPressed(const ButtonEvent& ev) {
+    if (ev.eventType == ButtonEvent_Released) {
+        ESP_LOGI(TAG_MAIN, "[ReactionTimeGame] Back button pressed => returning to menu...");
+        // Safely end the app
+        if (ReactionTimeGame::instance) {
+            ReactionTimeGame::instance->end();
+        }
+        // Go back to the main menu
+        MenuManager::instance().returnToMenu();
+    }
+}
+
+/**
+ * @brief Constructor
+ *        NOTE: The callback is not registered here; it's registered in begin().
+ */
+ReactionTimeGame::ReactionTimeGame(ButtonManager& btnManager)
+    : display(HAL::displayProxy()),
+      buttonManager(btnManager),
+      gameStarted(false),
+      waitingForReaction(false),
+      delayActive(false),
+      messageDisplayed(false) 
+{
+    // Store the instance pointer so static callbacks can reach 'this'
     ReactionTimeGame::instance = this;
 }
 
-void ReactionTimeGame::update(unsigned long millis_NOW) {
-    // Only proceed if the game is active (callback is registered)
-    if (!buttonManager.hasCallback(buttonIndex)) {
-        return; // Skip update if the game isn't active
-    }
+/**
+ * @brief AppManager integration: called when user launches the app
+ */
+void ReactionTimeGame::begin() {
+    // Register the callback for the specific reaction-game button
+    buttonManager.registerCallback(button_BottomRightIndex, ReactionTimeGame::reactionButtonPressedCallback);
+    // Also register a "back" button to exit (commonly button_BottomLeftIndex)
+    buttonManager.registerCallback(button_BottomLeftIndex, ReactionTimeGame::onButtonBackPressed);
 
+    ESP_LOGI(TAG_MAIN, "[ReactionTimeGame] begin() => callbacks registered.");
+
+    resetGame(); // Reset the game state
+}
+
+/**
+ * @brief AppManager integration: called when user exits the app
+ */
+void ReactionTimeGame::end() {
+    // Unregister both the reaction-game button and the back-to-menu button
+    buttonManager.unregisterCallback(button_BottomRightIndex);
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+
+    ESP_LOGI(TAG_MAIN, "[ReactionTimeGame] end() => callbacks unregistered.");
+}
+
+
+/**
+ * @brief Update function that loops the app
+ * 
+ */
+void ReactionTimeGame::update() {
     // Initial screen prompt
     if (!gameStarted && !delayActive && !waitingForReaction && !messageDisplayed) {
-        Serial.println("Displaying 'Press to start...' screen.");
+        ESP_LOGI(TAG_MAIN, "Displaying 'Press to start...' screen.");
         display.clear();
         display.setTextAlignment(TEXT_ALIGN_CENTER);
         display.setFont(ArialMT_Plain_16);
-
         display.drawString(64, 22, "Press to start");
         display.display();
         messageDisplayed = true;
@@ -49,7 +95,7 @@ void ReactionTimeGame::update(unsigned long millis_NOW) {
 
     // Handle the delay logic
     if (delayActive && millis_NOW >= randomDelayEnd) {
-        Serial.println("Displaying 'GO!' screen.");
+        ESP_LOGI(TAG_MAIN, "Displaying 'GO!' screen.");
         display.clear();
         display.drawString(64, 22, "GO!");
         display.display();
@@ -60,26 +106,32 @@ void ReactionTimeGame::update(unsigned long millis_NOW) {
     }
 }
 
+/**
+ * @brief Handle a button press event
+ */
 void ReactionTimeGame::handleButtonPress() {
-    Serial.println("handleButtonPress called.");
+    ESP_LOGI(TAG_MAIN, "handleButtonPress called.");
     if (!gameStarted) {
-        Serial.println("Starting game...");
+        ESP_LOGI(TAG_MAIN, "Starting game...");
         startGame(millis());
     } else if (waitingForReaction) {
-        Serial.println("Reaction time measured.");
+        ESP_LOGI(TAG_MAIN, "Reaction time measured.");
         reactionTime = millis() - startTime;
         waitingForReaction = false;
         displayReactionTime();
     } else if (gameStarted && !waitingForReaction) {
-        Serial.println("Resetting game...");
+        ESP_LOGI(TAG_MAIN, "Resetting game...");
         resetGame();
     } else {
-        Serial.println("Unexpected button press.");
+        ESP_LOGI(TAG_MAIN, "Unexpected button press.");
     }
 }
 
+/**
+ * @brief Start the reaction time game
+ */
 void ReactionTimeGame::startGame(unsigned long millis_NOW) {
-    Serial.println("Starting Reaction Time Game.");
+    ESP_LOGI(TAG_MAIN, "Starting Reaction Time Game.");
     gameStarted = true;
     display.clear();
     display.drawString(64, 22, "Get Ready...");
@@ -91,15 +143,21 @@ void ReactionTimeGame::startGame(unsigned long millis_NOW) {
     messageDisplayed = false;
 }
 
+/**
+ * @brief Display the reaction time to the user
+ */
 void ReactionTimeGame::displayReactionTime() {
-    Serial.println("Displaying reaction time.");
+    ESP_LOGI(TAG_MAIN, "Displaying reaction time.");
     display.clear();
     display.drawString(64, 22, "Time: " + String(reactionTime) + " ms");
     display.display();
 }
 
+/**
+ * @brief Reset the game to its initial state
+ */
 void ReactionTimeGame::resetGame() {
-    Serial.println("Resetting Reaction Time Game.");
+    ESP_LOGI(TAG_MAIN, "Resetting Reaction Time Game.");
     gameStarted = false;
     waitingForReaction = false;
     delayActive = false;
@@ -109,3 +167,9 @@ void ReactionTimeGame::resetGame() {
     display.drawString(64, 22, "Press to start");
     display.display();
 }
+
+// -------------------------------------------------------------------
+// Define one global instance for the AppManager
+// You can choose any hardware button index (example: button_TopRightIndex)
+// -------------------------------------------------------------------
+ReactionTimeGame reactionTimeGame(HAL::buttonManager());

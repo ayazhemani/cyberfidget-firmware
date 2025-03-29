@@ -1,15 +1,14 @@
 #include "DinoGame.h"
 #include "HAL.h"
+#include "MenuManager.h"
+
+DinoGame dinoGame(HAL::buttonManager());
 
 DinoGame* DinoGame::instance = nullptr;
 
-DinoGame::DinoGame(ButtonManager& btnMgr,
-                   int jumpIndex, int duckIndex, int resetIndex)
+DinoGame::DinoGame(ButtonManager& btnMgr)
   : display(HAL::displayProxy()),
     buttonManager(btnMgr),
-    jumpBtnIndex(jumpIndex),
-    duckBtnIndex(duckIndex),
-    resetBtnIndex(resetIndex),
     gameOver(false),
     dinoY(0),
     dinoVelocity(0),
@@ -89,19 +88,15 @@ void DinoGame::initGround() {
 // Update
 //---------------------------------------------------------------------------------
 void DinoGame::update() {
-    // Only if all callbacks are registered => active
-    if(!buttonManager.hasCallback(jumpBtnIndex) ||
-       !buttonManager.hasCallback(duckBtnIndex) ||
-       !buttonManager.hasCallback(resetBtnIndex))
-    {
-        return;
-    }
+
     if(gameOver) return;
 
+    setSpeedBySlider(sliderPosition_Percentage_Inverted_Filtered);
     updateDino();
     updateGround();
     updateObstacles();
     checkCollisions();
+    draw();
 }
 
 //---------------------------------------------------------------------------------
@@ -178,6 +173,14 @@ void DinoGame::duckButtonCallback(const ButtonEvent &ev) {
 void DinoGame::resetButtonCallback(const ButtonEvent &ev) {
     if(ev.eventType == ButtonEvent_Pressed && instance){
         instance->handleReset();
+    }
+}
+
+void DinoGame::endButtonCallback(const ButtonEvent &ev) {
+    if(ev.eventType == ButtonEvent_Released && instance){
+        ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
+        instance->end();
+        MenuManager::instance().returnToMenu();
     }
 }
 
@@ -408,4 +411,46 @@ bool DinoGame::pixelCollides(
         }
     }
     return false;
+}
+
+
+//---------------------------------------------------------------------------------
+// Register button callbacks
+//---------------------------------------------------------------------------------
+void DinoGame::registerButtonCallbacks() {
+    buttonManager.registerCallback(button_MiddleLeftIndex, jumpButtonCallback);
+    buttonManager.registerCallback(button_MiddleRightIndex, duckButtonCallback);
+    buttonManager.registerCallback(button_BottomRightIndex, resetButtonCallback);
+
+    // Exit App
+    buttonManager.registerCallback(button_BottomLeftIndex, endButtonCallback);
+}
+
+//---------------------------------------------------------------------------------
+// Unregister button callbacks
+//---------------------------------------------------------------------------------
+void DinoGame::unregisterButtonCallbacks() {
+    // Unregister callbacks
+    buttonManager.unregisterCallback(button_MiddleLeftIndex);
+    buttonManager.unregisterCallback(button_MiddleRightIndex);
+    buttonManager.unregisterCallback(button_BottomRightIndex);
+    
+    buttonManager.unregisterCallback(button_BottomLeftIndex);
+}
+
+//---------------------------------------------------------------------------------
+// Initialize or begin the app
+//---------------------------------------------------------------------------------
+void DinoGame::begin() {
+    ESP_LOGI(TAG_MAIN, "begin() => registering callbacks...");
+    registerButtonCallbacks();
+    resetGame();
+}
+
+//---------------------------------------------------------------------------------
+// End the app
+//---------------------------------------------------------------------------------
+void DinoGame::end() {
+    ESP_LOGI(TAG_MAIN, "end() => unregistering callbacks...");
+    unregisterButtonCallbacks();
 }

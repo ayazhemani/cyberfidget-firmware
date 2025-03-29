@@ -15,10 +15,13 @@
  * - Higher pterodactyl Y => must duck
  * - Random obstacle spacing (with min gap) => multiple on screen
  */
+
 class DinoGame {
 public:
-    DinoGame(ButtonManager& btnMgr,
-             int jumpBtnIndex, int duckBtnIndex, int resetBtnIndex);
+    DinoGame(ButtonManager& btnMgr);
+
+    void begin();
+    void end();
 
     void update();
     void draw();
@@ -26,13 +29,10 @@ public:
     void resetGame();
     void setSpeedBySlider(float sliderPercentage);
 
-    int getJumpButtonIndex()  const { return jumpBtnIndex; }
-    int getDuckButtonIndex()  const { return duckBtnIndex; }
-    int getResetButtonIndex() const { return resetBtnIndex; }
-
     static void jumpButtonCallback(const ButtonEvent &ev);
     static void duckButtonCallback(const ButtonEvent &ev);
     static void resetButtonCallback(const ButtonEvent &ev);
+    static void endButtonCallback(const ButtonEvent &ev);
 
     static DinoGame* instance;
 
@@ -40,9 +40,10 @@ private:
     // Refs
     DisplayProxy& display;
     ButtonManager& buttonManager;
-    int jumpBtnIndex;
-    int duckBtnIndex;
-    int resetBtnIndex;
+
+    // Button callbacks
+    void registerButtonCallbacks();
+    void unregisterButtonCallbacks();
 
     // Dino
     bool  gameOver;
@@ -88,6 +89,7 @@ private:
     void handleJump();
     void handleDuck(ButtonEventType evType);
     void handleReset();
+    void handleEnd();
 
     void updateDino();
     void updateObstacles();
@@ -99,5 +101,9 @@ private:
         const unsigned char* spriteB, int wB, int hB, int xB, int yB
     );
 };
+
+// Declare that there's a global object called below somewhere for AppDefs to use
+// must be after the reference class definition exists
+extern DinoGame dinoGame;
 
 #endif

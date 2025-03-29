@@ -1,0 +1,72 @@
+{
+    "name": "AppDefs",
+    "version": "1.0.0",
+    "dependencies": [
+        {
+            "name": "AppManifest"
+        },
+        {
+            "name": "iostream"
+        },
+        {
+            "name": "SerialDisplayApp"
+        },
+        {
+            "name": "Booper"
+        },
+        {
+            "name": "string"
+        },
+        {
+            "name": "MatrixScreensaver"
+        },
+        {
+            "name": "functional"
+        },
+        {
+            "name": "PowerManager"
+        },
+        {
+            "name": "DinoGame"
+        },
+        {
+            "name": "ReactionTimeGame"
+        },
+        {
+            "name": "MenuManager"
+        },
+        {
+            "name": "BreakoutGame"
+        },
+        {
+            "name": "cstring"
+        },
+        {
+            "name": "AppManifest_Includes"
+        },
+        {
+            "name": "vector"
+        },
+        {
+            "name": "WiFiManagerCF"
+        },
+        {
+            "name": "ExampleScreens"
+        },
+        {
+            "name": "SPHFluidGame"
+        },
+        {
+            "name": "AppDefs"
+        },
+        {
+            "name": "Flashlight"
+        },
+        {
+            "name": "ClockDisplay"
+        },
+        {
+            "name": "SimonSaysGame"
+        }
+    ]
+}

@@ -355,7 +355,7 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
                 &scrollOffset,
                 INDENT,
                 newScroll,   // endVal
-                300          // ms
+                250          // ms
             )
         );
     }
@@ -369,7 +369,7 @@ void MenuManager::updateScrollForCurrentIndex(int oldIndex)
                 &scrollOffset,
                 INDENT,
                 newScroll,
-                300
+                250
             )
         );
     }
@@ -433,6 +433,8 @@ void MenuManager::selectCurrentItem()
     
     const MenuItem &mi = (*currentItemList)[currentIndex];
 
+    // If it’s a sub-category, do NOT immediately switch.
+    // Instead, start the slide-out animation. handleMenuTransition() will do the actual switch.
     if (mi.isCategory)
     {
         if (crossSlideState == CROSS_SLIDE_NONE)
@@ -570,6 +572,8 @@ void MenuManager::handleCrossSlide()
 void MenuManager::drawMenu()
 {
     display.clear();
+    display.setFont(ArialMT_Plain_10);
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
 
     if (crossSlideState == CROSS_SLIDE_NONE)
     {

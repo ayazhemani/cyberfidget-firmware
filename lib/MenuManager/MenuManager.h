@@ -25,19 +25,6 @@ enum CrossSlideState {
     CROSS_SLIDE_BACK      // going to parent
 };
 
-// // Menu transition states into/out of submenus
-// enum MenuTransitionState {
-//     TRANSITION_NONE,
-
-//     // Forward (selecting a sub-category):
-//     TRANSITION_OLD_MENU_SLIDE_OUT, 
-//     TRANSITION_NEW_MENU_SLIDE_IN,
-
-//     // Backward (goBack):
-//     TRANSITION_SUBMENU_SLIDE_OUT,  // sub-menu slides in from the right
-//     TRANSITION_PARENT_MENU_SLIDE_IN // parent slides in from the left
-// };
-
 /**
  * @brief A basic menu item. 
  * If isCategory=true, "children" hold sub-items.
@@ -234,6 +221,7 @@ private:
     static void onButtonBackPressed(const ButtonEvent& event);
     static void onButtonSelectPressed(const ButtonEvent& event);
 
+    int menuXOffset = 0; // X offset for menu transition animation
 };
 
 // Then declare the free functions if you want them visible:

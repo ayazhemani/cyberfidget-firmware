@@ -56,6 +56,7 @@ extern float sliderPosition_12Bits_Inverted_Filtered;
 extern int sliderPosition_8Bits_Filtered;
 extern int sliderPosition_8Bits_Inverted_Filtered;
 extern float sliderPosition_Percentage_Filtered;
+extern float sliderPosition_Percentage_Filtered_Old;
 extern float sliderPosition_Percentage_Inverted_Filtered;
 
 // Battery

@@ -12,7 +12,7 @@ unsigned long millis_APP_LASTINTERACTION = 0;
 int TASK_20MS = 20;
 int TASK_50MS = 50;
 int TASK_200MS = 200;
-int TASK_LASTINTERACT = 300000;
+int TASK_LASTINTERACT = 60000; // 1 minute
 
 // Logging
 const char* TAG_MAIN = "mainApp";

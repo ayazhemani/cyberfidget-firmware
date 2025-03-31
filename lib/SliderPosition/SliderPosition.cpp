@@ -62,6 +62,7 @@ void sliderPositionFilterInit() {
     sliderPosition_8Bits_Filtered = 0;
     sliderPosition_8Bits_Inverted_Filtered = 0;
     sliderPosition_Percentage_Filtered = 0.0f;
+    sliderPosition_Percentage_Filtered_Old = 0.0f;
     sliderPosition_Percentage_Inverted_Filtered = 0.0f;
 
     // Initialize the Kalman filter
@@ -183,6 +184,12 @@ void sliderPositionRead(int sliderVoltagePin) {
 
     sliderPosition_8Bits_Filtered = static_cast<int>(filtered_8Bits);
     sliderPosition_8Bits_Inverted_Filtered = 255 - sliderPosition_8Bits_Filtered;
+
+    // Check if we had a user interaction for keep-alives
+    if (sliderPosition_Percentage_Filtered != sliderPosition_Percentage_Filtered_Old) {
+        sliderPosition_Percentage_Filtered_Old = sliderPosition_Percentage_Filtered;
+        millis_APP_LASTINTERACTION = millis_NOW; // Reset last interaction time
+    }
 }
 
 // Optional function to update the EMA filter separately if needed

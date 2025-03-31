@@ -66,6 +66,7 @@ void PowerManager::onButtonPressCallback(const ButtonEvent &event) {
                 
                 // Optional: save state before sleep
                 instance->clockDisplay.saveTime();  // Commented out if using external display manager call
+                instance->buttonManager.saveButtonCounters();
 
                 delay(500);
                 ESP_LOGV(TAG_MAIN, "Entering deep sleep...");
@@ -92,6 +93,8 @@ void PowerManager::deepSleep() {
     if(preventSleepWhileCharging){
         if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
             clockDisplay.saveTime(); // Save the current clock time to Preferences so that it can be recovered later.
+            instance->buttonManager.saveButtonCounters();
+            
             ESP_LOGI(TAG_MAIN, "Going to sleep now...");
             
             display.clear();

@@ -153,6 +153,7 @@ void BreakoutGame::checkCollisions() {
             ballY = PADDLE_Y - BALL_SIZE;
             ballVY *= -1;
             playBounceSound(); // Play sound on paddle hit
+            millis_APP_LASTINTERACTION = millis_NOW; // Reset last interaction time for keep-alive
         }
     }
 
@@ -181,6 +182,7 @@ void BreakoutGame::checkCollisions() {
                 // Play sound when breaking a brick if enabled
                 if (brickSoundsEnabled) {
                     playBounceSound();
+                    millis_APP_LASTINTERACTION = millis_NOW; // Reset last interaction time for keep-alive
                 }
 
                 return; 

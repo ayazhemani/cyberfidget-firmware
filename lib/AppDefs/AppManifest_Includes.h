@@ -12,3 +12,4 @@
 #include "ReactionTimeGame.h"
 #include "WiFiManagerCF.h"
 #include "SerialDisplayApp.h"
+#include "BootAnimation.h"

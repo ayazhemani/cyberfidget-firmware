@@ -34,7 +34,7 @@ void AppManager::setup() {
     ESP_LOGI(TAG_MAIN, "MenuManager::instance() returned: %p", (void*)&m);
 
     // Default to menu
-    appActive     = APP_MENU;
+    appActive     = APP_BOOT_ANIMATION;
     appPreviously = APP_MENU;
 
     printAppCount(); // Debugging
@@ -70,7 +70,7 @@ void AppManager::loop() {
 
     if ((millis_NOW - millis_APP_TASK_200MS) >= TASK_200MS) {
         millis_APP_TASK_200MS = millis_NOW;
-        buttonManager.saveButtonCounters();
+        // Moved buttonManager.saveButtonCounters(); to PowerManager
     }
 
     if ((millis_NOW - millis_APP_LASTINTERACTION) >= TASK_LASTINTERACT) {

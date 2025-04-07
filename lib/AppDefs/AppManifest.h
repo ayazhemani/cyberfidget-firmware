@@ -17,6 +17,7 @@
 
 // MUST include app in AppManifest_Includes.h if it is not already included
 //        APP_NAME                   "Menu Label",          "Menu/Path",      beginFunc,                                     endFunc,                                           runFunc
+APP_ENTRY(APP_BOOT_ANIMATION,        "Boot Animation",      "Screensavers",   [](){ bootAnimationApp.begin();                }, [](){ bootAnimationApp.end();                }, [](){ bootAnimationApp.update();                })
 APP_ENTRY(APP_MENU,                  "",                    "",               [](){ MenuManager::instance().begin();         }, [](){ MenuManager::instance().end();         }, [](){ MenuManager::instance().update();         })
 APP_ENTRY(APP_BOOPER,                "Booper",              "Games",          [](){ booper.begin();                          }, [](){ booper.end();                          }, [](){ booper.update();                          })
 APP_ENTRY(APP_FLASHLIGHT,            "Flashlight",          "Tools/LEDs",           flashlightBegin,                                  flashlightEnd,                                  flashlightUpdate                           )

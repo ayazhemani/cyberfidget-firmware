@@ -66,11 +66,11 @@ void ButtonManager::update() {
     unsigned long now = millis();
 
     // For each button, read the raw input
-    //   Because some are active-low, the "pressed" state is (digitalRead(...) == LOW)
+    // Because buttons are active-low, the "pressed" state is (digitalRead(...) == LOW)
     for (int i = 0; i < _numButtons; i++) {
         bool rawPressed = (digitalRead(_pins[i]) == LOW);
         // If using external pull-ups or internal pull-ups, the logic is the same:
-        // "pressed" means the pin reads LOW (assuming your hardware is wired that way).
+        // "pressed" means the pin reads LOW
 
         // Compare with current stable state
         if (rawPressed != _currentState[i]) {
@@ -93,6 +93,9 @@ void ButtonManager::update() {
 
                 // Update the lastChangeTime
                 _lastChangeTime[i] = now;
+
+                // Reset the last interaction timer
+                millis_APP_LASTINTERACTION = millis_NOW;
             }
         } else {
             // The raw reading matches the stable state; check if it's pressed long enough for "Held"

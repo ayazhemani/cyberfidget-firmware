@@ -1,9 +1,15 @@
-print(">>> merge_firmware.py loaded")
+try:
+    Import("env")
+except NameError:
+    print("This script is intended to be run by PlatformIO, not directly.")
+    import sys
+    sys.exit(1)
 
-Import("env")
 import os
 
-def after_build(source, target, env):
+print(">>> merge_firmware.py loaded")
+
+def merge_bin(source, target, env):
     build_dir = env.subst("$BUILD_DIR")
     firmware = os.path.join(build_dir, "firmware.bin")
     bootloader = os.path.join(build_dir, "bootloader.bin")
@@ -29,4 +35,5 @@ def after_build(source, target, env):
     else:
         print("❌ Failed to merge firmware.")
 
-env.AddPostAction("buildprog", after_build)
+# Run merging after firmware is built (triggered by build or upload)
+env.AddPostAction("$BUILD_DIR/firmware.bin", merge_bin)

@@ -78,6 +78,7 @@ float sliderPosition_12Bits_Inverted_Filtered = 0.0f;
 int sliderPosition_8Bits_Filtered = 0;
 int sliderPosition_8Bits_Inverted_Filtered = 0;
 float sliderPosition_Percentage_Filtered = 0.0f;
+float sliderPosition_Percentage_Filtered_Old = 0.0f;
 float sliderPosition_Percentage_Inverted_Filtered = 0.0f;
 
 // Battery

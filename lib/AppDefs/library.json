@@ -67,6 +67,9 @@
         },
         {
             "name": "SimonSaysGame"
+        },
+        {
+            "name": "BootAnimation"
         }
     ]
 }

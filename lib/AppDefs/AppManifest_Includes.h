@@ -13,3 +13,4 @@
 #include "WiFiManagerCF.h"
 #include "SerialDisplayApp.h"
 #include "BootAnimation.h"
+#include "StratagemGame.h"

@@ -38,7 +38,7 @@ APP_ENTRY(APP_EXAMPLE_IMG2,          "Image Demo 2",        "Examples",       []
 APP_ENTRY(APP_EXAMPLE_IMG3,          "Image Demo 3",        "Examples",       [](){ imageDemo3App.begin();                   }, [](){ imageDemo3App.end();                   }, [](){ imageDemo3App.update();                   })
 APP_ENTRY(APP_EXAMPLE_IMG4,          "Image Demo 4",        "Examples",       [](){ imageDemo4App.begin();                   }, [](){ imageDemo4App.end();                   }, [](){ imageDemo4App.update();                   })
 APP_ENTRY(APP_EXAMPLE_BATTERYBAR,    "Battery Level",       "Tools",          [](){ batteryBarApp.begin();                   }, [](){ batteryBarApp.end();                   }, [](){ batteryBarApp.update();                   })
-APP_ENTRY(APP_EXAMPLE_SLIDERBAR,     "Slider Progress",     "Examples",       [](){ sliderBarApp.begin();                    }, [](){ sliderBarApp.end();                    }, [](){ sliderBarApp.update();                    })
+APP_ENTRY(APP_EXAMPLE_SLIDERBAR,     "Slider Status",       "Tools",          [](){ sliderBarApp.begin();                    }, [](){ sliderBarApp.end();                    }, [](){ sliderBarApp.update();                    })
 APP_ENTRY(APP_EXAMPLE_ACCELEROMETER, "Accelerometer Demo",  "Tools/LEDs",     [](){ accelerometerApp.begin();                }, [](){ accelerometerApp.end();                }, [](){ accelerometerApp.update();                })
 APP_ENTRY(APP_EXAMPLE_BUTTONCOUNTERS,"Button Counters",     "Examples",       [](){ buttonCountersApp.begin();               }, [](){ buttonCountersApp.end();               }, [](){ buttonCountersApp.update();               })
 APP_ENTRY(APP_EXAMPLE_TIMEONCOUNTER, "Time On Counter",     "Examples",       [](){ timeOnCounterApp.begin();                }, [](){ timeOnCounterApp.end();                }, [](){ timeOnCounterApp.update();                })
@@ -46,5 +46,7 @@ APP_ENTRY(APP_EXAMPLE_PROGRESSBAR,   "Progress Bar",        "Examples",       []
 APP_ENTRY(APP_REACTION_TIME,         "Reaction Time",       "Games",          [](){ reactionTimeGame.begin();                }, [](){ reactionTimeGame.end();                }, [](){ reactionTimeGame.update();                })
 APP_ENTRY(APP_WIFI_MANAGER,          "WiFi Manager",        "Tools",          [](){ wifiManagerCF_App.begin();               }, [](){ wifiManagerCF_App.end();               }, [](){ wifiManagerCF_App.update();               })
 APP_ENTRY(APP_SERIAL_DISPLAY,        "Serial Display",      "Tools",          [](){ serialDisplayApp.begin();                }, [](){ serialDisplayApp.end();                }, [](){ serialDisplayApp.update();                })
+APP_ENTRY(APP_STRATAGEM_GAME,        "Stratagem",           "Games",          [](){ stratagemGame.begin();                   }, [](){ stratagemGame.end();                   }, [](){ stratagemGame.update();})
+
 //
 // ... more lines as needed ...

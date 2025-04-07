@@ -53,6 +53,13 @@ const int button_MiddleRightIndex = 3;
 const int button_BottomLeftIndex = 4;
 const int button_BottomRightIndex = 5;
 
+const int button_LeftIndex = button_TopLeftIndex;
+const int button_RightIndex = button_TopRightIndex;
+const int button_UpIndex = button_MiddleLeftIndex;
+const int button_DownIndex = button_MiddleRightIndex;
+const int button_SelectIndex = button_BottomLeftIndex;
+const int button_EnterIndex = button_BottomRightIndex;
+
 // Accelerometer
 float accelX = 0;
 float accelY = 0;

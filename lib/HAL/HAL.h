@@ -29,6 +29,13 @@ extern const int button_MiddleRightIndex;
 extern const int button_BottomLeftIndex;
 extern const int button_BottomRightIndex;
 
+extern const int button_LeftIndex;
+extern const int button_RightIndex;
+extern const int button_UpIndex;
+extern const int button_DownIndex;
+extern const int button_SelectIndex;
+extern const int button_EnterIndex;
+
 // RGBW LEDS
 extern const uint16_t pixel_Front_Top;
 extern const uint16_t pixel_Front_Middle;

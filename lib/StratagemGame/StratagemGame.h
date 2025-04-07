@@ -7,25 +7,12 @@
 #include "AudioManager.h"
 #include "MenuManager.h"
 
-/**
- * @brief Stratagem struct to hold the name, the arrow-sequence, and an image reference.
- * 
- * You can add more fields (e.g., audio filenames) if necessary.
- */
-struct Stratagem {
-    const char* name;
-    const char* sequence; // e.g. "UDRLU"
-    const char* image;    // e.g. "reinforce.svg" or "placeholder"
-};
-
-/**
- * @brief The StratagemGame class replicates the logic of the JavaScript Stratagem Hero
- * game, adapted for this Cyber Fidget environment.
- */
+// Forward-declare our sprite-drawing function or any references
+// We will include the actual sprite arrays in the .cpp
 class StratagemGame {
 public:
     /**
-     * @brief States for the game
+     * @brief States of the game
      */
     enum State {
         WAIT_START,
@@ -34,24 +21,10 @@ public:
         GAME_OVER
     };
 
-    /**
-     * @brief Constructor
-     */
-    StratagemGame(ButtonManager &buttonMgr, AudioManager &audioMgr);
+    StratagemGame(ButtonManager &btnMgr, AudioManager &audioMgr);
 
-    /**
-     * @brief Initialize the game and register callbacks
-     */
     void begin();
-
-    /**
-     * @brief Main loop update
-     */
     void update();
-
-    /**
-     * @brief Cleanup / end the game
-     */
     void end();
 
 private:
@@ -70,44 +43,48 @@ private:
     int score;
 
     // Time tracking
-    static const unsigned long TOTAL_TIME      = 10000UL; // in ms
-    static const unsigned long HITLAG_TIMEOUT  = 200UL;   // in ms (time after finishing a stratagem)
-    static const unsigned long TIME_BONUS      = 500UL;   // in ms each time a sequence is completed
-    unsigned long timeRemaining;              // e.g. in ms
-    unsigned long lastUpdateTime;             // for delta T
-    unsigned long hitlagStartTime;            // when we entered HITLAG
+    static const unsigned long TOTAL_TIME     = 10000UL; // ms
+    static const unsigned long HITLAG_TIMEOUT = 200UL;   // ms
+    static const unsigned long TIME_BONUS     = 1000UL;   // ms
+    unsigned long timeRemaining;
+    unsigned long lastUpdateTime;
+    unsigned long hitlagStartTime;
 
-    // The chosen “active” stratagem 
-    // (or the first one in a short list if you want multiple at once)
-    // For simplicity, we’ll just keep one active at a time.
+    // A minimal struct for a single stratagem
+    struct Stratagem {
+        const char* name;
+        const char* sequence; // e.g. "UDRLU"
+        const char* image;    // optional
+    };
+
+    // The “active” stratagem and a set of all possible
     Stratagem currentStratagem;
+    static const Stratagem s_stratagemData[];  // we embed them in .cpp
+    static const int NUM_STRATAGEMS;
 
-    // Sequence progress
-    // E.g. if the sequence is “UDRLU”,
-    // we store how many correct steps have been entered so far.
+    // Sequence progress index
     int currentSequenceIndex;
 
-    // The random list of all possible stratagems is compiled in. 
-    // If you want to pick a new one each time, you can do that via random().
-    static const int MAX_STRATAGEMS_ONSCREEN = 1; // if you want multiple, adjust logic
-    static const int NUM_STRATAGEMS;             // declared below
-
-    // Callback for direction button events
-    static void onButtonEvent(const ButtonEvent& event);
-
-    // Callback for the “back” button
-    static void onButtonBackPressed(const ButtonEvent& event);
-
     // Helpers
-    void pickRandomStratagem();
     void resetGame();
+    void pickRandomStratagem();
     void checkInput(char direction);
-    void gameOver();
     void handleHitlag();
+    void gameOver();
+
+    // Drawing
     void drawScreen();
     void drawGameOver();
     void drawRunning();
+    void drawArrowSprite(char direction, int16_t x, int16_t y, bool filled);
+
+    // Audio
     void playDirectionSound(char direction);
+
+    // Static callbacks
+    static void onButtonEvent(const ButtonEvent& event);
+    static void onButtonBackPressed(const ButtonEvent& event);
+    static void onButtonEnterPressed(const ButtonEvent& event);
 };
 
 extern StratagemGame stratagemGame;

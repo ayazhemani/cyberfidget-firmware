@@ -220,7 +220,6 @@ namespace HAL
     //----------------------------------------------------------------------
     void loopHardware()
     {
-        esp_task_wdt_reset();
         millis_NOW = millis();
 
         // e.g. update audio, or battery, or anything that must be polled

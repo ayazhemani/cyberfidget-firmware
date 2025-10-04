@@ -621,23 +621,23 @@ void MenuManager::drawMenu()
 void MenuManager::registerMenuCallbacks()
 {
     // For each hardware button, call the static method we set up:
-    buttonManager.registerCallback(button_TopLeftIndex,    onButtonLeftPressed);
-    buttonManager.registerCallback(button_TopRightIndex,   onButtonRightPressed);
-    buttonManager.registerCallback(button_MiddleLeftIndex, onButtonUpPressed);
-    buttonManager.registerCallback(button_MiddleRightIndex,onButtonDownPressed);
-    buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
-    buttonManager.registerCallback(button_BottomRightIndex,onButtonSelectPressed);
+    buttonManager.registerCallback(button_LeftIndex, onButtonLeftPressed);
+    buttonManager.registerCallback(button_RightIndex, onButtonRightPressed);
+    buttonManager.registerCallback(button_UpIndex, onButtonUpPressed);
+    buttonManager.registerCallback(button_DownIndex, onButtonDownPressed);
+    buttonManager.registerCallback(button_SelectIndex, onButtonBackPressed);
+    buttonManager.registerCallback(button_EnterIndex, onButtonSelectPressed);
 }
 
 // Unregister them:
 void MenuManager::unregisterMenuCallbacks()
 {
-    buttonManager.unregisterCallback(button_TopLeftIndex);
-    buttonManager.unregisterCallback(button_TopRightIndex);
-    buttonManager.unregisterCallback(button_MiddleLeftIndex);
-    buttonManager.unregisterCallback(button_MiddleRightIndex);
-    buttonManager.unregisterCallback(button_BottomLeftIndex);
-    buttonManager.unregisterCallback(button_BottomRightIndex);
+    buttonManager.unregisterCallback(button_LeftIndex);
+    buttonManager.unregisterCallback(button_RightIndex);
+    buttonManager.unregisterCallback(button_UpIndex);
+    buttonManager.unregisterCallback(button_DownIndex);
+    buttonManager.unregisterCallback(button_SelectIndex);
+    buttonManager.unregisterCallback(button_EnterIndex);
 }
 
 // Static callback handlers:

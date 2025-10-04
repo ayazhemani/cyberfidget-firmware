@@ -225,6 +225,7 @@ namespace HAL
         // e.g. update audio, or battery, or anything that must be polled
         s_audioManager.loop();
         s_buttonManager.update();
+        updateStrip(); // RGB LEDs
         
 
         if ((millis_NOW - millis_HAL_TASK_20MS) >= TASK_20MS) {

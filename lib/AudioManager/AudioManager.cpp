@@ -93,8 +93,8 @@ void AudioManager::loop() {
     // accessor if present in your version, or read + (optionally) clear.
     micVolume = micMeter.volume(); // linear 0..1
 
-    Serial.printf("mic moved=%u  raw=%.0f  lin=%.3f  dBFS=%.1f\n",
-              (unsigned)moved, raw, lin, dB);
+    // Serial.printf("mic moved=%u  raw=%.0f  lin=%.3f  dBFS=%.1f\n",
+    //           (unsigned)moved, raw, lin, dB);
 
     // Optional: clear peaks so next frame is fresh
     // micMeter.clear();

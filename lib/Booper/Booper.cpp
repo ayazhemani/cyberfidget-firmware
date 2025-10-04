@@ -2,6 +2,7 @@
 #include "globals.h" // For slider position and button indices
 #include "HAL.h"  // Use our proxy header
 #include "MenuManager.h" // AppManager integration
+#include "RGBController.h"
 
 Booper booper(HAL::buttonManager(), HAL::audioManager());
 
@@ -29,6 +30,8 @@ void Booper::end() {
     unregisterButtonCallbacks();
     // Stop any playing tones
     audioManager.stopTone();
+    // Turn off LEDs when leaving the app
+    setColorsOff(); 
 }
 
 void Booper::update() {
@@ -36,9 +39,34 @@ void Booper::update() {
     updateVolumeFromSlider();
 
     // Print mic level (both linear and dB)
-    Serial.printf("Mic level: linear=%.3f  dB=%.1f\n",
-                  audioManager.getMicVolumeLinear(),
+    float micLin = audioManager.getMicVolumeLinear();
+    ESP_LOGI(TAG_MAIN, "Mic level: linear=%.3f  dB=%.1f\n",
+                  micLin,
                   audioManager.getMicVolumeDb());
+
+    // Map mic dB (20..90) to brightness (0..255) with a gate and smoothing
+    float micDb = audioManager.getMicVolumeDb();
+    const float dbMin = 20.0f;    // below this = off
+    const float dbMax = 90.0f;    // at/above this = full
+    static float smooth = 0.0f;   // EMA state
+
+    // Normalize 20..90 dB -> 0..1
+    float x = (micDb - dbMin) / (dbMax - dbMin);
+    if (x < 0.0f) x = 0.0f;
+    if (x > 1.0f) x = 1.0f;
+
+    // Perceptual curve (optional): brighten a bit
+    float perceptual = powf(x, 0.6f);   // 0.6 ~ snappier, 1.0 = linear
+
+    // Smooth (attack/decay): adjust alpha to taste
+    const float alpha = 0.25f;
+    smooth = (1.0f - alpha) * smooth + alpha * perceptual;
+
+    uint8_t brightness = (uint8_t)lroundf(smooth * 255.0f);
+
+    // Drive white-only channel
+    setDeterminedColorsAll(0, 0, 0, brightness);
+                                 
 
     display.clear();
     display.setTextAlignment(TEXT_ALIGN_CENTER);

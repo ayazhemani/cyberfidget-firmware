@@ -35,9 +35,12 @@ void Booper::update() {
     // Update volume from slider
     updateVolumeFromSlider();
 
-    display.clear();
+    // Print mic level (both linear and dB)
+    Serial.printf("Mic level: linear=%.3f  dB=%.1f\n",
+                  audioManager.getMicVolumeLinear(),
+                  audioManager.getMicVolumeDb());
 
-    // Display current volume and octave
+    display.clear();
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.setFont(ArialMT_Plain_10);
     display.drawString(64, 10, "Booper");

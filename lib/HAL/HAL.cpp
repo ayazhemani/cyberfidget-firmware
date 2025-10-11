@@ -163,7 +163,7 @@ namespace HAL
         digitalWrite(POWER_PIN_AUX, HIGH);
 
         // Initialize serial
-        Serial.begin(115200);
+        Serial.begin(921600);
         Serial.println();
         Serial.println();
 

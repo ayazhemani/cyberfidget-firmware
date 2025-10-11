@@ -27,7 +27,7 @@ void AudioManager::init() {
     // (Optionally set sample_rate if you want it explicit; not required if working)
     // cfg.sample_rate     = 44100;
     cfg.buffer_count = 12;    // default is usually smaller
-    cfg.buffer_size  = 1024;  // bytes per buffer
+    cfg.buffer_size  = 256;  // bytes per buffer
 
     // Keep I2S port default here (usually 0). We’ll put mic on the other port.
     i2s.begin(cfg);
@@ -55,54 +55,40 @@ void AudioManager::init() {
     inCfg.pin_data_rx     = 33;             // DATA IN
     inCfg.pin_data        = -1;             // not used for RX
     inCfg.is_master       = true;
-    inCfg.buffer_count = 12;
-    inCfg.buffer_size  = 1024;
+    inCfg.buffer_count = 6;
+    inCfg.buffer_size  = 512;
 
     i2sIn.begin(inCfg);
     Serial.printf("Mic I2S: sr=%d ch=%d bits=%d\n",
               inCfg.sample_rate, inCfg.channels, inCfg.bits_per_sample);
 
     micMeter.begin(AudioInfo(inCfg.sample_rate, 1, 16));
+    i2sIn.setTimeout(0);   // readBytes returns immediately if no data
+    micMeter.setTimeout(0);
+
+    // Start low-priority mic pump on the other core
+    if (micTaskHandle == nullptr) {
+        xTaskCreatePinnedToCore(
+            &AudioManager::micTaskThunk,  // task entry
+            "micPump",
+            4096,                         // stack
+            this,                         // arg
+            1,                            // low prio
+            &micTaskHandle,
+            0                             // pin to core 0
+        );
+    }
 }
 
 void AudioManager::loop() {
     // --- Tone path ---
     if (isPlaying) {
-        copier.copy(); // non-blocking pull
-
-        if (stopAtMillis > 0 && millis() >= stopAtMillis) {
-            stopTone();
-            stopAtMillis = 0;
+    copier.copy(); // this one already pulls fast/non-blocking
+    if (stopAtMillis > 0 && millis() >= stopAtMillis) {
+        stopTone();
+        stopAtMillis = 0;
         }
     }
-
-    // --- Mic path ---
-    // Pull what’s available from i2sIn -> convIn -> micMeter
-    // (This is non-blocking; when nothing is available, it moves 0 bytes.)
-    //micCopy.copy();
-    
-    size_t moved = micCopy.copy();
-
-    // float raw = micMeter.volume();         // ~0..32767 (peak)
-    // float lin = raw / 32768.0f;            // normalize to 0..1
-    // if (lin < 1e-6f) lin = 1e-6f;          // avoid log(0)
-    // micVolume = lin;
-
-    // float dB = 20.0f * log10f(lin);
-
-    // // Read current peak (0..1). The '0' channel is fine for mono.
-    // // VolumeMeter typically holds last peak until cleared; use the no-clear
-    // // accessor if present in your version, or read + (optionally) clear.
-    // micVolume = micMeter.volume(); // linear 0..1
-
-    // Serial.printf("mic moved=%u  raw=%.0f  lin=%.3f  dBFS=%.1f\n",
-    //           (unsigned)moved, raw, lin, dB);
-
-    // Optional: clear peaks so next frame is fresh
-    // micMeter.clear();
-
-    // A tiny yield keeps Wi-Fi/BT/Serial happy
-    // delay(1);
 }
 
 void AudioManager::setVolume(float volumeLevel) {
@@ -131,8 +117,43 @@ void AudioManager::stopTone() {
 }
 
 float AudioManager::getMicVolumeDb() const {
-    const float v = micVolume <= 1e-6f ? 1e-6f : micVolume;
-    float db = 20.0f * log10f(v);
-    if (db < -120.0f) db = -120.0f;
-    return db;
+    float lin = getMicVolumeLinear();      // 0..1
+    if (lin < 1e-6f) lin = 1e-6f;          // avoid log(0)
+    return 20.0f * log10f(lin);            // dBFS (negative up to 0)
+}
+
+void AudioManager::micTaskThunk(void *arg) {
+  reinterpret_cast<AudioManager*>(arg)->micTaskLoop();
+}
+
+void AudioManager::micTaskLoop() {
+  static uint8_t buf[512];     // small DMA-friendly chunk
+  const TickType_t pollDelay = pdMS_TO_TICKS(1);
+  uint32_t lastLevelMs = millis();
+
+  for (;;) {
+    int avail = i2sIn.available();
+    if (avail > 0) {
+      size_t toRead = (size_t)avail;
+      if (toRead > sizeof(buf)) toRead = sizeof(buf);
+
+      // readBytes is non-blocking because you set timeout(0)
+      int n = i2sIn.readBytes(buf, toRead);
+      if (n > 0) {
+        micMeter.write(buf, (size_t)n);
+      }
+    } else {
+      // no data ready; yield a tick
+      vTaskDelay(pollDelay);
+    }
+
+    // publish a new level ~every 20ms
+    uint32_t now = millis();
+    if (now - lastLevelMs >= 20) {
+      float raw = micMeter.volume();            // ~0..32767
+      // optional: micMeter.clear();            // if you want “peak since last publish”
+      micVolumeAtomic = (raw <= 0.0f) ? 0.0f : (raw / 32768.0f); // 0..1
+      lastLevelMs = now;
+    }
+  }
 }

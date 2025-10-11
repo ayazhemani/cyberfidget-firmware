@@ -6,6 +6,9 @@
 #include "AudioTools.h"
 using namespace audio_tools;
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
 class AudioManager {
 public:
     AudioManager();
@@ -19,8 +22,11 @@ public:
     void stopTone();
 
     // Mic level (linear 0..1 and dBFS-ish)
-    float getMicVolumeLinear() const { return micVolume; }
-    float getMicVolumeDb() const; // 20*log10(linear), clamped
+    float getMicVolumeLinear() const { return micVolumeAtomic; }
+    float getMicVolumeDb() const;      // dBFS (<= 0), derived from linear 0..1
+    float getMicVolumeDbFS() const {   // alias, if you prefer explicit name
+        return getMicVolumeDb();
+    }
 
 private:
     // --- Tone state ---
@@ -42,6 +48,14 @@ private:
 
     // Latest measured mic amplitude (0..1)
     float micVolume = 0.0f;
+
+    // Mic task
+    static void micTaskThunk(void *arg);
+    void micTaskLoop();
+    TaskHandle_t micTaskHandle = nullptr;
+
+    // cross-core safe handoff
+    volatile float micVolumeAtomic = 0.0f;
 };
 
 #endif // AUDIO_MANAGER_H

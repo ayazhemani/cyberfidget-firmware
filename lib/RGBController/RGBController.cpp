@@ -12,7 +12,7 @@ static Adafruit_NeoPixel& strip = HAL::strip();
 // --- Update Throttle ---
 static bool     s_dirty       = false;
 static uint32_t s_lastShowMs  = 0;
-static uint16_t s_minInterval = 33; // ~30 FPS cap
+static uint16_t s_minInterval = 17; // divide into 1000 for fps
 
 // Cache of last "set all" color to avoid redundant updates
 static uint8_t s_lastR = 0, s_lastG = 0, s_lastB = 0, s_lastW = 0;

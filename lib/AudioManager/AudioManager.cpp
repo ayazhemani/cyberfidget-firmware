@@ -26,6 +26,8 @@ void AudioManager::init() {
     cfg.bits_per_sample = 16;
     // (Optionally set sample_rate if you want it explicit; not required if working)
     // cfg.sample_rate     = 44100;
+    cfg.buffer_count = 12;    // default is usually smaller
+    cfg.buffer_size  = 1024;  // bytes per buffer
 
     // Keep I2S port default here (usually 0). We’ll put mic on the other port.
     i2s.begin(cfg);
@@ -53,8 +55,8 @@ void AudioManager::init() {
     inCfg.pin_data_rx     = 33;             // DATA IN
     inCfg.pin_data        = -1;             // not used for RX
     inCfg.is_master       = true;
-    inCfg.buffer_count = 8;
-    inCfg.buffer_size  = 512;
+    inCfg.buffer_count = 12;
+    inCfg.buffer_size  = 1024;
 
     i2sIn.begin(inCfg);
     Serial.printf("Mic I2S: sr=%d ch=%d bits=%d\n",
@@ -81,17 +83,17 @@ void AudioManager::loop() {
     
     size_t moved = micCopy.copy();
 
-    float raw = micMeter.volume();         // ~0..32767 (peak)
-    float lin = raw / 32768.0f;            // normalize to 0..1
-    if (lin < 1e-6f) lin = 1e-6f;          // avoid log(0)
-    micVolume = lin;
+    // float raw = micMeter.volume();         // ~0..32767 (peak)
+    // float lin = raw / 32768.0f;            // normalize to 0..1
+    // if (lin < 1e-6f) lin = 1e-6f;          // avoid log(0)
+    // micVolume = lin;
 
-    float dB = 20.0f * log10f(lin);
+    // float dB = 20.0f * log10f(lin);
 
-    // Read current peak (0..1). The '0' channel is fine for mono.
-    // VolumeMeter typically holds last peak until cleared; use the no-clear
-    // accessor if present in your version, or read + (optionally) clear.
-    micVolume = micMeter.volume(); // linear 0..1
+    // // Read current peak (0..1). The '0' channel is fine for mono.
+    // // VolumeMeter typically holds last peak until cleared; use the no-clear
+    // // accessor if present in your version, or read + (optionally) clear.
+    // micVolume = micMeter.volume(); // linear 0..1
 
     // Serial.printf("mic moved=%u  raw=%.0f  lin=%.3f  dBFS=%.1f\n",
     //           (unsigned)moved, raw, lin, dB);

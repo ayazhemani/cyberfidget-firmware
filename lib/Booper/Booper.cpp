@@ -38,34 +38,40 @@ void Booper::update() {
     // Update volume from slider
     updateVolumeFromSlider();
 
-    // Print mic level (both linear and dB)
-    float micLin = audioManager.getMicVolumeLinear();
-    ESP_LOGI(TAG_MAIN, "Mic level: linear=%.3f  dB=%.1f\n",
-                  micLin,
-                  audioManager.getMicVolumeDb());
+    // // Print mic level (both linear and dB)
+    // float micLin = audioManager.getMicVolumeLinear();
 
-    // Map mic dB (20..90) to brightness (0..255) with a gate and smoothing
-    float micDb = audioManager.getMicVolumeDb();
-    const float dbMin = 20.0f;    // below this = off
-    const float dbMax = 90.0f;    // at/above this = full
-    static float smooth = 0.0f;   // EMA state
+    // static uint32_t lastPrint = 0;
+    // uint32_t now = millis();
+    // // if (now - lastPrint >= 100) {   // 10 Hz
+    // //     ESP_LOGI(TAG_MAIN, "Mic level: linear=%.3f  dB=%.1f\n",
+    // //                     audioManager.getMicVolumeLinear(),
+    // //                     audioManager.getMicVolumeDb());
+    // //     lastPrint = now;
+    // // }
 
-    // Normalize 20..90 dB -> 0..1
-    float x = (micDb - dbMin) / (dbMax - dbMin);
-    if (x < 0.0f) x = 0.0f;
-    if (x > 1.0f) x = 1.0f;
+    // // Map mic dB (20..90) to brightness (0..255) with a gate and smoothing
+    // float micDb = audioManager.getMicVolumeDb();
+    // const float dbMin = 25.0f;    // below this = off
+    // const float dbMax = 90.0f;    // at/above this = full
+    // static float smooth = 0.0f;   // EMA state
 
-    // Perceptual curve (optional): brighten a bit
-    float perceptual = powf(x, 0.6f);   // 0.6 ~ snappier, 1.0 = linear
+    // // Normalize 20..90 dB -> 0..1
+    // float x = (micDb - dbMin) / (dbMax - dbMin);
+    // if (x < 0.0f) x = 0.0f;
+    // if (x > 1.0f) x = 1.0f;
 
-    // Smooth (attack/decay): adjust alpha to taste
-    const float alpha = 0.25f;
-    smooth = (1.0f - alpha) * smooth + alpha * perceptual;
+    // // Perceptual curve (optional): brighten a bit
+    // float perceptual = powf(x, 0.6f);   // 0.6 ~ snappier, 1.0 = linear
 
-    uint8_t brightness = (uint8_t)lroundf(smooth * 255.0f);
+    // // Smooth (attack/decay): adjust alpha to taste
+    // const float alpha = 0.25f;
+    // smooth = (1.0f - alpha) * smooth + alpha * perceptual;
+
+    // uint8_t brightness = (uint8_t)lroundf(smooth * 255.0f);
 
     // Drive white-only channel
-    setDeterminedColorsAll(0, 0, 0, brightness);
+    //setDeterminedColorsAll(0, 0, 0, brightness);
                                  
 
     display.clear();

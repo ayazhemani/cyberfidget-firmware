@@ -20,13 +20,14 @@ public:
     void setVolume(float volume);                       // 0.0..1.0
     void playTone(float frequency, int durationMs = 0); // 0 = indefinite
     void stopTone();
+    
+    // Mic control
+    void enableMic(bool on);
+    bool isMicEnabled() const { return micEnabled; }
 
-    // Mic level (linear 0..1 and dBFS-ish)
+    // Mic level (consumer API)
     float getMicVolumeLinear() const { return micVolumeAtomic; }
-    float getMicVolumeDb() const;      // dBFS (<= 0), derived from linear 0..1
-    float getMicVolumeDbFS() const {   // alias, if you prefer explicit name
-        return getMicVolumeDb();
-    }
+    float getMicVolumeDb() const;
 
 private:
     // --- Tone state ---
@@ -42,20 +43,24 @@ private:
     StreamCopy copier;                       // volume -> i2s
 
     // --- Mic chain (RX) ---
+    I2SConfig            micCfg;             // persisted RX config
     I2SStream            i2sIn;              // RX from ICS-43434
     VolumeMeter          micMeter;           // measures amplitude
     StreamCopy           micCopy;            // convIn -> micMeter
 
-    // Latest measured mic amplitude (0..1)
-    float micVolume = 0.0f;
+    // Mic State
+    bool  micEnabled = false;
+    volatile bool micRunRequested = false; // set by enableMic()
+    bool micRunning = false; 
+
+    // cross-core safe handoff, shared mic level (0..1), produced in mic task, read in loop/UI
+    volatile float micVolumeAtomic = 0.0f;
 
     // Mic task
     static void micTaskThunk(void *arg);
     void micTaskLoop();
     TaskHandle_t micTaskHandle = nullptr;
-
-    // cross-core safe handoff
-    volatile float micVolumeAtomic = 0.0f;
+    
 };
 
 #endif // AUDIO_MANAGER_H

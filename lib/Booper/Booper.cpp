@@ -23,15 +23,18 @@ Booper::Booper(ButtonManager& btnMgr, AudioManager& audioMgr) :
 void Booper::begin() {
     ESP_LOGI(TAG_MAIN, "begin() => registering booper callbacks...");
     registerButtonCallbacks();
+    audioManager.enableMic(true); // Enable mic input
 }
 
 void Booper::end() {
     ESP_LOGI(TAG_MAIN, "end() => unregistering booper callbacks...");
+    
     unregisterButtonCallbacks();
     // Stop any playing tones
     audioManager.stopTone();
+    audioManager.enableMic(false); // Disable mic input
     // Turn off LEDs when leaving the app
-    setColorsOff(); 
+    setColorsOff();
 }
 
 void Booper::update() {

@@ -41,53 +41,51 @@ void AudioManager::init() {
 
     isPlaying = false;
 
-    // --- RX: ICS-43434 mic into VolumeMeter ---
+    // --- Prepare (do NOT start) RX: ICS-43434 mic ---
     // Put mic on the *other* I2S peripheral to avoid any cross-talk.
     // ESP32 has I2S0/I2S1; if TX is using default (0), use 1 here.
-    auto inCfg = i2sIn.defaultConfig(RX_MODE);
-    inCfg.port_no         = 1;              // << important: separate port
-    inCfg.i2s_format      = I2S_STD_FORMAT; // ICS-43434 standard I2S
-    inCfg.sample_rate     = 44100;          // or your preferred rate
-    inCfg.bits_per_sample = 16;             // PDM->I2S mics often packed as 24-in-32
-    inCfg.channels        = 1;              // mono mic
-    inCfg.pin_ws          = 25;             // LRCLK
-    inCfg.pin_bck         = 32;             // BCLK
-    inCfg.pin_data_rx     = 33;             // DATA IN
-    inCfg.pin_data        = -1;             // not used for RX
-    inCfg.is_master       = true;
-    inCfg.buffer_count = 6;
-    inCfg.buffer_size  = 512;
+    micCfg = i2sIn.defaultConfig(RX_MODE);
+    micCfg.port_no         = 1;              // << important: separate port
+    micCfg.i2s_format      = I2S_STD_FORMAT; // ICS-43434 standard I2S
+    micCfg.sample_rate     = 44100;          // or your preferred rate
+    micCfg.bits_per_sample = 16;             // PDM->I2S mics often packed as 24-in-32
+    micCfg.channels        = 1;              // mono mic
+    micCfg.pin_ws          = 25;             // LRCLK
+    micCfg.pin_bck         = 32;             // BCLK
+    micCfg.pin_data_rx     = 33;             // DATA IN
+    micCfg.pin_data        = -1;             // not used for RX
+    micCfg.is_master       = true;
+    micCfg.buffer_count    = 6;
+    micCfg.buffer_size     = 512;
 
-    i2sIn.begin(inCfg);
-    Serial.printf("Mic I2S: sr=%d ch=%d bits=%d\n",
-              inCfg.sample_rate, inCfg.channels, inCfg.bits_per_sample);
+    // Make mic opt-in:
+    micRunRequested = false;   // opt-in
+    micRunning      = false;
+    micVolumeAtomic  = 0.0f;
 
-    micMeter.begin(AudioInfo(inCfg.sample_rate, 1, 16));
-    i2sIn.setTimeout(0);   // readBytes returns immediately if no data
-    micMeter.setTimeout(0);
-
-    // Start low-priority mic pump on the other core
+    
+    // Create the mic pump task ONCE, pinned to core 0
     if (micTaskHandle == nullptr) {
-        xTaskCreatePinnedToCore(
-            &AudioManager::micTaskThunk,  // task entry
-            "micPump",
-            4096,                         // stack
-            this,                         // arg
-            1,                            // low prio
-            &micTaskHandle,
-            0                             // pin to core 0
-        );
-    }
+    xTaskCreatePinnedToCore(
+        &AudioManager::micTaskThunk, // task entry
+        "micPump",      // name
+        4096,           // stack size
+        this,           // arg = this
+        1,              // low priority
+        &micTaskHandle, // task handle
+        0               // Core 0
+    );
+}
 }
 
 void AudioManager::loop() {
     // --- Tone path ---
     if (isPlaying) {
-    copier.copy(); // this one already pulls fast/non-blocking
+      copier.copy(); // this one already pulls fast/non-blocking
     if (stopAtMillis > 0 && millis() >= stopAtMillis) {
-        stopTone();
-        stopAtMillis = 0;
-        }
+      stopTone();
+      stopAtMillis = 0;
+      }
     }
 }
 
@@ -115,6 +113,36 @@ void AudioManager::stopTone() {
         // volume.setVolume(0.0f); // optional instant silence
     }
 }
+void AudioManager::enableMic(bool on) {
+    micRunRequested = on; // task will do the rest
+}
+
+// void AudioManager::enableMic(bool on) {
+//     if (on == micEnabled) return;
+
+//     if (on) {
+//         i2sIn.begin(micCfg);
+//         i2sIn.setTimeout(0); // non-blocking reads
+//         micMeter.begin(AudioInfo(micCfg.sample_rate, 1, 16));
+//         micMeter.setTimeout(0);
+//         micEnabled = true;
+
+
+
+//     } else {
+//         micEnabled = false;
+
+//       if (micTaskHandle) {
+//           TaskHandle_t h = micTaskHandle;
+//           micTaskHandle = nullptr;
+//           vTaskDelete(h);
+//       }
+
+//       micMeter.end();
+//       i2sIn.end();
+//       micVolume = 0.0f;
+//     }
+// }
 
 float AudioManager::getMicVolumeDb() const {
     float lin = getMicVolumeLinear();      // 0..1
@@ -123,37 +151,56 @@ float AudioManager::getMicVolumeDb() const {
 }
 
 void AudioManager::micTaskThunk(void *arg) {
-  reinterpret_cast<AudioManager*>(arg)->micTaskLoop();
+    reinterpret_cast<AudioManager*>(arg)->micTaskLoop();
 }
 
 void AudioManager::micTaskLoop() {
-  static uint8_t buf[512];     // small DMA-friendly chunk
-  const TickType_t pollDelay = pdMS_TO_TICKS(1);
-  uint32_t lastLevelMs = millis();
+    static uint8_t buf[512];
+    const TickType_t idleDelay = pdMS_TO_TICKS(5);
+    uint32_t lastLevelMs = millis();
 
-  for (;;) {
-    int avail = i2sIn.available();
-    if (avail > 0) {
-      size_t toRead = (size_t)avail;
-      if (toRead > sizeof(buf)) toRead = sizeof(buf);
+    for (;;) {
+        // State transitions
+        if (micRunRequested && !micRunning) {
+            i2sIn.begin(micCfg);
+            i2sIn.setTimeout(0);
 
-      // readBytes is non-blocking because you set timeout(0)
-      int n = i2sIn.readBytes(buf, toRead);
-      if (n > 0) {
-        micMeter.write(buf, (size_t)n);
-      }
-    } else {
-      // no data ready; yield a tick
-      vTaskDelay(pollDelay);
+            micMeter.begin(AudioInfo(micCfg.sample_rate, 1, 16));
+            micMeter.setTimeout(0);
+
+            micRunning = true;
+        } else if (!micRunRequested && micRunning) {
+            micMeter.end();
+            i2sIn.end();
+            micRunning = false;
+            micVolumeAtomic = 0.0f;
+        }
+
+        if (!micRunning) {
+            vTaskDelay(idleDelay);
+            continue;
+        }
+
+        // Non-blocking pump
+        int avail = i2sIn.available();
+        if (avail > 0) {
+            size_t toRead = (size_t)avail;
+            if (toRead > sizeof(buf)) toRead = sizeof(buf);
+            int n = i2sIn.readBytes(buf, toRead); // timeout(0) => non-blocking
+            if (n > 0) {
+                micMeter.write(buf, (size_t)n);
+            }
+        } else {
+            vTaskDelay(1);
+        }
+
+        // Publish level ~every 20ms
+        uint32_t now = millis();
+        if (now - lastLevelMs >= 20) {
+            float raw = micMeter.volume();        // ~0..32767
+            micVolumeAtomic = (raw <= 0.0f) ? 0.0f : (raw / 32768.0f); // 0..1
+            // optional: micMeter.clear();
+            lastLevelMs = now;
+        }
     }
-
-    // publish a new level ~every 20ms
-    uint32_t now = millis();
-    if (now - lastLevelMs >= 20) {
-      float raw = micMeter.volume();            // ~0..32767
-      // optional: micMeter.clear();            // if you want “peak since last publish”
-      micVolumeAtomic = (raw <= 0.0f) ? 0.0f : (raw / 32768.0f); // 0..1
-      lastLevelMs = now;
-    }
-  }
 }

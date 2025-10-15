@@ -18,13 +18,12 @@ void AudioManager::init() {
     // --- TX: MAX98357A path ---
     auto cfg = i2s.defaultConfig(TX_MODE);
     cfg.port_no         = 0;
-    cfg.i2s_format      = I2S_LSB_FORMAT;   // keep exactly as you had it
+    cfg.i2s_format      = I2S_LSB_FORMAT;   // 
     cfg.pin_ws          = 27;               // LRCLK
     cfg.pin_bck         = 26;               // BCLK
     cfg.pin_data        = 14;               // DOUT
     cfg.channels        = 2;
     cfg.bits_per_sample = 16;
-    // (Optionally set sample_rate if you want it explicit; not required if working)
     // cfg.sample_rate     = 44100;
     cfg.buffer_count = 12;    // default is usually smaller
     cfg.buffer_size  = 256;  // bytes per buffer
@@ -48,7 +47,7 @@ void AudioManager::init() {
     micCfg.port_no         = 1;              // << important: separate port
     micCfg.i2s_format      = I2S_STD_FORMAT; // ICS-43434 standard I2S
     micCfg.sample_rate     = 44100;          // or your preferred rate
-    micCfg.bits_per_sample = 16;             // PDM->I2S mics often packed as 24-in-32
+    micCfg.bits_per_sample = 16;             // PDM->I2S mics often packed as 24-in-32, except here
     micCfg.channels        = 1;              // mono mic
     micCfg.pin_ws          = 25;             // LRCLK
     micCfg.pin_bck         = 32;             // BCLK
@@ -116,33 +115,6 @@ void AudioManager::stopTone() {
 void AudioManager::enableMic(bool on) {
     micRunRequested = on; // task will do the rest
 }
-
-// void AudioManager::enableMic(bool on) {
-//     if (on == micEnabled) return;
-
-//     if (on) {
-//         i2sIn.begin(micCfg);
-//         i2sIn.setTimeout(0); // non-blocking reads
-//         micMeter.begin(AudioInfo(micCfg.sample_rate, 1, 16));
-//         micMeter.setTimeout(0);
-//         micEnabled = true;
-
-
-
-//     } else {
-//         micEnabled = false;
-
-//       if (micTaskHandle) {
-//           TaskHandle_t h = micTaskHandle;
-//           micTaskHandle = nullptr;
-//           vTaskDelete(h);
-//       }
-
-//       micMeter.end();
-//       i2sIn.end();
-//       micVolume = 0.0f;
-//     }
-// }
 
 float AudioManager::getMicVolumeDb() const {
     float lin = getMicVolumeLinear();      // 0..1

@@ -36,7 +36,7 @@ private:
     unsigned long stopAtMillis;
 
     // --- Tone chain (TX) ---
-    I2SStream i2s;                           // TX to MAX98357A (keep your pins)
+    I2SStream i2s;                           // TX to MAX98357A
     SineWaveGenerator<int16_t> generator;
     GeneratedSoundStream<int16_t> in;
     VolumeStream volume;

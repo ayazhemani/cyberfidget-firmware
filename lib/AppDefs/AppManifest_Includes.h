@@ -14,3 +14,4 @@
 #include "SerialDisplayApp.h"
 #include "BootAnimation.h"
 #include "StratagemGame.h"
+#include "GraveyardScreensaver.h"

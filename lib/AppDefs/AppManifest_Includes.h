@@ -15,3 +15,5 @@
 #include "BootAnimation.h"
 #include "StratagemGame.h"
 #include "GraveyardScreensaver.h"
+#include "Ghosts.h"
+#include "Eye.h"

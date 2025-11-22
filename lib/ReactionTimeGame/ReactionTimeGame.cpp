@@ -87,7 +87,7 @@ void ReactionTimeGame::update() {
         ESP_LOGI(TAG_MAIN, "Displaying 'Press to start...' screen.");
         display.clear();
         display.setTextAlignment(TEXT_ALIGN_CENTER);
-        display.setFont(ArialMT_Plain_16);
+        display.setFont(suiGenerisRg_20);
         display.drawString(64, 22, "Press to start");
         display.display();
         messageDisplayed = true;

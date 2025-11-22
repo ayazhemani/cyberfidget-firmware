@@ -2,6 +2,7 @@
 #include "globals.h" // For slider position and button indices
 #include "HAL.h"  // Use our proxy header
 #include "MenuManager.h" // AppManager integration
+#include "RGBController.h"
 
 Booper booper(HAL::buttonManager(), HAL::audioManager());
 
@@ -22,28 +23,82 @@ Booper::Booper(ButtonManager& btnMgr, AudioManager& audioMgr) :
 void Booper::begin() {
     ESP_LOGI(TAG_MAIN, "begin() => registering booper callbacks...");
     registerButtonCallbacks();
+    audioManager.enableMic(true); // Enable mic input
 }
 
 void Booper::end() {
     ESP_LOGI(TAG_MAIN, "end() => unregistering booper callbacks...");
+    
     unregisterButtonCallbacks();
     // Stop any playing tones
     audioManager.stopTone();
+    audioManager.enableMic(false); // Disable mic input
+    // Turn off LEDs when leaving the app
+    setColorsOff();
 }
 
 void Booper::update() {
     // Update volume from slider
     updateVolumeFromSlider();
 
-    display.clear();
+    // --- Read mic levels once ---
+    const float micLin = audioManager.getMicVolumeLinear(); // 0..1
+    const float micDb  = audioManager.getMicVolumeDb();     // dBFS (<=0)
 
-    // Display current volume and octave
+    // static uint32_t lastPrint = 0;
+    // uint32_t now = millis();
+    // if (now - lastPrint >= 100) {   // 10 Hz
+    //     ESP_LOGI(TAG_MAIN, "Mic level: linear=%.3f  dB=%.1f\n",
+    //                     audioManager.getMicVolumeLinear(),
+    //                     audioManager.getMicVolumeDb());
+    //     lastPrint = now;
+    // }
+
+    // ---- Choose your feel: dB or linear ----
+    // Flip this flag to try the other curve
+    constexpr bool USE_DB = false;
+
+    float norm = 0.0f; // normalized 0..1 brightness input (before smoothing)
+
+    if (USE_DB) {
+        // Map dBFS window [-60 .. -5] -> [0 .. 1]
+        // Adjust these to taste
+        const float dbMin = -60.0f;  // gate below this => 0
+        const float dbMax =  -5.0f;  // near full-scale speech/claps
+        norm = (micDb - dbMin) / (dbMax - dbMin);
+    } else {
+        // Map linear window [linMin .. linMax] -> [0 .. 1]
+        // linMin is your noise floor, linMax is “loud”
+        const float linMin = 0.02f;  // gate
+        const float linMax = 0.60f;  // strong input
+        norm = (micLin - linMin) / (linMax - linMin);
+    }
+
+    // Clamp
+    if (norm < 0.0f) norm = 0.0f;
+    if (norm > 1.0f) norm = 1.0f;
+
+    // Perceptual curve (optional): <1.0 makes it poppier/snappier
+    const float gamma = 0.6f;
+    float curved = powf(norm, gamma);
+
+    // Smooth (EMA)
+    static float smooth = 0.0f;
+    const float alpha = 0.25f; // raise for faster attack
+    smooth = (1.0f - alpha) * smooth + alpha * curved;
+
+    // Apply to LEDs (white only); HAL loop should call updateStrip()
+    const uint8_t brightness = (uint8_t)lroundf(smooth * 255.0f);
+    setDeterminedColorsAll(0, 0, 0, brightness);
+
+    // --- UI ---
+    display.clear();
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.setFont(ArialMT_Plain_10);
     display.drawString(64, 10, "Booper");
     display.drawString(64, 22, "Volume: " + String((int)(volume * 100)) + "%");
     display.drawString(64, 34, "Octave: " + String(octave));
-
+    display.drawString(64, 46, "Mic: " + String(micLin, 3) + " | " + String(micDb, 1) + " dBFS");
     display.display();
 }
 

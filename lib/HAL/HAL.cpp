@@ -19,17 +19,16 @@
 #include "ButtonManager.h"
 
 
-// You probably still need your pin assignments, 
-// either from globals.h or repeated here:
+// Pin Assignments
 constexpr int POWER_PIN_OLED = 12;
 constexpr int POWER_PIN_AUX  = 2;
 //constexpr int SDA = 21;  
 //constexpr int SCL = 22;
 //constexpr int LED_BUILTIN  = 13;  // Declared in esp32-hal
-constexpr int CHRG_ENA       = 13;  // If truly the same as LED_BUILTIN, watch for conflicts
+constexpr int CHRG_ENA       = 13;  // The same as LED_BUILTIN, watch for conflicts
 constexpr int PIN            = 0;   // NeoPixel or LED data pin
-constexpr int OLED_RESET     = 7;   // Also RX pin
-constexpr int VOLT_READ_PIN  = 35;  // Battery voltage divider pin
+constexpr int OLED_RESET     = 7;   
+constexpr int VOLT_READ_PIN  = 35;  // Analog pin for slider voltage reading
 
 // RGBW LEDS
 constexpr int RGB_COUNT      = 4;   // Number of RGB LEDs
@@ -84,10 +83,10 @@ float sliderPosition_Percentage_Inverted_Filtered = 0.0f;
 // Battery
 float    batteryVoltage             = 0.0f;
 float    batteryVoltagePercentage   = 0.0f;
-uint16_t batteryVoltageLowCutoff    = 3200;
+uint16_t batteryVoltageLowCutoff    = 2750;
 uint16_t batteryVoltageHighCutoff   = 4200;
 bool     preventSleepWhileCharging  = true;
-bool     enableBatterySOCCutoff     = true;
+bool     enableBatterySOCCutoff     = false;
 float    batterySOCCutoff           = 80.0f;
 float    sleepChargingChangeThreshold = -10.0f;
 float    batteryChangeRate          = 0.0f;
@@ -97,13 +96,11 @@ float    batteryChangeRate          = 0.0f;
 // of the hardware classes. We’ll return references to these
 // from the HAL namespace.
 namespace {
-    // For example:
     static AudioManager       s_audioManager;
     
-    // If you have 6 buttons, pass them in accordingly:
+    // We have 6 buttons, pass them in accordingly:
     constexpr int numButtons = 6;
-    // Example button pins (if not from globals):
-    //   { 36, 37, 38, 39, 34, 15 };
+
     static const int s_buttonPins[numButtons] = {
         button_TopLeft, 
         button_TopRight, 
@@ -154,8 +151,6 @@ namespace HAL
         pinMode(OLED_RESET, OUTPUT);
         digitalWrite(OLED_RESET, LOW);
 
-  
-
         // Turn on the OLED power regulator
         pinMode(POWER_PIN_OLED, OUTPUT);
         digitalWrite(POWER_PIN_OLED, HIGH);
@@ -168,7 +163,7 @@ namespace HAL
         digitalWrite(POWER_PIN_AUX, HIGH);
 
         // Initialize serial
-        Serial.begin(115200);
+        Serial.begin(921600);
         Serial.println();
         Serial.println();
 
@@ -204,7 +199,7 @@ namespace HAL
 
         // Any other hardware inits ...
 
-        // Print wakeup reason
+        // Print wakeup reason from ESP register
         printWakeupReason();
     }
 
@@ -225,12 +220,12 @@ namespace HAL
     //----------------------------------------------------------------------
     void loopHardware()
     {
-        esp_task_wdt_reset();
         millis_NOW = millis();
 
         // e.g. update audio, or battery, or anything that must be polled
         s_audioManager.loop();
         s_buttonManager.update();
+        updateStrip(); // RGB LEDs
         
 
         if ((millis_NOW - millis_HAL_TASK_20MS) >= TASK_20MS) {

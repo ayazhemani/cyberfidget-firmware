@@ -26,6 +26,7 @@ void AppManager::setup() {
     esp_log_level_set("*", ESP_LOG_VERBOSE);
     esp_log_level_set(TAG_MAIN, ESP_LOG_VERBOSE);
     HAL::initHardware();
+
     ESP_LOGI(TAG_MAIN, "AppManager setup complete");
 
     ESP_LOGI(TAG_MAIN, "AppManager setup start");

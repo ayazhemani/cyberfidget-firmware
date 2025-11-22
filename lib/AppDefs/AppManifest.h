@@ -46,7 +46,26 @@ APP_ENTRY(APP_EXAMPLE_PROGRESSBAR,   "Progress Bar",        "Examples",       []
 APP_ENTRY(APP_REACTION_TIME,         "Reaction Time",       "Games",          [](){ reactionTimeGame.begin();                }, [](){ reactionTimeGame.end();                }, [](){ reactionTimeGame.update();                })
 APP_ENTRY(APP_WIFI_MANAGER,          "WiFi Manager",        "Tools",          [](){ wifiManagerCF_App.begin();               }, [](){ wifiManagerCF_App.end();               }, [](){ wifiManagerCF_App.update();               })
 APP_ENTRY(APP_SERIAL_DISPLAY,        "Serial Display",      "Tools",          [](){ serialDisplayApp.begin();                }, [](){ serialDisplayApp.end();                }, [](){ serialDisplayApp.update();                })
-APP_ENTRY(APP_STRATAGEM_GAME,        "Stratagem",           "Games",          [](){ stratagemGame.begin();                   }, [](){ stratagemGame.end();                   }, [](){ stratagemGame.update();})
+APP_ENTRY(APP_STRATAGEM_GAME,        "Stratagem",           "Games",          [](){ stratagemGame.begin();                   }, [](){ stratagemGame.end();                   }, [](){ stratagemGame.update();                   })
+APP_ENTRY(APP_GRAVEYARDSCREENSAVER,  "Graveyard",           "Screensavers",   [](){ graveyardScreensaverApp.begin();         }, [](){ graveyardScreensaverApp.end();         }, [](){ graveyardScreensaverApp.update();         })
+APP_ENTRY(
+       APP_GHOSTS,
+       "Ghosts",
+       "Screensavers",
+       [](){ ghostsApp.begin(); },
+       [](){ ghostsApp.end(); },
+       [](){ ghostsApp.update(); }
+   )
+
+APP_ENTRY(
+       APP_EYE,
+       "Eye",
+       "Screensavers",
+       [](){ eyeApp.begin(); },
+       [](){ eyeApp.end(); },
+       [](){ eyeApp.update(); }
+   )
+
 
 //
 // ... more lines as needed ...

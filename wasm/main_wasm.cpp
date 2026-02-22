@@ -7,7 +7,15 @@
 #include <emscripten.h>
 #endif
 
-// These are defined in wasm_runtime.cpp with C++ linkage
+// ---- App selection (set via CMake -DWASM_APP=xxx) ----
+#if defined(WASM_APP_DINOGAME)
+    #include "DinoGame.h"
+    #define APP_INSTANCE  dinoGame
+#elif defined(WASM_APP_FLASHLIGHT)
+    #include "Flashlight.h"
+    #define APP_INSTANCE  flashlight
+#endif
+
 extern uint8_t wasm_button_states[];
 extern int wasm_analog_values[];
 
@@ -40,17 +48,12 @@ int wasm_get_framebuffer_size() {
 
 } // extern "C"
 
-// ---- App lifecycle hooks (set by JS when loading an app) ----
-static void (*s_appBegin)()  = nullptr;
-static void (*s_appUpdate)() = nullptr;
-static void (*s_appEnd)()    = nullptr;
+// ---- Default demo (used when no app is selected) ----
+#ifndef APP_INSTANCE
 
-// ---- Default demo app ----
 static int demoFrame = 0;
 
-static void demoBegin() {
-    demoFrame = 0;
-}
+static void demoBegin() { demoFrame = 0; }
 
 static void demoUpdate() {
     auto& display = HAL::displayProxy();
@@ -59,8 +62,6 @@ static void demoUpdate() {
     display.setFont(ArialMT_Plain_10);
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.drawString(64, 5, "CYBER FIDGET");
-
-    display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.drawString(64, 20, "WASM Emulator");
 
     display.drawRect(10, 38, 108, 12);
@@ -74,11 +75,12 @@ static void demoUpdate() {
     demoFrame++;
 }
 
+#endif // !APP_INSTANCE
+
 // ---- Main loop called by Emscripten ----
 static void mainLoop() {
     HAL::loopHardware();
 
-    // Process button callbacks
     ButtonEvent ev;
     while (HAL::buttonManager().getNextEvent(ev)) {
         if (HAL::buttonManager().hasCallback(ev.buttonIndex)) {
@@ -87,16 +89,21 @@ static void mainLoop() {
         }
     }
 
-    if (s_appUpdate) s_appUpdate();
+#ifdef APP_INSTANCE
+    APP_INSTANCE.update();
+#else
+    demoUpdate();
+#endif
 }
 
 int main() {
     HAL::initEasyEverything();
 
-    s_appBegin = demoBegin;
-    s_appUpdate = demoUpdate;
-
-    if (s_appBegin) s_appBegin();
+#ifdef APP_INSTANCE
+    APP_INSTANCE.begin();
+#else
+    demoBegin();
+#endif
 
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(mainLoop, 30, 1);

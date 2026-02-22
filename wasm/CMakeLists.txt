@@ -4,6 +4,15 @@ project(cyberfidget_wasm)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# ---- App selection ----
+# Pass -DWASM_APP=DinoGame (or Flashlight, Demo) to select which app to build.
+# Default: Demo (built-in Hello OLED test screen)
+if(NOT DEFINED WASM_APP)
+    set(WASM_APP "Demo")
+endif()
+
+message(STATUS "Building WASM app: ${WASM_APP}")
+
 # ---- Include paths ----
 # Shims MUST come first so they override real ESP32/Arduino headers
 include_directories(BEFORE
@@ -11,7 +20,7 @@ include_directories(BEFORE
     ${CMAKE_CURRENT_SOURCE_DIR}/shims/freertos
 )
 
-# Firmware library headers (the real DisplayProxy, ButtonManager, etc.)
+# Firmware library headers
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../lib)
 include_directories(
     ${LIB_DIR}/HAL
@@ -51,7 +60,7 @@ include_directories(
 )
 
 # ---- Source files ----
-# Core WASM runtime and HAL
+# Core WASM runtime and HAL (always included)
 set(WASM_SOURCES
     hal/wasm_runtime.cpp
     hal/wasm_fonts.cpp
@@ -60,13 +69,28 @@ set(WASM_SOURCES
     main_wasm.cpp
 )
 
-# Firmware libraries that compile cleanly with shims.
-# Start minimal, expand as more apps are brought in.
+# Firmware libraries needed by all apps
 set(FW_SOURCES
     ${LIB_DIR}/DisplayProxy/DisplayProxy.cpp
     ${LIB_DIR}/Globals/Globals.cpp
     ${LIB_DIR}/ButtonManager/ButtonManager.cpp
 )
+
+# ---- Per-app sources and defines ----
+if(WASM_APP STREQUAL "DinoGame")
+    add_compile_definitions(WASM_APP_DINOGAME)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/DinoGame/DinoGame.cpp
+    )
+elseif(WASM_APP STREQUAL "Flashlight")
+    add_compile_definitions(WASM_APP_FLASHLIGHT)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/Flashlight/Flashlight.cpp
+        ${LIB_DIR}/RGBController/RGBController.cpp
+    )
+else()
+    message(STATUS "Building default demo (no app selected)")
+endif()
 
 add_executable(cyberfidget ${WASM_SOURCES} ${FW_SOURCES})
 
@@ -77,22 +101,17 @@ if(EMSCRIPTEN)
     )
 
     target_link_options(cyberfidget PRIVATE
-        # Export C functions callable from JS
         "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wasm_button_press','_wasm_button_release','_wasm_set_slider','_wasm_get_framebuffer','_wasm_get_framebuffer_size']"
         "SHELL:-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
 
-        # Memory settings
         "SHELL:-s INITIAL_MEMORY=4194304"
         "SHELL:-s ALLOW_MEMORY_GROWTH=1"
 
-        # Use requestAnimationFrame for the main loop
         "SHELL:-s ASYNCIFY"
 
-        # Module output
         "SHELL:-s MODULARIZE=1"
         "SHELL:-s EXPORT_NAME='CyberFidgetModule'"
 
-        # Optimization
         "SHELL:-O2"
     )
 endif()

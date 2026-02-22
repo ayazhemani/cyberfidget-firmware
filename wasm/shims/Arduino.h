@@ -162,12 +162,20 @@ public:
     void print(const char* s) { printf("%s", s); }
     void print(const String& s) { printf("%s", s.c_str()); }
     void print(int v) { printf("%d", v); }
+    void print(unsigned int v) { printf("%u", v); }
+    void print(long v) { printf("%ld", v); }
+    void print(unsigned long v) { printf("%lu", v); }
     void print(float v) { printf("%f", v); }
+    void print(double v) { printf("%f", v); }
     void println() { printf("\n"); }
     void println(const char* s) { printf("%s\n", s); }
     void println(const String& s) { printf("%s\n", s.c_str()); }
     void println(int v) { printf("%d\n", v); }
+    void println(unsigned int v) { printf("%u\n", v); }
+    void println(long v) { printf("%ld\n", v); }
+    void println(unsigned long v) { printf("%lu\n", v); }
     void println(float v) { printf("%f\n", v); }
+    void println(double v) { printf("%f\n", v); }
     int available() { return 0; }
     int read() { return -1; }
     void flush() { fflush(stdout); }

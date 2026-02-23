@@ -1,18 +1,31 @@
-name: Compile WASM Emulator
+name: Compile App to WASM
 
 on:
   workflow_dispatch:
     inputs:
-      app_sources:
-        description: 'Additional app source files to compile (space-separated paths relative to lib/)'
+      app_name:
+        description: 'App class name (e.g. MyApp). Leave empty to build the default demo.'
+        required: false
+        default: ''
+      app_instance:
+        description: 'Global instance variable name (e.g. myApp). Auto-derived if empty.'
+        required: false
+        default: ''
+      app_header_b64:
+        description: 'Base64-encoded .h file content'
+        required: false
+        default: ''
+      app_cpp_b64:
+        description: 'Base64-encoded .cpp file content'
         required: false
         default: ''
 
 jobs:
   build-wasm:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Checkout firmware repo
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Cache Emscripten SDK
@@ -30,26 +43,52 @@ jobs:
           ./emsdk install 3.1.51
           ./emsdk activate 3.1.51
 
+      - name: Install build tools
+        run: pip install ninja
+
+      - name: Decode and write custom app (if provided)
+        if: inputs.app_name != '' && inputs.app_header_b64 != ''
+        run: |
+          APP_NAME="${{ inputs.app_name }}"
+          mkdir -p wasm/app
+          echo "${{ inputs.app_header_b64 }}" | base64 -d > "wasm/app/${APP_NAME}.h"
+          echo "${{ inputs.app_cpp_b64 }}" | base64 -d > "wasm/app/${APP_NAME}.cpp"
+          echo "#include \"${APP_NAME}.h\"" > wasm/app/app_include.h
+          echo "=== Custom app files ==="
+          ls -la wasm/app/
+          echo "=== Header preview ==="
+          head -5 "wasm/app/${APP_NAME}.h"
+
       - name: Build WASM
         run: |
           source emsdk/emsdk_env.sh
           cd wasm
-          mkdir -p build
-          cd build
-          emcmake cmake .. -DCMAKE_BUILD_TYPE=Release
-          emmake make -j$(nproc)
+          mkdir -p build && cd build
 
-      - name: Verify output
-        run: |
-          ls -la wasm/build/cyberfidget.js wasm/build/cyberfidget.wasm
-          echo "JS loader size: $(wc -c < wasm/build/cyberfidget.js) bytes"
-          echo "WASM binary size: $(wc -c < wasm/build/cyberfidget.wasm) bytes"
+          APP_NAME="${{ inputs.app_name }}"
+          APP_INSTANCE="${{ inputs.app_instance }}"
+
+          if [ -n "$APP_NAME" ] && [ -n "${{ inputs.app_header_b64 }}" ]; then
+            CMAKE_ARGS="-G Ninja -DWASM_APP=Custom -DCUSTOM_APP_NAME=${APP_NAME} -DCMAKE_BUILD_TYPE=Release"
+            if [ -n "$APP_INSTANCE" ]; then
+              CMAKE_ARGS="${CMAKE_ARGS} -DCUSTOM_APP_INSTANCE=${APP_INSTANCE}"
+            fi
+          else
+            CMAKE_ARGS="-G Ninja -DCMAKE_BUILD_TYPE=Release"
+          fi
+
+          echo "CMake args: ${CMAKE_ARGS}"
+          emcmake cmake .. ${CMAKE_ARGS}
+          emmake ninja
+
+          echo "=== Build output ==="
+          ls -la cyberfidget.*
 
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wasm-emulator
+          name: wasm-app
           path: |
             wasm/build/cyberfidget.js
             wasm/build/cyberfidget.wasm
-          retention-days: 30
+          retention-days: 7

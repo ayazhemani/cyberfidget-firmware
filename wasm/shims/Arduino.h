@@ -155,31 +155,41 @@ private:
 };
 
 // ---- Serial ----
+extern "C" void js_serial_write(const char* str, int len);
+
 class HardwareSerial {
 public:
     void begin(unsigned long) {}
     void end() {}
-    void print(const char* s) { printf("%s", s); }
-    void print(const String& s) { printf("%s", s.c_str()); }
-    void print(int v) { printf("%d", v); }
-    void print(unsigned int v) { printf("%u", v); }
-    void print(long v) { printf("%ld", v); }
-    void print(unsigned long v) { printf("%lu", v); }
-    void print(float v) { printf("%f", v); }
-    void print(double v) { printf("%f", v); }
-    void println() { printf("\n"); }
-    void println(const char* s) { printf("%s\n", s); }
-    void println(const String& s) { printf("%s\n", s.c_str()); }
-    void println(int v) { printf("%d\n", v); }
-    void println(unsigned int v) { printf("%u\n", v); }
-    void println(long v) { printf("%ld\n", v); }
-    void println(unsigned long v) { printf("%lu\n", v); }
-    void println(float v) { printf("%f\n", v); }
-    void println(double v) { printf("%f\n", v); }
+
+    void print(const char* s)          { _write(s); }
+    void print(const String& s)        { _write(s.c_str()); }
+    void print(int v)                  { char b[16]; snprintf(b,sizeof(b),"%d",v);   _write(b); }
+    void print(unsigned int v)         { char b[16]; snprintf(b,sizeof(b),"%u",v);   _write(b); }
+    void print(long v)                 { char b[16]; snprintf(b,sizeof(b),"%ld",v);  _write(b); }
+    void print(unsigned long v)        { char b[16]; snprintf(b,sizeof(b),"%lu",v);  _write(b); }
+    void print(float v)                { char b[24]; snprintf(b,sizeof(b),"%f",v);   _write(b); }
+    void print(double v)               { char b[24]; snprintf(b,sizeof(b),"%f",v);   _write(b); }
+    void println()                     { _write("\n"); }
+    void println(const char* s)        { _write(s); _write("\n"); }
+    void println(const String& s)      { _write(s.c_str()); _write("\n"); }
+    void println(int v)                { print(v);  _write("\n"); }
+    void println(unsigned int v)       { print(v);  _write("\n"); }
+    void println(long v)               { print(v);  _write("\n"); }
+    void println(unsigned long v)      { print(v);  _write("\n"); }
+    void println(float v)              { print(v);  _write("\n"); }
+    void println(double v)             { print(v);  _write("\n"); }
+
     int available() { return 0; }
     int read() { return -1; }
-    void flush() { fflush(stdout); }
+    void flush() {}
     operator bool() { return true; }
+
+private:
+    void _write(const char* s) {
+        int len = (int)strlen(s);
+        js_serial_write(s, len);
+    }
 };
 
 extern HardwareSerial Serial;

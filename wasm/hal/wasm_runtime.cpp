@@ -17,6 +17,17 @@ EM_JS(void, js_push_framebuffer, (const uint8_t* buf, int len), {
 void js_push_framebuffer(const uint8_t* buf, int len) { (void)buf; (void)len; }
 #endif
 
+// ---- Serial output to JS ----
+#ifdef __EMSCRIPTEN__
+EM_JS(void, js_serial_write, (const char* str, int len), {
+    if (Module.onSerialOutput) {
+        Module.onSerialOutput(UTF8ToString(str, len));
+    }
+});
+#else
+void js_serial_write(const char* str, int len) { (void)str; (void)len; }
+#endif
+
 // ---- Timing ----
 static uint32_t s_startMs = 0;
 static bool s_inited = false;

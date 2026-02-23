@@ -35,7 +35,7 @@ void wasm_button_release(int buttonIndex) {
 }
 
 void wasm_set_slider(int value) {
-    wasm_analog_values[0] = value;
+    wasm_analog_values[0] = 4095 - value;
 }
 
 const uint8_t* wasm_get_framebuffer() {

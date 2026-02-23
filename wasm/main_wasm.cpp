@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "DisplayProxy.h"
 #include "ButtonManager.h"
+#include "RGBController.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -89,6 +90,7 @@ static void demoUpdate() {
 // ---- Main loop called by Emscripten ----
 static void mainLoop() {
     HAL::loopHardware();
+    updateStrip();
 
     ButtonEvent ev;
     while (HAL::buttonManager().getNextEvent(ev)) {

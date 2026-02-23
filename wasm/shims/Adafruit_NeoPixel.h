@@ -25,14 +25,14 @@ public:
 
     void setPixelColor(uint16_t n, uint32_t c) {
         if (n >= _numPixels || n >= 8) return;
-        _g[n] = (c >> 24) & 0xFF;
+        _w[n] = (c >> 24) & 0xFF;
         _r[n] = (c >> 16) & 0xFF;
-        _b[n] = (c >>  8) & 0xFF;
-        _w[n] =  c        & 0xFF;
+        _g[n] = (c >>  8) & 0xFF;
+        _b[n] =  c        & 0xFF;
     }
 
     static uint32_t Color(uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0) {
-        return ((uint32_t)r << 24) | ((uint32_t)g << 16) | ((uint32_t)b << 8) | w;
+        return ((uint32_t)w << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
     }
 
     uint32_t ColorHSV(uint16_t hue, uint8_t sat = 255, uint8_t val = 255);

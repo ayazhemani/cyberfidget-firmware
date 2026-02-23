@@ -104,6 +104,13 @@ namespace {
 // ---- JS bridge for LED updates ----
 #ifdef __EMSCRIPTEN__
 EM_JS(void, js_set_led, (int index, int r, int g, int b, int w), {
+    if ((r || g || b || w)) {
+        if (!Module._ledNzDbg) Module._ledNzDbg = 0;
+        if (Module._ledNzDbg < 20) {
+            console.log('[LED C++ NONZERO] idx=' + index + ' r=' + r + ' g=' + g + ' b=' + b + ' w=' + w);
+            Module._ledNzDbg++;
+        }
+    }
     if (Module.onLedUpdate) Module.onLedUpdate(index, r, g, b, w);
 });
 
@@ -151,6 +158,12 @@ namespace HAL {
                 uint8_t r, g, b, w;
                 s_rgbStrip.getLedRGBW(i, r, g, b, w);
                 js_set_led(i, r, g, b, w);
+            }
+        } else {
+            static int _noShowCount = 0;
+            if (_noShowCount < 5) {
+                _noShowCount++;
+                Serial.println("[LED DBG] needsShow=false frame=" + String(_noShowCount));
             }
         }
     }

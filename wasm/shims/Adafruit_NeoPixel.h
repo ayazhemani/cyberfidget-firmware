@@ -2,6 +2,7 @@
 #define WASM_ADAFRUIT_NEOPIXEL_H
 
 #include <cstdint>
+#include <cstdio>
 
 #define NEO_GRBW 0x06
 #define NEO_GRB  0x01
@@ -29,6 +30,12 @@ public:
         _r[n] = (c >> 16) & 0xFF;
         _g[n] = (c >>  8) & 0xFF;
         _b[n] =  c        & 0xFF;
+        static int _spDbg = 0;
+        if (c != 0 && _spDbg < 20) {
+            printf("[PIXEL SET] n=%d c=0x%08X r=%d g=%d b=%d w=%d\n",
+                   n, (unsigned)c, _r[n], _g[n], _b[n], _w[n]);
+            _spDbg++;
+        }
     }
 
     static uint32_t Color(uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0) {

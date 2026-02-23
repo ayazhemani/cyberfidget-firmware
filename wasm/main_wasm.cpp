@@ -49,6 +49,12 @@ int wasm_get_framebuffer_size() {
     return HAL::realDisplay().getBufferSize();
 }
 
+void wasm_stop() {
+#ifdef __EMSCRIPTEN__
+    emscripten_cancel_main_loop();
+#endif
+}
+
 } // extern "C"
 
 // ---- Default demo (used when no app is selected) ----

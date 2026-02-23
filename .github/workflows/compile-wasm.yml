@@ -28,6 +28,18 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Verify wasm directory exists
+        run: |
+          if [ ! -f "wasm/CMakeLists.txt" ]; then
+            echo "::error::wasm/CMakeLists.txt not found. Make sure your fork is synced with the upstream repo."
+            echo "Files in repo root:"
+            ls -la
+            echo "Contents of wasm/ (if it exists):"
+            ls -la wasm/ 2>/dev/null || echo "wasm/ directory does not exist"
+            exit 1
+          fi
+          echo "wasm/CMakeLists.txt found"
+
       - name: Cache Emscripten SDK
         uses: actions/cache@v4
         with:
@@ -62,27 +74,33 @@ jobs:
       - name: Build WASM
         run: |
           source emsdk/emsdk_env.sh
-          cd wasm
-          mkdir -p build && cd build
 
           APP_NAME="${{ inputs.app_name }}"
           APP_INSTANCE="${{ inputs.app_instance }}"
 
+          mkdir -p wasm/build
+
+          # Build the cmake argument list as an array to avoid word-splitting issues
+          CMAKE_CMD="emcmake cmake"
+          CMAKE_CMD="$CMAKE_CMD -S wasm -B wasm/build"
+          CMAKE_CMD="$CMAKE_CMD -G Ninja"
+          CMAKE_CMD="$CMAKE_CMD -DCMAKE_BUILD_TYPE=Release"
+
           if [ -n "$APP_NAME" ] && [ -n "${{ inputs.app_header_b64 }}" ]; then
-            CMAKE_ARGS="-G Ninja -DWASM_APP=Custom -DCUSTOM_APP_NAME=${APP_NAME} -DCMAKE_BUILD_TYPE=Release"
+            CMAKE_CMD="$CMAKE_CMD -DWASM_APP=Custom"
+            CMAKE_CMD="$CMAKE_CMD -DCUSTOM_APP_NAME=${APP_NAME}"
             if [ -n "$APP_INSTANCE" ]; then
-              CMAKE_ARGS="${CMAKE_ARGS} -DCUSTOM_APP_INSTANCE=${APP_INSTANCE}"
+              CMAKE_CMD="$CMAKE_CMD -DCUSTOM_APP_INSTANCE=${APP_INSTANCE}"
             fi
-          else
-            CMAKE_ARGS="-G Ninja -DCMAKE_BUILD_TYPE=Release"
           fi
 
-          echo "CMake args: ${CMAKE_ARGS}"
-          emcmake cmake .. ${CMAKE_ARGS}
-          emmake ninja
+          echo "Running: $CMAKE_CMD"
+          $CMAKE_CMD
+
+          cmake --build wasm/build
 
           echo "=== Build output ==="
-          ls -la cyberfidget.*
+          ls -la wasm/build/cyberfidget.*
 
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4

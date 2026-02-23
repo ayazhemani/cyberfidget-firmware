@@ -72,8 +72,9 @@ set(WASM_SOURCES
 # Firmware libraries needed by all apps
 set(FW_SOURCES
     ${LIB_DIR}/DisplayProxy/DisplayProxy.cpp
-    ${LIB_DIR}/Globals/Globals.cpp
+    ${LIB_DIR}/Globals/globals.cpp
     ${LIB_DIR}/ButtonManager/ButtonManager.cpp
+    ${LIB_DIR}/RGBController/RGBController.cpp
 )
 
 # ---- Per-app sources and defines ----
@@ -86,7 +87,6 @@ elseif(WASM_APP STREQUAL "Flashlight")
     add_compile_definitions(WASM_APP_FLASHLIGHT)
     list(APPEND FW_SOURCES
         ${LIB_DIR}/Flashlight/Flashlight.cpp
-        ${LIB_DIR}/RGBController/RGBController.cpp
     )
 elseif(WASM_APP STREQUAL "Custom")
     if(NOT DEFINED CUSTOM_APP_NAME)
@@ -118,8 +118,8 @@ if(EMSCRIPTEN)
     )
 
     target_link_options(cyberfidget PRIVATE
-        "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wasm_button_press','_wasm_button_release','_wasm_set_slider','_wasm_get_framebuffer','_wasm_get_framebuffer_size','_emscripten_cancel_main_loop']"
-        "SHELL:-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
+        "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wasm_button_press','_wasm_button_release','_wasm_set_slider','_wasm_get_framebuffer','_wasm_get_framebuffer_size','_wasm_stop']"
+        "SHELL:-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
 
         "SHELL:-s INITIAL_MEMORY=4194304"
         "SHELL:-s ALLOW_MEMORY_GROWTH=1"

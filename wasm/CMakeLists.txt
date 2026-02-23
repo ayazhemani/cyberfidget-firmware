@@ -88,6 +88,23 @@ elseif(WASM_APP STREQUAL "Flashlight")
         ${LIB_DIR}/Flashlight/Flashlight.cpp
         ${LIB_DIR}/RGBController/RGBController.cpp
     )
+elseif(WASM_APP STREQUAL "Custom")
+    if(NOT DEFINED CUSTOM_APP_NAME)
+        message(FATAL_ERROR "CUSTOM_APP_NAME is required for Custom builds (e.g. -DCUSTOM_APP_NAME=MyApp)")
+    endif()
+    if(NOT DEFINED CUSTOM_APP_INSTANCE)
+        # Convention: lowercase first letter of class name
+        string(SUBSTRING ${CUSTOM_APP_NAME} 0 1 _FIRST)
+        string(TOLOWER ${_FIRST} _FIRST_LOWER)
+        string(SUBSTRING ${CUSTOM_APP_NAME} 1 -1 _REST)
+        set(CUSTOM_APP_INSTANCE "${_FIRST_LOWER}${_REST}")
+    endif()
+
+    message(STATUS "Custom app: class=${CUSTOM_APP_NAME} instance=${CUSTOM_APP_INSTANCE}")
+    add_compile_definitions(WASM_APP_CUSTOM)
+    add_compile_definitions(WASM_CUSTOM_INSTANCE=${CUSTOM_APP_INSTANCE})
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/app)
+    list(APPEND FW_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/app/${CUSTOM_APP_NAME}.cpp)
 else()
     message(STATUS "Building default demo (no app selected)")
 endif()
@@ -101,7 +118,7 @@ if(EMSCRIPTEN)
     )
 
     target_link_options(cyberfidget PRIVATE
-        "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wasm_button_press','_wasm_button_release','_wasm_set_slider','_wasm_get_framebuffer','_wasm_get_framebuffer_size']"
+        "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wasm_button_press','_wasm_button_release','_wasm_set_slider','_wasm_get_framebuffer','_wasm_get_framebuffer_size','_emscripten_cancel_main_loop']"
         "SHELL:-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
 
         "SHELL:-s INITIAL_MEMORY=4194304"

@@ -14,6 +14,9 @@
 #elif defined(WASM_APP_FLASHLIGHT)
     #include "Flashlight.h"
     #define APP_INSTANCE  flashlight
+#elif defined(WASM_APP_CUSTOM)
+    #include "app_include.h"
+    #define APP_INSTANCE  WASM_CUSTOM_INSTANCE
 #endif
 
 extern uint8_t wasm_button_states[];

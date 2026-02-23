@@ -7,3 +7,4 @@
 !.pio/build/adafruit_feather_esp32_v2/merged_firmware.bin
 .vscode
 wasm/build/
+wasm/app/

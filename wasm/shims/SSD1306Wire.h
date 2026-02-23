@@ -42,7 +42,9 @@ public:
         memset(_buffer, 0, sizeof(_buffer));
     }
 
-    void init() {}
+    void init() {
+        _fontData = ArialMT_Plain_10;
+    }
     void end() {}
     void resetDisplay() { memset(_buffer, 0, sizeof(_buffer)); }
 

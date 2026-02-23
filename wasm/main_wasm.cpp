@@ -106,7 +106,7 @@ int main() {
 #endif
 
 #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(mainLoop, 30, 1);
+    emscripten_set_main_loop(mainLoop, 50, 1);
 #else
     for (int i = 0; i < 300; i++) mainLoop();
 #endif

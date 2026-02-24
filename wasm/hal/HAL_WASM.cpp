@@ -49,11 +49,21 @@ const int button_DownIndex   = button_TopRightIndex;
 const int button_SelectIndex = button_BottomLeftIndex;
 const int button_EnterIndex  = button_BottomRightIndex;
 
-// ---- Accelerometer ----
+// ---- Accelerometer (set from JS via wasm_set_accel for DeviceMotion / mouse tilt) ----
 float accelX = 0;
 float accelY = 0;
 float accelZ = 0;
 float tempC  = 0;
+
+#ifdef __EMSCRIPTEN__
+extern "C" void wasm_set_accel(float x, float y, float z) {
+    accelX = x;
+    accelY = y;
+    accelZ = z;
+}
+#else
+extern "C" void wasm_set_accel(float, float, float) {}
+#endif
 
 // ---- Slider ----
 int sliderPosition_Millivolts     = 0;
@@ -168,9 +178,9 @@ namespace HAL {
     void setAuxPower(bool) {}
 
     float getBatteryVoltage()    { return batteryVoltage; }
-    float getAccelerometerX()    { return 0.0f; }
-    float getAccelerometerY()    { return 0.0f; }
-    float getAccelerometerZ()    { return 1.0f; }
+    float getAccelerometerX()    { return accelX; }
+    float getAccelerometerY()    { return accelY; }
+    float getAccelerometerZ()    { return accelZ; }
 
     void setOledPower(bool) {}
 

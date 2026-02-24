@@ -128,7 +128,7 @@ if(EMSCRIPTEN)
     )
 
     target_link_options(cyberfidget PRIVATE
-        "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wasm_button_press','_wasm_button_release','_wasm_set_slider','_wasm_get_framebuffer','_wasm_get_framebuffer_size','_wasm_stop']"
+        "SHELL:-s EXPORTED_FUNCTIONS=['_main','_wasm_button_press','_wasm_button_release','_wasm_set_slider','_wasm_set_accel','_wasm_get_framebuffer','_wasm_get_framebuffer_size','_wasm_stop']"
         "SHELL:-s EXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
 
         "SHELL:-s INITIAL_MEMORY=4194304"

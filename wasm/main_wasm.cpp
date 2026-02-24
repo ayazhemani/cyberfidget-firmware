@@ -15,6 +15,12 @@
 #elif defined(WASM_APP_FLASHLIGHT)
     #include "Flashlight.h"
     #define APP_INSTANCE  flashlight
+#elif defined(WASM_APP_BREAKOUT)
+    #include "BreakoutGame.h"
+    #define APP_INSTANCE  breakoutGame
+#elif defined(WASM_APP_MATRIXSCREENSAVER)
+    #include "MatrixScreensaver.h"
+    #define APP_INSTANCE  matrixScreensaver
 #elif defined(WASM_APP_CUSTOM)
     #include "app_include.h"
     #define APP_INSTANCE  WASM_CUSTOM_INSTANCE

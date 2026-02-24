@@ -88,6 +88,16 @@ elseif(WASM_APP STREQUAL "Flashlight")
     list(APPEND FW_SOURCES
         ${LIB_DIR}/Flashlight/Flashlight.cpp
     )
+elseif(WASM_APP STREQUAL "Breakout")
+    add_compile_definitions(WASM_APP_BREAKOUT)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/BreakoutGame/BreakoutGame.cpp
+    )
+elseif(WASM_APP STREQUAL "MatrixScreensaver")
+    add_compile_definitions(WASM_APP_MATRIXSCREENSAVER)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/MatrixScreensaver/MatrixScreensaver.cpp
+    )
 elseif(WASM_APP STREQUAL "Custom")
     if(NOT DEFINED CUSTOM_APP_NAME)
         message(FATAL_ERROR "CUSTOM_APP_NAME is required for Custom builds (e.g. -DCUSTOM_APP_NAME=MyApp)")

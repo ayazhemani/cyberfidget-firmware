@@ -5,26 +5,50 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 
-EM_JS(void, js_audio_play_tone, (float frequency, float volume), {
+EM_JS(void, js_audio_play_tone, (float frequency, float volume, int duration_ms), {
     if (!Module._audioCtx) {
         Module._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     js_audio_stop_tone();
+    Module._audioPlaying = true;
 
     var ctx = Module._audioCtx;
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
     osc.type = 'square';
     osc.frequency.setValueAtTime(frequency, ctx.currentTime);
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    var appVol = Math.max(0, Math.min(1, volume));
+    var master = (typeof Module._emulatorMasterVolume !== 'undefined' ? Module._emulatorMasterVolume : 1);
+    var vol = appVol * master;
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
     Module._audioOsc = osc;
     Module._audioGain = gain;
+    if (duration_ms > 0) {
+        var stopAt = ctx.currentTime + duration_ms / 1000;
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.setValueAtTime(0, stopAt);
+        osc.stop(stopAt);
+        var id = setTimeout(function() {
+            Module._audioStopTimeout = null;
+            if (Module._audioOsc === osc) {
+                Module._audioOsc = null;
+                Module._audioGain = null;
+                Module._audioPlaying = false;
+            }
+        }, duration_ms + 10);
+        Module._audioStopTimeout = id;
+    }
 });
 
 EM_JS(void, js_audio_stop_tone, (), {
+    Module._audioPlaying = false;
+    if (Module._audioStopTimeout) {
+        clearTimeout(Module._audioStopTimeout);
+        Module._audioStopTimeout = null;
+    }
     if (Module._audioOsc) {
         try { Module._audioOsc.stop(); } catch(e) {}
         Module._audioOsc = null;
@@ -34,15 +58,18 @@ EM_JS(void, js_audio_stop_tone, (), {
 
 EM_JS(void, js_audio_set_volume, (float volume), {
     if (Module._audioGain) {
-        Module._audioGain.gain.setValueAtTime(volume, Module._audioCtx.currentTime);
+        var master = (typeof Module._emulatorMasterVolume !== 'undefined' ? Module._emulatorMasterVolume : 1);
+        Module._audioGain.gain.setValueAtTime(volume * master, Module._audioCtx.currentTime);
     }
 });
 
 #else
-inline void js_audio_play_tone(float, float) {}
+inline void js_audio_play_tone(float, float, int) {}
 inline void js_audio_stop_tone() {}
 inline void js_audio_set_volume(float) {}
 #endif
+
+static float s_volume = 0.3f;
 
 AudioManager::AudioManager()
     : currentFrequency(0)
@@ -62,6 +89,7 @@ void AudioManager::loop() {
 void AudioManager::setVolume(float volume) {
     if (volume < 0.0f) volume = 0.0f;
     if (volume > 1.0f) volume = 1.0f;
+    s_volume = volume;
     js_audio_set_volume(volume);
 }
 
@@ -69,7 +97,7 @@ void AudioManager::playTone(float frequency, int durationMs) {
     currentFrequency = frequency;
     isPlaying = true;
     stopAtMillis = (durationMs > 0) ? millis() + durationMs : 0;
-    js_audio_play_tone(frequency, 0.3f);
+    js_audio_play_tone(frequency, s_volume, durationMs);
 }
 
 void AudioManager::stopTone() {

@@ -3,13 +3,12 @@
 #include "MenuManager.h"
 #include "globals.h"
 #include "PowerManager.h"
-#include "ClockDisplay.h"
 #include "AppDefs.h"
 
 void (*keep_functions[])() = {menuBegin, menuEnd, menuRun};
 
 static auto& buttonManager = HAL::buttonManager();
-static PowerManager powerManager(buttonManager, clockDisplay);
+static PowerManager powerManager(buttonManager);
 
 // Singleton instance
 AppManager& AppManager::instance() {
@@ -31,7 +30,7 @@ void AppManager::setup() {
 
     ESP_LOGI(TAG_MAIN, "AppManager setup start");
     // Force creation of MenuManager now, so we can see if it bombs
-    MenuManager &m = MenuManager::instance(); 
+    MenuManager &m = MenuManager::instance();
     ESP_LOGI(TAG_MAIN, "MenuManager::instance() returned: %p", (void*)&m);
 
     // Default to menu
@@ -47,7 +46,7 @@ void AppManager::setup() {
     ESP_LOGI(TAG_MAIN, "menuBegin address: %p", (void*)menuBegin);
     ESP_LOGI(TAG_MAIN, "menuEnd address: %p", (void*)menuEnd);
     ESP_LOGI(TAG_MAIN, "menuRun address: %p", (void*)menuRun);
-    
+
     // Start the menu
     appDefs[appActive].beginFunc();
 
@@ -64,14 +63,8 @@ void AppManager::loop() {
         runActiveApp();
     }
 
-    // if ((millisNow - millis_HAL_TASK_50MS) >= TASK_50MS) {
-    //     millis_HAL_TASK_50MS = millisNow;
-    //     HAL::updateAccelerometer();
-    // }
-
     if ((millis_NOW - millis_APP_TASK_200MS) >= TASK_200MS) {
         millis_APP_TASK_200MS = millis_NOW;
-        // Moved buttonManager.saveButtonCounters(); to PowerManager
     }
 
     if ((millis_NOW - millis_APP_LASTINTERACTION) >= TASK_LASTINTERACT) {

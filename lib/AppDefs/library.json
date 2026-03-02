@@ -2,77 +2,10 @@
     "name": "AppDefs",
     "version": "1.0.0",
     "dependencies": [
-        {
-            "name": "cstring"
-        },
-        {
-            "name": "SerialDisplayApp"
-        },
-        {
-            "name": "SimonSaysGame"
-        },
-        {
-            "name": "WiFiManagerCF"
-        },
-        {
-            "name": "AppManifest"
-        },
-        {
-            "name": "vector"
-        },
-        {
-            "name": "BreakoutGame"
-        },
-        {
-            "name": "Flashlight"
-        },
-        {
-            "name": "iostream"
-        },
-        {
-            "name": "MatrixScreensaver"
-        },
-        {
-            "name": "functional"
-        },
-        {
-            "name": "AppManifest_Includes"
-        },
-        {
-            "name": "DinoGame"
-        },
-        {
-            "name": "AppDefs"
-        },
-        {
-            "name": "string"
-        },
-        {
-            "name": "PowerManager"
-        },
-        {
-            "name": "SPHFluidGame"
-        },
-        {
-            "name": "StratagemGame"
-        },
-        {
-            "name": "Booper"
-        },
-        {
-            "name": "ClockDisplay"
-        },
-        {
-            "name": "BootAnimation"
-        },
-        {
-            "name": "ReactionTimeGame"
-        },
-        {
-            "name": "ExampleScreens"
-        },
-        {
-            "name": "MenuManager"
-        }
+        {"name": "PowerManager"},
+        {"name": "BootAnimation"},
+        {"name": "MenuManager"},
+        {"name": "Spaceship"},
+        {"name": "MusicPlayerApp"}
     ]
 }

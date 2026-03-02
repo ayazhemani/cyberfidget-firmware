@@ -1,66 +1,33 @@
 // lib/AudioManager/AudioManager.h
+// Mode-aware AudioManager: starts idle, apps manage their own audio pipelines.
+// Keeps I2S pin constants and mic/speaker port info accessible for future use.
 #ifndef AUDIO_MANAGER_H
 #define AUDIO_MANAGER_H
 
 #include <Arduino.h>
-#include "AudioTools.h"
-using namespace audio_tools;
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+// I2S Pin Constants (available for any app that needs them)
+namespace AudioPins {
+    // TX: MAX98357A speaker amplifier (I2S Port 0)
+    constexpr int TX_WS   = 27;  // LRCLK
+    constexpr int TX_BCK  = 26;  // BCLK
+    constexpr int TX_DOUT = 14;  // DATA OUT
+
+    // RX: ICS-43434 microphone (I2S Port 1)
+    constexpr int RX_WS   = 25;  // LRCLK
+    constexpr int RX_BCK  = 32;  // BCLK
+    constexpr int RX_DIN  = 33;  // DATA IN
+}
 
 class AudioManager {
 public:
     AudioManager();
 
+    // Starts in idle mode - no I2S ports initialized.
+    // Apps that need audio (MusicPlayerApp, future VoiceRecorderApp, etc.)
+    // manage their own pipelines via AudioTools directly.
     void init();
-    void loop(); // Call this regularly to process audio
-
-    // Tone control
-    void setVolume(float volume);                       // 0.0..1.0
-    void playTone(float frequency, int durationMs = 0); // 0 = indefinite
-    void stopTone();
-    
-    // Mic control
-    void enableMic(bool on);
-    bool isMicEnabled() const { return micEnabled; }
-
-    // Mic level (consumer API)
-    float getMicVolumeLinear() const { return micVolumeAtomic; }
-    float getMicVolumeDb() const;
-
-private:
-    // --- Tone state ---
-    float currentFrequency;
-    bool  isPlaying;
-    unsigned long stopAtMillis;
-
-    // --- Tone chain (TX) ---
-    I2SStream i2s;                           // TX to MAX98357A
-    SineWaveGenerator<int16_t> generator;
-    GeneratedSoundStream<int16_t> in;
-    VolumeStream volume;
-    StreamCopy copier;                       // volume -> i2s
-
-    // --- Mic chain (RX) ---
-    I2SConfig            micCfg;             // persisted RX config
-    I2SStream            i2sIn;              // RX from ICS-43434
-    VolumeMeter          micMeter;           // measures amplitude
-    StreamCopy           micCopy;            // convIn -> micMeter
-
-    // Mic State
-    bool  micEnabled = false;
-    volatile bool micRunRequested = false; // set by enableMic()
-    bool micRunning = false; 
-
-    // cross-core safe handoff, shared mic level (0..1), produced in mic task, read in loop/UI
-    volatile float micVolumeAtomic = 0.0f;
-
-    // Mic task
-    static void micTaskThunk(void *arg);
-    void micTaskLoop();
-    TaskHandle_t micTaskHandle = nullptr;
-    
+    void loop();
 };
 
 #endif // AUDIO_MANAGER_H

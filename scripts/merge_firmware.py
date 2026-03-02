@@ -31,9 +31,9 @@ def merge_bin(source, target, env):
     )
 
     if result == 0:
-        print("✅ Merged firmware created successfully.")
+        print("Merged firmware created successfully.")
     else:
-        print("❌ Failed to merge firmware.")
+        print("Failed to merge firmware.")
 
 # Run merging after firmware is built (triggered by build or upload)
 env.AddPostAction("$BUILD_DIR/firmware.bin", merge_bin)

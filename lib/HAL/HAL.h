@@ -11,8 +11,7 @@
 class AudioManager;
 class ButtonManager;
 class SPARKFUN_LIS2DH12;
-class WiFiManagerCF;
-class Adafruit_NeoPixel;
+// NeoPixel disabled for IRAM savings - RGBController functions are stubbed
 
 // Buttons
 extern const int button_TopLeft;
@@ -95,11 +94,7 @@ namespace HAL
     ButtonManager& buttonManager();
 
     SPARKFUN_LIS2DH12& accelerometer();
-    WiFiManagerCF& wifiManagerCF();
 
-    // Class accessor
-    Adafruit_NeoPixel& strip(); 
-    
     // If you want to set wake pins, deep sleep, etc. directly from AppManager
     void configureWakeupPins();
     void enterDeepSleep();

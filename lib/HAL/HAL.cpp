@@ -5,33 +5,25 @@
 #include <esp_sleep.h>
 #include <esp_task_wdt.h>
 #include <esp_system.h>
-#include <Adafruit_NeoPixel.h>
 #include <SSD1306Wire.h>
 
 #include "AudioManager.h"
 #include "BatteryManager.h"
 #include "RGBController.h"
-#include "Flashlight.h"
 #include "SliderPosition.h"
 
 #include "SparkFun_LIS2DH12.h"
-#include "WiFiManagerCF.h"
 #include "ButtonManager.h"
 
 
 // Pin Assignments
 constexpr int POWER_PIN_OLED = 12;
 constexpr int POWER_PIN_AUX  = 2;
-//constexpr int SDA = 21;  
-//constexpr int SCL = 22;
-//constexpr int LED_BUILTIN  = 13;  // Declared in esp32-hal
-constexpr int CHRG_ENA       = 13;  // The same as LED_BUILTIN, watch for conflicts
-constexpr int PIN            = 0;   // NeoPixel or LED data pin
-constexpr int OLED_RESET     = 7;   
+constexpr int CHRG_ENA       = 13;
+constexpr int OLED_RESET     = 7;
 constexpr int VOLT_READ_PIN  = 35;  // Analog pin for slider voltage reading
 
-// RGBW LEDS
-constexpr int RGB_COUNT      = 4;   // Number of RGB LEDs
+// RGBW LED pixel indices (kept for API compatibility even when NeoPixel is disabled)
 const uint16_t pixel_Front_Top    = 1;
 const uint16_t pixel_Front_Middle = 2;
 const uint16_t pixel_Front_Bottom = 3;
@@ -92,26 +84,21 @@ float    sleepChargingChangeThreshold = -10.0f;
 float    batteryChangeRate          = 0.0f;
 
 
-// Here we create the “internal” (file-scope) single instances 
-// of the hardware classes. We’ll return references to these
-// from the HAL namespace.
 namespace {
     static AudioManager       s_audioManager;
-    
-    // We have 6 buttons, pass them in accordingly:
+
     constexpr int numButtons = 6;
 
     static const int s_buttonPins[numButtons] = {
-        button_TopLeft, 
-        button_TopRight, 
-        button_MiddleLeft, 
-        button_MiddleRight, 
-        button_BottomLeft, 
+        button_TopLeft,
+        button_TopRight,
+        button_MiddleLeft,
+        button_MiddleRight,
+        button_BottomLeft,
         button_BottomRight
     };
     static const bool s_usePullups[numButtons] = {false, false, false, false, false, true};
 
-    // Create one ButtonManager
     static ButtonManager s_buttonManager(
         s_buttonPins,
         s_usePullups,
@@ -120,32 +107,16 @@ namespace {
         1500UL   // Hold threshold ms
     );
 
-    // WiFi
-    //static WiFiManagerCF      s_wifiManager(s_buttonManager); // Commented out to prevent conflict with AppManager loading
-
-    // Accelerometer
     static SPARKFUN_LIS2DH12 s_accel;
-
-    // If you have a global BatteryManager:
-    static BatteryManager s_batteryManager; 
-
-    // RGBW LEDs
-    static Adafruit_NeoPixel s_rgbStrip = Adafruit_NeoPixel(RGB_COUNT, PIN, NEO_GRBW + NEO_KHZ800);
+    static BatteryManager s_batteryManager;
 
     // Real display
     static SSD1306Wire s_realDisplay(0x3C, SDA, SCL);
-
-    // Display proxy
-    static DisplayProxy s_displayProxy(s_realDisplay);  
-
-    // ... any other managers or singletons you want hidden behind HAL
+    static DisplayProxy s_displayProxy(s_realDisplay);
 }
 
 namespace HAL
 {
-    //----------------------------------------------------------------------
-    //  Initialize all hardware
-    //----------------------------------------------------------------------
     void initHardware()
     {
         pinMode(OLED_RESET, OUTPUT);
@@ -158,11 +129,10 @@ namespace HAL
         digitalWrite(OLED_RESET, HIGH);
         delay(10);
 
-        // Turn on the AUX regulator (for RGB, etc.)
+        // Turn on the AUX regulator
         pinMode(POWER_PIN_AUX, OUTPUT);
         digitalWrite(POWER_PIN_AUX, HIGH);
 
-        // Initialize serial
         Serial.begin(921600);
         Serial.println();
         Serial.println();
@@ -171,7 +141,7 @@ namespace HAL
         s_realDisplay.init();
         s_realDisplay.setFont(ArialMT_Plain_10);
 
-        // Initialize the I2C for accelerometer, etc.
+        // Initialize I2C for accelerometer
         Wire.begin(SDA, SCL);
         if (!s_accel.begin())
         {
@@ -179,33 +149,19 @@ namespace HAL
             while (1);
         }
 
-        // Initialize button manager
         s_buttonManager.init();
-
-        // Initialize audio manager
         s_audioManager.init();
-
-        // Initialize battery manager
         s_batteryManager.init();
 
-        // Initialize WiFi manager
-        //s_wifiManager.init(); // Commented out to prevent conflict with AppManager loading
+        // Slider input
+        pinMode(VOLT_READ_PIN, INPUT);
 
-        // Initalize slider
-        pinMode(VOLT_READ_PIN, INPUT); // Slider Input
+        // RGB LEDs (no-op when NeoPixel is disabled)
+        initRGB();
 
-        // Initialize RGB manager
-        s_rgbStrip.begin();
-
-        // Any other hardware inits ...
-
-        // Print wakeup reason from ESP register
         printWakeupReason();
     }
 
-    //----------------------------------------------------------------------
-    //  Initialize all the things, helpful for standalone apps
-    //----------------------------------------------------------------------
     void initEasyEverything()
     {
         configureWakeupPins();
@@ -215,52 +171,37 @@ namespace HAL
         ESP_LOGI(TAG_MAIN, "Setup() complete");
     }
 
-    //----------------------------------------------------------------------
-    //  Loop hardware (call once per main loop)
-    //----------------------------------------------------------------------
     void loopHardware()
     {
         millis_NOW = millis();
 
-        // e.g. update audio, or battery, or anything that must be polled
         s_audioManager.loop();
         s_buttonManager.update();
-        updateStrip(); // RGB LEDs
-        
+        updateStrip(); // no-op when NeoPixel is disabled
 
         if ((millis_NOW - millis_HAL_TASK_20MS) >= TASK_20MS) {
             millis_HAL_TASK_20MS = millis_NOW;
-            sliderPositionRead(VOLT_READ_PIN);       
+            sliderPositionRead(VOLT_READ_PIN);
         }
-    
+
         if ((millis_NOW - millis_HAL_TASK_50MS) >= TASK_50MS) {
             millis_HAL_TASK_50MS = millis_NOW;
             HAL::updateAccelerometer();
         }
-    
+
         if ((millis_NOW - millis_HAL_TASK_200MS) >= TASK_200MS) {
             millis_HAL_TASK_200MS = millis_NOW;
             s_batteryManager.update();
         }
     }
 
-    //----------------------------------------------------------------------
-    // Provide references so other code can use these hardware objects
-    //----------------------------------------------------------------------
     AudioManager& audioManager()        { return s_audioManager; }
     ButtonManager& buttonManager()      { return s_buttonManager; }
     SSD1306Wire& realDisplay()          { return s_realDisplay; }
     SPARKFUN_LIS2DH12& accelerometer()  { return s_accel; }
-    //WiFiManagerCF& wifiManagerCF()      { return s_wifiManager; } // Commented out to prevent conflict with AppManager loading
-    Adafruit_NeoPixel& strip()          { return s_rgbStrip; }
-    
 
-    //----------------------------------------------------------------------
-    // Example power/wakeup calls
-    //----------------------------------------------------------------------
     void configureWakeupPins()
     {
-        // Example: external wake on GPIO 15
         esp_sleep_enable_ext0_wakeup(GPIO_NUM_15, LOW);
     }
 
@@ -269,13 +210,8 @@ namespace HAL
         esp_deep_sleep_start();
     }
 
-    //----------------------------------------------------------------------
-    // Helpers
-    //----------------------------------------------------------------------
     float getBatteryVoltage()
     {
-        // example read from some battery manager or ADC
-        // or do analogRead on a specific pin, do your conversion
         return 3.7f;  // placeholder
     }
 
@@ -292,41 +228,30 @@ namespace HAL
         return s_displayProxy;
     }
 
-    // SSD1306Wire& realDisplay() {
-    //     return s_realDisplay;
-    // }
-
     void clearDisplay()
     {
-        //if (!displayInitialized) return;
         s_realDisplay.clear();
     }
 
     void drawString(int16_t x, int16_t y, const String &text)
     {
-        //if (!displayInitialized) return;
         s_realDisplay.drawString(x, y, text);
     }
 
     void updateDisplay()
     {
-        //if (!displayInitialized) return;
         s_realDisplay.display();
     }
 
     void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b, uint8_t w)
     {
-        // If you have a NeoPixel library, you’d do:
-        s_rgbStrip.setPixelColor(index, s_rgbStrip.Color(r, g, b, w));
-        s_rgbStrip.show();
+        // No-op: NeoPixel disabled for IRAM savings
+        (void)index; (void)r; (void)g; (void)b; (void)w;
     }
-    
+
     void setRgbLedsOff()
     {
-        for (int i = 0; i < s_rgbStrip.numPixels(); i++) {
-            s_rgbStrip.setPixelColor(i, s_rgbStrip.Color(0,0,0,0));
-          }
-          updateStrip();
+        setColorsOff(); // calls stubbed RGBController function
     }
 
     void chargingEnable()
@@ -351,24 +276,24 @@ namespace HAL
 
     void printWakeupReason() {
         esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
-      
+
         switch (wakeup_reason) {
-          case ESP_SLEEP_WAKEUP_EXT0: 
+          case ESP_SLEEP_WAKEUP_EXT0:
             Serial.println("Wakeup caused by external signal using RTC_IO");
             break;
-          case ESP_SLEEP_WAKEUP_EXT1: 
+          case ESP_SLEEP_WAKEUP_EXT1:
             Serial.println("Wakeup caused by external signal using RTC_CNTL");
             break;
-          case ESP_SLEEP_WAKEUP_TIMER: 
+          case ESP_SLEEP_WAKEUP_TIMER:
             Serial.println("Wakeup caused by timer");
             break;
-          case ESP_SLEEP_WAKEUP_TOUCHPAD: 
+          case ESP_SLEEP_WAKEUP_TOUCHPAD:
             Serial.println("Wakeup caused by touchpad");
             break;
-          case ESP_SLEEP_WAKEUP_ULP: 
+          case ESP_SLEEP_WAKEUP_ULP:
             Serial.println("Wakeup caused by ULP program");
             break;
-          default: 
+          default:
             Serial.println("Wakeup was not caused by deep sleep");
             break;
         }

@@ -3,12 +3,14 @@
 
 #include <Arduino.h>
 #include <vector>
-#include <string>
+#include <Preferences.h>
 
 #include "HAL.h"
 #include "AppDefs.h"
 #include "ButtonManager.h"
 #include "MenuManager.h"
+#include "BTScanner.h"
+#include "ID3Scanner.h"
 
 // --- Audio Tools Includes (Diet Mode) ---
 #include "AudioTools/CoreAudio/AudioLogger.h"
@@ -19,13 +21,19 @@
 #include "AudioTools/AudioCodecs/CodecMP3Helix.h"
 
 enum MusicAppState {
-    STATE_BT_SCAN,
-    STATE_BT_CONNECTING,
-    STATE_FILE_BROWSER,
-    STATE_PLAYER
+    STATE_DEVICE_MENU,      // Remembered devices + "Scan for new..."
+    STATE_BT_SCANNING,      // Active GAP discovery
+    STATE_BT_CONNECTING,    // A2DP connection attempt
+    STATE_CONNECT_FAIL,     // Connection failed
+    STATE_MAIN_MENU,        // iPod-style hub menu
+    STATE_BT_SUBMENU,       // Bluetooth settings
+    STATE_FILE_BROWSER,     // Browse songs with metadata
+    STATE_PLAYER,           // Now Playing
+    STATE_SCANNING_LIBRARY, // Scanning MP3 ID3 tags
+    STATE_BT_SWITCHING      // Disconnecting old + connecting new device
 };
 
-struct BTDeviceEntry {
+struct SavedDevice {
     String name;
     esp_bd_addr_t address;
 };
@@ -38,49 +46,126 @@ public:
     void update();
     void end();
 
-    static void onButtonUpPressed(const ButtonEvent& event);
-    static void onButtonDownPressed(const ButtonEvent& event);
-    static void onButtonSelectPressed(const ButtonEvent& event);
-    static void onButtonBackPressed(const ButtonEvent& event);
+    // Static button callbacks
+    static void onButtonUp(const ButtonEvent& event);
+    static void onButtonDown(const ButtonEvent& event);
+    static void onButtonLeft(const ButtonEvent& event);
+    static void onButtonRight(const ButtonEvent& event);
+    static void onButtonEnter(const ButtonEvent& event);
+    static void onButtonBack(const ButtonEvent& event);
+
+    // Metadata callback (needs static access)
+    static void onMetadata(audio_tools::MetaDataType type, const char* str, int len);
 
 private:
     static MusicPlayerApp* instance;
     ButtonManager& buttonManager;
 
-    MusicAppState currentState;
-    bool isConnected = false;
-    bool audioPipelineReady = false;
+    MusicAppState currentState = STATE_DEVICE_MENU;
     int menuCursorIndex = 0;
     int menuScrollOffset = 0;
 
-    std::vector<BTDeviceEntry> deviceList;
+    // BT scanning
+    BTScanner btScanner;
+    bool scannerActive = false;
 
-    // Audio pipeline - heap-allocated on demand, not at global construction
-    audio_tools::A2DPStream a2dpStream;
+    // Saved devices (NVS)
+    std::vector<SavedDevice> savedDevices;
+    void loadSavedDevices();
+    void saveDevice(const String& name, esp_bd_addr_t address);
+    void forgetAllDevices();
+    void writeSavedDevicesToNVS();
+
+    // BT connection
+    String connectingDeviceName;
+    String connectedDeviceName;
+    esp_bd_addr_t connectedAddress = {0};  // for esp_a2d_source_disconnect()
+    unsigned long connectStartTime = 0;
+    static const unsigned long CONNECT_TIMEOUT_MS = 15000;
+    bool btConnected = false;
+
+    // Device switching (disconnect old → connect new)
+    SavedDevice switchTargetDevice;
+    unsigned long switchStartTime = 0;
+    bool switchWaitingForDisconnect = true;
+
+    // Audio pipeline (heap-allocated for lifecycle management)
+    audio_tools::A2DPStream* pA2dpStream = nullptr;
     audio_tools::AudioSourceIdxSD* pSourceSD = nullptr;
     audio_tools::MP3DecoderHelix decoder;
     audio_tools::AudioPlayer* pPlayer = nullptr;
+    bool sdAvailable = false;
+    bool audioPipelineReady = false;
 
+    // SD card
+    void initSD();
+
+    // Connection lifecycle
+    void startConnectingByAddress(const SavedDevice& dev);
+    void createAudioPipeline();
+    void destroyAudioPipeline();
+    void disconnectBT();
+
+    // Library / metadata
+    std::vector<TrackInfo> trackLibrary;
+    bool libraryScanned = false;
+    int libraryScanCurrent = 0;
+    int libraryScanTotal = 0;
+    void startLibraryScan();
+
+    // Playback
     bool isPlaying = false;
-
-    bool initAudioPipeline();
-    void scanForDevices();
-    void connectToDevice(int index);
-    void drawFileBrowser();
-    void playFileAtIndex(int index);
+    bool shuffleEnabled = false;
+    int currentTrackIndex = -1;
+    String nowPlayingTitle;
+    String nowPlayingArtist;
+    void playTrack(int index);
     void stopPlayback();
+    void nextTrack();
+    void prevTrack();
+    void togglePlayPause();
     void updateVolumeFromSlider();
 
-    void drawHeader(String title);
-    void drawList(const std::vector<String>& items, int cursor, int offset);
-    void renderScanMenu();
-    void renderConnecting();
-    void renderPlayer();
+    // Marquee
+    int marqueeOffset = 0;
+    unsigned long lastMarqueeUpdate = 0;
 
-    void handleNavUp();
-    void handleNavDown();
-    void handleNavSelect();
-    void handleNavBack();
+    // Navigation
+    void handleUp();
+    void handleDown();
+    void handleLeft();
+    void handleRight();
+    void handleEnter();
+    void handleBack();
+    void exitApp();
+
+    int getListSize() const;
+    void resetCursor();
+    void setState(MusicAppState newState);
+
+    // Main menu items
+    static const int MAIN_MENU_COUNT = 5;
+    String getMainMenuItem(int index) const;
+
+    // BT submenu items
+    int getBtSubMenuCount() const;
+    String getBtSubMenuItem(int index) const;
+
+    // Rendering
+    void drawHeader(const String& title);
+    void drawList(const std::vector<String>& items, int cursor, int scrollOffset);
+    void drawScrollBar(int totalItems, int visibleItems, int scrollOffset);
+
+    void renderDeviceMenu();
+    void renderBtScanning();
+    void renderConnecting();
+    void renderConnectFail();
+    void renderMainMenu();
+    void renderBtSubMenu();
+    void renderFileBrowser();
+    void renderPlayer();
+    void renderScanningLibrary();
+    void renderSwitching();
 };
 
 extern MusicPlayerApp musicPlayerApp;

@@ -74,6 +74,7 @@ static const int PIN_SD_MISO = 21;
 static const int PIN_SD_MOSI = 19;
 static const int PIN_SD_CS   = 8;
 
+static const char* MEDIA_DIR = "/media";
 static const char* CACHE_PATH = "/music.idx";
 
 // Bluetooth rune icon (7x10, XBM format) — shown in player header when connected
@@ -341,6 +342,12 @@ void MusicPlayerApp::initSD() {
     sdAvailable = SD.begin(PIN_SD_CS);
     if (!sdAvailable) {
         MPLAYER_LOG("SD init failed");
+        return;
+    }
+    // Ensure /media/ directory exists for organized file storage
+    if (!SD.exists(MEDIA_DIR)) {
+        SD.mkdir(MEDIA_DIR);
+        MPLAYER_LOG("Created /media/ directory");
     }
 }
 
@@ -420,7 +427,7 @@ void MusicPlayerApp::createAudioPipeline() {
     if (audioPipelineReady || !pA2dpStream) return;
 
     if (sdAvailable && !pSourceSD) {
-        pSourceSD = new AudioSourceIdxSD("/", "mp3", PIN_SD_CS);
+        pSourceSD = new AudioSourceIdxSD(MEDIA_DIR, "mp3", PIN_SD_CS);
     }
 
     if (pSourceSD) {
@@ -600,7 +607,7 @@ void MusicPlayerApp::startLibraryScan() {
     setState(STATE_SCANNING_LIBRARY);
 
     // Do the scan (blocking for now — shows progress via update/render cycle)
-    ID3Scanner::scanAllFiles("/", "mp3", trackLibrary,
+    ID3Scanner::scanAllFiles(MEDIA_DIR, "mp3", trackLibrary,
         [](int current, int total) {
             if (MusicPlayerApp::instance) {
                 MusicPlayerApp::instance->libraryScanCurrent = current;

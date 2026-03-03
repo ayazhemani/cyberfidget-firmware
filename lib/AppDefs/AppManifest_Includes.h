@@ -3,3 +3,4 @@
 #include "BootAnimation.h"
 #include "Spaceship.h"
 #include "MusicPlayerApp.h"
+#include "WebPortalApp.h"

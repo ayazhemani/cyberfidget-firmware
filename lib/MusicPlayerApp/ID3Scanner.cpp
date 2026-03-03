@@ -318,36 +318,42 @@ int ID3Scanner::readMP3Bitrate(const char* path) {
 }
 
 // ---------------------------------------------------------------------------
-// Scan all MP3 files in a directory
+// Recursively collect files matching extension from a directory tree
+// ---------------------------------------------------------------------------
+static void collectFilesRecursive(const char* dir, const char* ext, std::vector<String>& out) {
+    File root = SD.open(dir);
+    if (!root || !root.isDirectory()) return;
+
+    File entry;
+    while ((entry = root.openNextFile())) {
+        if (entry.isDirectory()) {
+            collectFilesRecursive(entry.path(), ext, out);
+        } else {
+            String name = entry.name();
+            String lower = name;
+            lower.toLowerCase();
+            if (lower.endsWith(String(".") + ext)) {
+                String fullPath = entry.path();
+                if (!fullPath.startsWith("/")) fullPath = String("/") + fullPath;
+                out.push_back(fullPath);
+            }
+        }
+        entry.close();
+    }
+    root.close();
+}
+
+// ---------------------------------------------------------------------------
+// Scan all MP3 files in a directory tree (recursive)
 // ---------------------------------------------------------------------------
 void ID3Scanner::scanAllFiles(const char* rootDir, const char* ext,
                               std::vector<TrackInfo>& out,
                               void (*progressCb)(int, int)) {
     out.clear();
 
-    // Enumerate files using SD directory listing
-    File root = SD.open(rootDir);
-    if (!root || !root.isDirectory()) return;
-
-    // Collect all matching filenames first
+    // Recursively collect all matching files from rootDir and subdirectories
     std::vector<String> filePaths;
-    File entry;
-    while ((entry = root.openNextFile())) {
-        if (!entry.isDirectory()) {
-            String name = entry.name();
-            // Check extension
-            String lower = name;
-            lower.toLowerCase();
-            if (lower.endsWith(String(".") + ext)) {
-                // Ensure full path
-                String fullPath = name;
-                if (!fullPath.startsWith("/")) fullPath = String("/") + fullPath;
-                filePaths.push_back(fullPath);
-            }
-        }
-        entry.close();
-    }
-    root.close();
+    collectFilesRecursive(rootDir, ext, filePaths);
 
     int total = filePaths.size();
 

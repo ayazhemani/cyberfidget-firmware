@@ -126,6 +126,28 @@ private:
     void togglePlayPause();
     void updateVolumeFromSlider();
 
+    // Scrubbing (hold left/right to seek within track)
+    int scrubButtonDir = 0;             // -1=left held, +1=right held, 0=not held
+    bool scrubActive = false;
+    unsigned long scrubPressTime = 0;
+    unsigned long lastScrubTime = 0;
+    static const unsigned long SCRUB_HOLD_MS = 500;   // ms before scrub starts
+    static const unsigned long SCRUB_INTERVAL_MS = 200; // ms between scrub jumps
+    static const int SCRUB_SECONDS = 5;                // seconds per scrub jump
+
+    // Playhead / progress tracking
+    unsigned long lastVolumeChangeTime = 0;
+    int currentTrackBitrate = 0;        // bits/sec from MP3 header (0 = unknown)
+    size_t currentTrackFileSize = 0;
+
+    // Resume state (NVS)
+    void savePlaybackState();
+    void loadPlaybackState();
+    void clearPlaybackState();
+    String resumeTrackPath;
+    uint32_t resumeBytePosition = 0;
+    bool hasResumeState = false;
+
     // Marquee
     int marqueeOffset = 0;
     unsigned long lastMarqueeUpdate = 0;

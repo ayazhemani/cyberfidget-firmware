@@ -154,6 +154,16 @@ void MusicPlayerApp::begin() {
     // Load saved BT devices from NVS
     loadSavedDevices();
 
+    // Load resume state (track path + byte position from last session)
+    loadPlaybackState();
+
+    // Reset scrub state
+    scrubButtonDir = 0;
+    scrubActive = false;
+    lastVolumeChangeTime = 0;
+    currentTrackBitrate = 0;
+    currentTrackFileSize = 0;
+
     // Always start at device menu — user picks which device to connect to.
     // Auto-reconnect on startup was causing BT stack crashes when the
     // target device wasn't in pairing mode.
@@ -162,6 +172,7 @@ void MusicPlayerApp::begin() {
 
 void MusicPlayerApp::end() {
     MPLAYER_LOG("end: enter");
+    savePlaybackState();  // Remember position for resume on next launch
     stopPlayback();
     destroyAudioPipeline();
 
@@ -189,6 +200,35 @@ void MusicPlayerApp::update() {
     if (pA2dpStream && pA2dpStream->isConnected() && !btConnected) {
         MPLAYER_LOG("update: BT reconnected (heartbeat recovery)");
         btConnected = true;
+    }
+
+    // Scrub detection: if left/right held past threshold, enter scrub mode
+    if (scrubButtonDir != 0 && !scrubActive &&
+        millis() - scrubPressTime > SCRUB_HOLD_MS) {
+        scrubActive = true;
+        lastScrubTime = millis();
+        MPLAYER_LOGF("scrub: started, dir=%d", scrubButtonDir);
+    }
+
+    // Scrub execution: periodically seek while button is held
+    if (scrubActive && pPlayer && pPlayer->getStream() &&
+        millis() - lastScrubTime > SCRUB_INTERVAL_MS) {
+        File* f = (File*)pPlayer->getStream();
+        size_t currentPos = f->position();
+        size_t fileSize = f->size();
+        size_t skipBytes = (currentTrackBitrate > 0)
+            ? (size_t)((long long)currentTrackBitrate / 8 * SCRUB_SECONDS)
+            : 50000;  // ~50KB fallback
+        size_t newPos;
+        if (scrubButtonDir > 0) {
+            newPos = (currentPos + skipBytes < fileSize) ? currentPos + skipBytes : fileSize - 1;
+        } else {
+            newPos = (currentPos > skipBytes) ? currentPos - skipBytes : 0;
+        }
+        f->seek(newPos);
+        lastScrubTime = millis();
+        MPLAYER_LOGF("scrub: %s to %u / %u",
+            scrubButtonDir > 0 ? "fwd" : "rev", (unsigned)newPos, (unsigned)fileSize);
     }
 
     // Drive audio pipeline only while playing
@@ -592,9 +632,18 @@ void MusicPlayerApp::playTrack(int index) {
     // Open file directly by path (bypasses SDIndex which may not be populated)
     const char* path = trackLibrary[index].path.c_str();
     MPLAYER_LOGF("playTrack: %d -> %s", index, path);
+
+    // Read bitrate for time estimation and get file size
+    currentTrackBitrate = ID3Scanner::readMP3Bitrate(path);
+    File tmpF = SD.open(path, FILE_READ);
+    currentTrackFileSize = tmpF ? tmpF.size() : 0;
+    if (tmpF) tmpF.close();
+    MPLAYER_LOGF("playTrack: bitrate=%d, size=%u", currentTrackBitrate, (unsigned)currentTrackFileSize);
+
     pPlayer->setPath(path);
     pPlayer->setActive(true);
     isPlaying = true;
+    clearPlaybackState();  // New track starts fresh
     setState(STATE_PLAYER);
 }
 
@@ -645,6 +694,11 @@ void MusicPlayerApp::togglePlayPause() {
 
     isPlaying = !isPlaying;
     pPlayer->setActive(isPlaying);
+
+    // Save position on pause so we can resume later
+    if (!isPlaying) {
+        savePlaybackState();
+    }
 }
 
 void MusicPlayerApp::updateVolumeFromSlider() {
@@ -655,7 +709,56 @@ void MusicPlayerApp::updateVolumeFromSlider() {
     if (abs(vol - lastVol) > 0.03) {
         pA2dpStream->setVolume(vol);
         lastVol = vol;
+        lastVolumeChangeTime = millis();  // Trigger volume overlay in UI
     }
+}
+
+// =========================================================================
+// Resume Playback State (NVS)
+// =========================================================================
+void MusicPlayerApp::savePlaybackState() {
+    if (currentTrackIndex < 0 || currentTrackIndex >= (int)trackLibrary.size()) return;
+    if (!pPlayer) return;
+
+    Preferences prefs;
+    prefs.begin("mpstate", false);
+    prefs.putString("path", trackLibrary[currentTrackIndex].path);
+
+    // Get current byte position from the underlying file stream
+    size_t pos = 0;
+    Stream* s = pPlayer->getStream();
+    if (s) pos = ((File*)s)->position();
+    prefs.putUInt("pos", (uint32_t)pos);
+    prefs.end();
+
+    MPLAYER_LOGF("savePlaybackState: %s @ %u bytes",
+        trackLibrary[currentTrackIndex].path.c_str(), (unsigned)pos);
+}
+
+void MusicPlayerApp::loadPlaybackState() {
+    Preferences prefs;
+    prefs.begin("mpstate", true);
+    resumeTrackPath = prefs.getString("path", "");
+    resumeBytePosition = prefs.getUInt("pos", 0);
+    hasResumeState = resumeTrackPath.length() > 0;
+    prefs.end();
+
+    if (hasResumeState) {
+        MPLAYER_LOGF("loadPlaybackState: %s @ %u bytes",
+            resumeTrackPath.c_str(), (unsigned)resumeBytePosition);
+    }
+}
+
+void MusicPlayerApp::clearPlaybackState() {
+    if (!hasResumeState) return;
+    hasResumeState = false;
+    resumeTrackPath = "";
+    resumeBytePosition = 0;
+
+    Preferences prefs;
+    prefs.begin("mpstate", false);
+    prefs.clear();
+    prefs.end();
 }
 
 // =========================================================================
@@ -756,10 +859,39 @@ void MusicPlayerApp::onButtonDown(const ButtonEvent& event) {
     if (event.eventType == ButtonEvent_Pressed) instance->handleDown();
 }
 void MusicPlayerApp::onButtonLeft(const ButtonEvent& event) {
-    if (event.eventType == ButtonEvent_Pressed) instance->handleLeft();
+    // In player: defer to Released to distinguish tap vs hold-to-scrub
+    if (instance->currentState == STATE_PLAYER) {
+        if (event.eventType == ButtonEvent_Pressed) {
+            instance->scrubButtonDir = -1;
+            instance->scrubPressTime = millis();
+        } else if (event.eventType == ButtonEvent_Released) {
+            if (instance->scrubActive) {
+                instance->scrubActive = false;
+            } else {
+                instance->prevTrack();
+            }
+            instance->scrubButtonDir = 0;
+        }
+    } else {
+        if (event.eventType == ButtonEvent_Pressed) instance->handleLeft();
+    }
 }
 void MusicPlayerApp::onButtonRight(const ButtonEvent& event) {
-    if (event.eventType == ButtonEvent_Pressed) instance->handleRight();
+    if (instance->currentState == STATE_PLAYER) {
+        if (event.eventType == ButtonEvent_Pressed) {
+            instance->scrubButtonDir = 1;
+            instance->scrubPressTime = millis();
+        } else if (event.eventType == ButtonEvent_Released) {
+            if (instance->scrubActive) {
+                instance->scrubActive = false;
+            } else {
+                instance->nextTrack();
+            }
+            instance->scrubButtonDir = 0;
+        }
+    } else {
+        if (event.eventType == ButtonEvent_Pressed) instance->handleRight();
+    }
 }
 void MusicPlayerApp::onButtonEnter(const ButtonEvent& event) {
     if (event.eventType == ButtonEvent_Released) instance->handleEnter();
@@ -848,7 +980,27 @@ void MusicPlayerApp::handleEnter() {
 
         case STATE_MAIN_MENU:
             switch (menuCursorIndex) {
-                case 0: // Now Playing
+                case 0: // Now Playing — resume from saved position if available
+                    if (currentTrackIndex < 0 && hasResumeState && libraryScanned) {
+                        // Find the saved track in the library
+                        for (int i = 0; i < (int)trackLibrary.size(); i++) {
+                            if (trackLibrary[i].path == resumeTrackPath) {
+                                MPLAYER_LOGF("resume: found track %d, seeking to %u",
+                                    i, (unsigned)resumeBytePosition);
+                                playTrack(i);
+                                // Seek to saved position after playTrack opens the file
+                                if (pPlayer && pPlayer->getStream() && resumeBytePosition > 0) {
+                                    ((File*)pPlayer->getStream())->seek(resumeBytePosition);
+                                }
+                                hasResumeState = false;
+                                break;
+                            }
+                        }
+                        if (currentTrackIndex < 0) {
+                            // Track not found in library, just go to player screen
+                            hasResumeState = false;
+                        }
+                    }
                     setState(STATE_PLAYER);
                     break;
                 case 1: // Browse Songs
@@ -1114,14 +1266,14 @@ void MusicPlayerApp::renderFileBrowser() {
 void MusicPlayerApp::renderPlayer() {
     drawHeader("Now Playing");
 
-    // BT icon top-left (drawn over white header in black)
+    // BT icon top-left (drawn over white header in black) — shifted right 3px
     if (btConnected) {
         display.setColor(BLACK);
-        display.drawXbm(2, 2, BT_ICON_WIDTH, BT_ICON_HEIGHT, bt_icon_bits);
+        display.drawXbm(5, 2, BT_ICON_WIDTH, BT_ICON_HEIGHT, bt_icon_bits);
         display.setColor(WHITE);
     }
 
-    // Battery in header: outline with % text inside, bolt if charging
+    // Battery in header: outline with % text inside, bolt if charging — shifted left 3px
     display.setColor(BLACK);
     display.setFont(ArialMT_Plain_10);
     int battPct = (int)batteryVoltagePercentage;
@@ -1131,13 +1283,12 @@ void MusicPlayerApp::renderPlayer() {
     int textW = display.getStringWidth(battStr);
     int bodyW = textW + 6;              // 3px padding each side
     int bodyH = 10;
-    int bodyX = 124 - bodyW;            // right-aligned with 2px for terminal
+    int bodyX = 121 - bodyW;            // shifted left 3px (was 124 - bodyW)
     int bodyY = 2;
-    display.drawRect(bodyX, bodyY, bodyW, bodyH);           // battery body outline
+    display.drawRect(bodyX, bodyY, bodyW, bodyH);
     display.fillRect(bodyX + bodyW, bodyY + 3, 2, 4);       // terminal nub
     display.setTextAlignment(TEXT_ALIGN_CENTER);
     display.drawString(bodyX + bodyW / 2, bodyY - 1, battStr);
-    // Lightning bolt when charging
     if (batteryChangeRate > 0.5f) {
         display.drawXbm(bodyX - BOLT_ICON_WIDTH - 1, bodyY + 1, BOLT_ICON_WIDTH, BOLT_ICON_HEIGHT, bolt_icon_bits);
     }
@@ -1146,12 +1297,12 @@ void MusicPlayerApp::renderPlayer() {
     display.setFont(ArialMT_Plain_10);
     display.setTextAlignment(TEXT_ALIGN_CENTER);
 
-    // Artist (shifted up ~7px from original)
+    // Artist — shifted up 7px (was y=15)
     if (nowPlayingArtist.length()) {
-        display.drawString(64, 15, nowPlayingArtist);
+        display.drawString(64, 8, nowPlayingArtist);
     }
 
-    // Title with marquee
+    // Title with marquee — shifted up 7px (was y=26)
     String titleText = nowPlayingTitle.length() ? nowPlayingTitle :
                        (currentTrackIndex >= 0 && currentTrackIndex < (int)trackLibrary.size()) ?
                        trackLibrary[currentTrackIndex].display : "No track";
@@ -1159,7 +1310,6 @@ void MusicPlayerApp::renderPlayer() {
     int titleWidth = display.getStringWidth(titleText);
     int maxWidth = 120;
     if (titleWidth > maxWidth) {
-        // Marquee scroll
         if (millis() - lastMarqueeUpdate > 300) {
             lastMarqueeUpdate = millis();
             marqueeOffset += 6;
@@ -1168,27 +1318,78 @@ void MusicPlayerApp::renderPlayer() {
             }
         }
         display.setTextAlignment(TEXT_ALIGN_LEFT);
-        display.drawString(4 - marqueeOffset, 26, titleText);
+        display.drawString(4 - marqueeOffset, 19, titleText);
         display.setTextAlignment(TEXT_ALIGN_CENTER);
     } else {
-        display.drawString(64, 26, titleText);
+        display.drawString(64, 19, titleText);
     }
 
-    // Play/Pause + shuffle
+    // Play/Pause + shuffle — shifted up 7px (was y=38)
     String status = isPlaying ? "> Playing" : "|| Paused";
     if (shuffleEnabled) status += "  [S]";
-    display.drawString(64, 38, status);
+    display.drawString(64, 31, status);
 
-    // Volume bar
-    int volumePct = (int)(100.0f - sliderPosition_Percentage_Filtered);
-    if (volumePct < 0) volumePct = 0;
-    if (volumePct > 100) volumePct = 100;
-    display.drawProgressBar(14, 50, 100, 6, volumePct);
-    display.setFont(ArialMT_Plain_10);
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.drawString(0, 47, "V");
-    display.setTextAlignment(TEXT_ALIGN_RIGHT);
-    display.drawString(128, 47, String(volumePct));
+    // Bottom bar: playhead with time OR volume overlay (stays at y=50)
+    bool showVolume = (lastVolumeChangeTime > 0 && millis() - lastVolumeChangeTime < 2000);
+    if (showVolume) {
+        // Volume overlay — shows briefly when slider is touched
+        int volumePct = (int)(100.0f - sliderPosition_Percentage_Filtered);
+        if (volumePct < 0) volumePct = 0;
+        if (volumePct > 100) volumePct = 100;
+        display.drawProgressBar(14, 50, 100, 6, volumePct);
+        display.setFont(ArialMT_Plain_10);
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.drawString(0, 47, "V");
+        display.setTextAlignment(TEXT_ALIGN_RIGHT);
+        display.drawString(128, 47, String(volumePct));
+    } else {
+        // Playhead with elapsed / remaining time
+        size_t filePos = 0, fileSize = currentTrackFileSize;
+        Stream* s = (pPlayer && currentTrackIndex >= 0) ? pPlayer->getStream() : nullptr;
+        if (s) {
+            filePos = ((File*)s)->position();
+            if (fileSize == 0) fileSize = ((File*)s)->size();
+        }
+
+        // Progress bar (byte-based, works even without bitrate)
+        int progressPct = (fileSize > 0) ? (int)((uint64_t)filePos * 100 / fileSize) : 0;
+        if (progressPct > 100) progressPct = 100;
+
+        // Time estimation from bitrate
+        int elapsedSec = 0, remainSec = 0;
+        bool hasTime = (currentTrackBitrate > 0 && fileSize > 0);
+        if (hasTime) {
+            elapsedSec = (int)((uint64_t)filePos * 8 / currentTrackBitrate);
+            int totalSec = (int)((uint64_t)fileSize * 8 / currentTrackBitrate);
+            remainSec = totalSec - elapsedSec;
+            if (remainSec < 0) remainSec = 0;
+        }
+
+        // Format times as M:SS
+        char elapsedStr[8], remainStr[8];
+        snprintf(elapsedStr, sizeof(elapsedStr), "%d:%02d", elapsedSec / 60, elapsedSec % 60);
+        snprintf(remainStr, sizeof(remainStr), "-%d:%02d", remainSec / 60, remainSec % 60);
+
+        display.setFont(ArialMT_Plain_10);
+        if (hasTime) {
+            // Draw time labels
+            display.setTextAlignment(TEXT_ALIGN_LEFT);
+            display.drawString(0, 47, elapsedStr);
+            display.setTextAlignment(TEXT_ALIGN_RIGHT);
+            display.drawString(128, 47, remainStr);
+            // Progress bar between the time labels
+            int leftW = display.getStringWidth(elapsedStr) + 2;
+            int rightW = display.getStringWidth(remainStr) + 2;
+            int barX = leftW;
+            int barW = 128 - leftW - rightW;
+            if (barW > 20) {
+                display.drawProgressBar(barX, 50, barW, 6, progressPct);
+            }
+        } else {
+            // No bitrate info — just show progress bar full-width
+            display.drawProgressBar(4, 50, 120, 6, progressPct);
+        }
+    }
 }
 
 void MusicPlayerApp::renderScanningLibrary() {

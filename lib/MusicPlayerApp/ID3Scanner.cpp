@@ -190,6 +190,134 @@ bool ID3Scanner::scanFile(const char* path, String& title, String& artist) {
 }
 
 // ---------------------------------------------------------------------------
+// Read bitrate from first MP3 frame header
+// Returns bits/sec (e.g. 192000 for 192 kbps), 0 on failure.
+// Skips ID3v2 tag, then scans up to 4KB for the first valid MPEG frame.
+// For VBR files, parses the Xing/Info header to compute average bitrate.
+// ---------------------------------------------------------------------------
+int ID3Scanner::readMP3Bitrate(const char* path) {
+    File f = SD.open(path, FILE_READ);
+    if (!f) return 0;
+
+    // MPEG1 Layer III bitrate lookup (index 0 = free, 15 = bad)
+    static const int mpeg1Table[16] = {
+        0, 32000, 40000, 48000, 56000, 64000, 80000, 96000,
+        112000, 128000, 160000, 192000, 224000, 256000, 320000, 0
+    };
+    // MPEG2/2.5 Layer III bitrate lookup
+    static const int mpeg2Table[16] = {
+        0, 8000, 16000, 24000, 32000, 40000, 48000, 56000,
+        64000, 80000, 96000, 112000, 128000, 144000, 160000, 0
+    };
+    // Sample rates: [version_index][sr_index]
+    static const int sampleRates[4][4] = {
+        {11025, 12000,  8000, 0},  // MPEG2.5 (version 0)
+        {    0,     0,     0, 0},  // reserved (version 1)
+        {22050, 24000, 16000, 0},  // MPEG2   (version 2)
+        {44100, 48000, 32000, 0}   // MPEG1   (version 3)
+    };
+
+    // Skip ID3v2 tag if present
+    uint8_t hdr[10];
+    size_t scanStart = 0;
+    if (f.read(hdr, 10) == 10 &&
+        hdr[0] == 'I' && hdr[1] == 'D' && hdr[2] == '3') {
+        uint32_t tagSize = readSyncsafe(hdr + 6);
+        scanStart = 10 + tagSize;
+    }
+    f.seek(scanStart);
+
+    // Scan for MP3 frame sync (0xFF followed by 0xE0+) within first 4KB
+    uint8_t buf[4];
+    size_t limit = scanStart + 4096;
+    while (f.position() < limit && (size_t)f.position() + 4 < f.size()) {
+        if (f.read(buf, 1) != 1) break;
+        if (buf[0] != 0xFF) continue;
+        if (f.read(buf + 1, 3) != 3) break;
+
+        // Sync: first 11 bits must be 1
+        if ((buf[1] & 0xE0) != 0xE0) {
+            f.seek(f.position() - 3);
+            continue;
+        }
+
+        int version     = (buf[1] >> 3) & 0x03;  // 3=MPEG1, 2=MPEG2, 0=MPEG2.5
+        int layer       = (buf[1] >> 1) & 0x03;  // 1=Layer III
+        int brIndex     = (buf[2] >> 4) & 0x0F;
+        int srIndex     = (buf[2] >> 2) & 0x03;
+        int channelMode = (buf[3] >> 6) & 0x03;  // 0-2=stereo variants, 3=mono
+
+        if (layer != 1 || brIndex == 0 || brIndex >= 15) {
+            f.seek(f.position() - 3);
+            continue;
+        }
+
+        int sampleRate = sampleRates[version][srIndex];
+        if (sampleRate == 0) {
+            f.seek(f.position() - 3);
+            continue;
+        }
+
+        int frameBitrate;
+        if (version == 3) frameBitrate = mpeg1Table[brIndex];
+        else if (version == 2 || version == 0) frameBitrate = mpeg2Table[brIndex];
+        else { f.seek(f.position() - 3); continue; }
+
+        if (frameBitrate == 0) {
+            f.seek(f.position() - 3);
+            continue;
+        }
+
+        // Check for Xing/Info VBR header inside this frame
+        // Side info size determines where the marker sits
+        int sideInfoSize;
+        if (version == 3)  // MPEG1
+            sideInfoSize = (channelMode == 3) ? 17 : 32;
+        else               // MPEG2/2.5
+            sideInfoSize = (channelMode == 3) ? 9 : 17;
+
+        size_t frameStart = f.position() - 4;
+        f.seek(frameStart + 4 + sideInfoSize);
+
+        uint8_t marker[4];
+        if (f.read(marker, 4) == 4 &&
+            (memcmp(marker, "Xing", 4) == 0 || memcmp(marker, "Info", 4) == 0)) {
+            // VBR header found — extract total frames + bytes for avg bitrate
+            uint8_t flagsBuf[4];
+            if (f.read(flagsBuf, 4) == 4) {
+                uint32_t flags = readBE32(flagsBuf);
+                uint32_t totalFrames = 0, totalBytes = 0;
+
+                if (flags & 0x01) {
+                    uint8_t fb[4];
+                    if (f.read(fb, 4) == 4) totalFrames = readBE32(fb);
+                }
+                if (flags & 0x02) {
+                    uint8_t bb[4];
+                    if (f.read(bb, 4) == 4) totalBytes = readBE32(bb);
+                }
+
+                if (totalFrames > 0 && totalBytes > 0) {
+                    int samplesPerFrame = (version == 3) ? 1152 : 576;
+                    // avgBitrate = totalBytes * 8 * sampleRate / (totalFrames * samplesPerFrame)
+                    uint64_t avgBr = (uint64_t)totalBytes * 8 * sampleRate /
+                                     ((uint64_t)totalFrames * samplesPerFrame);
+                    f.close();
+                    return (int)avgBr;
+                }
+            }
+        }
+
+        // No Xing header — CBR file, return frame bitrate
+        f.close();
+        return frameBitrate;
+    }
+
+    f.close();
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
 // Scan all MP3 files in a directory
 // ---------------------------------------------------------------------------
 void ID3Scanner::scanAllFiles(const char* rootDir, const char* ext,

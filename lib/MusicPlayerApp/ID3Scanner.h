@@ -17,6 +17,9 @@ namespace ID3Scanner {
     // Read ID3 tags from a single MP3 file
     bool scanFile(const char* path, String& title, String& artist);
 
+    // Read bitrate from first MP3 frame header (returns bits/sec, e.g. 192000; 0 on failure)
+    int readMP3Bitrate(const char* path);
+
     // Scan all MP3 files using AudioSourceIdxSD file listing
     // progressCb fires with (current, total) for UI updates
     void scanAllFiles(const char* rootDir, const char* ext,

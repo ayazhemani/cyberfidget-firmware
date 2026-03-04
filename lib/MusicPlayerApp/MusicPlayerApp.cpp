@@ -249,13 +249,25 @@ void MusicPlayerApp::update() {
             updateVolumeFromSlider();
             pPlayer->copy();
 
-            // Sample amplitude for LED effects + visualizer
-            if (pVolumeMeter) {
-                currentAmplitude = pVolumeMeter->volumeRatio();
-                if (visualizerEnabled && millis() - lastVisualizerSample > 60) {
+            // Sample amplitude + spectrum for LED effects + visualizer
+            if (pSpectrumAnalyzer) {
+                pSpectrumAnalyzer->spectrumEnabled = (visualizerMode == VIZ_SPECTRUM);
+                currentAmplitude = pSpectrumAnalyzer->volumeRatio();
+
+                if (visualizerMode == VIZ_AMPLITUDE && millis() - lastVisualizerSample > 60) {
                     amplitudeHistory[amplitudeHistoryIndex] = currentAmplitude;
                     amplitudeHistoryIndex = (amplitudeHistoryIndex + 1) % 16;
                     lastVisualizerSample = millis();
+                } else if (visualizerMode == VIZ_SPECTRUM) {
+                    // Run pending FFT here in main loop (not in audio write path)
+                    if (pSpectrumAnalyzer->processFFT()) {
+                        const float* raw = pSpectrumAnalyzer->bands();
+                        for (int i = 0; i < 16; i++) {
+                            // Fast attack, slow decay (VFD-style)
+                            if (raw[i] > spectrumBands[i]) spectrumBands[i] = raw[i];
+                            else spectrumBands[i] = spectrumBands[i] * 0.85f + raw[i] * 0.15f;
+                        }
+                    }
                 }
             }
 
@@ -344,6 +356,7 @@ void MusicPlayerApp::update() {
         case STATE_CONNECT_FAIL:     renderConnectFail();     break;
         case STATE_MAIN_MENU:        renderMainMenu();        break;
         case STATE_BT_SUBMENU:       renderBtSubMenu();       break;
+        case STATE_LED_SUBMENU:      renderLedSubMenu();      break;
         case STATE_FILE_BROWSER:     renderFileBrowser();     break;
         case STATE_PLAYER:           renderPlayer();          break;
         case STATE_SCANNING_LIBRARY: renderScanningLibrary(); break;
@@ -450,11 +463,12 @@ void MusicPlayerApp::createAudioPipeline() {
     }
 
     if (pSourceSD) {
-        // Insert VolumeMeter between player and A2DP output for amplitude metering
-        if (!pVolumeMeter) {
-            pVolumeMeter = new VolumeMeter(*pA2dpStream);
+        // Insert SpectrumAnalyzer between player and A2DP output for amplitude + FFT
+        if (!pSpectrumAnalyzer) {
+            pSpectrumAnalyzer = new SpectrumAnalyzer(*pA2dpStream);
+            pSpectrumAnalyzer->begin(44100, 2, 16);
         }
-        pPlayer = new AudioPlayer(*pSourceSD, *pVolumeMeter, decoder);
+        pPlayer = new AudioPlayer(*pSourceSD, *pSpectrumAnalyzer, decoder);
         pPlayer->setVolume(1.0);
         pPlayer->setMetadataCallback(onMetadata);
         // Initialize the decoder pipeline and SD source without selecting a stream.
@@ -814,8 +828,8 @@ void MusicPlayerApp::setState(MusicAppState newState) {
 #if MUSIC_PLAYER_DEBUG
     static const char* stateNames[] = {
         "DEVICE_MENU", "BT_SCANNING", "BT_CONNECTING", "CONNECT_FAIL",
-        "MAIN_MENU", "BT_SUBMENU", "FILE_BROWSER", "PLAYER", "SCANNING_LIBRARY",
-        "BT_SWITCHING"
+        "MAIN_MENU", "BT_SUBMENU", "LED_SUBMENU", "FILE_BROWSER", "PLAYER",
+        "SCANNING_LIBRARY", "BT_SWITCHING"
     };
     MPLAYER_LOGF("setState: %s -> %s",
         stateNames[currentState], stateNames[newState]);
@@ -839,6 +853,8 @@ int MusicPlayerApp::getListSize() const {
             return MAIN_MENU_COUNT;
         case STATE_BT_SUBMENU:
             return getBtSubMenuCount();
+        case STATE_LED_SUBMENU:
+            return getLedSubMenuCount();
         case STATE_FILE_BROWSER:
             return trackLibrary.size();
         default:
@@ -861,10 +877,7 @@ String MusicPlayerApp::getMainMenuItem(int index) const {
         case 1: return "Browse Songs";
         case 2: return shuffleEnabled ? "Shuffle: On" : "Shuffle: Off";
         case 3: return "Bluetooth";
-        case 4: {
-            static const char* modes[] = {"Off", "Reactive", "Pulse"};
-            return String("LEDs: ") + modes[ledEffectMode];
-        }
+        case 4: return "LEDs";
         case 5: return "Exit";
         default: return "";
     }
@@ -879,6 +892,22 @@ String MusicPlayerApp::getBtSubMenuItem(int index) const {
         case 0: return btConnected ? ("Connected: " + connectedDeviceName) : "Not Connected";
         case 1: return "Disconnect";
         case 2: return "Forget All Devices";
+        default: return "";
+    }
+}
+
+int MusicPlayerApp::getLedSubMenuCount() const {
+    return 5; // Mode, Back, Front Top, Front Mid, Front Bottom
+}
+
+String MusicPlayerApp::getLedSubMenuItem(int index) const {
+    static const char* modes[] = {"Off", "Reactive", "Pulse"};
+    switch (index) {
+        case 0: return String("Mode: ") + modes[ledEffectMode];
+        case 1: return (ledEnableMask & 0x01) ? "Back LED: On" : "Back LED: Off";
+        case 2: return (ledEnableMask & 0x02) ? "Front Top: On" : "Front Top: Off";
+        case 3: return (ledEnableMask & 0x04) ? "Front Mid: On" : "Front Mid: Off";
+        case 4: return (ledEnableMask & 0x08) ? "Front Bot: On" : "Front Bot: Off";
         default: return "";
     }
 }
@@ -939,7 +968,7 @@ void MusicPlayerApp::onButtonBack(const ButtonEvent& event) {
 // =========================================================================
 void MusicPlayerApp::handleUp() {
     if (currentState == STATE_PLAYER) {
-        visualizerEnabled = !visualizerEnabled;
+        visualizerMode = (VisualizerMode)((visualizerMode + 1) % 3);
         return;
     }
     if (currentState == STATE_BT_CONNECTING ||
@@ -954,7 +983,8 @@ void MusicPlayerApp::handleUp() {
 
 void MusicPlayerApp::handleDown() {
     if (currentState == STATE_PLAYER) {
-        visualizerEnabled = !visualizerEnabled;
+        // Cycle backwards: Off → Spectrum → Amplitude → Off
+        visualizerMode = (VisualizerMode)((visualizerMode + 2) % 3);
         return;
     }
     if (currentState == STATE_BT_CONNECTING ||
@@ -1058,9 +1088,8 @@ void MusicPlayerApp::handleEnter() {
                 case 3: // Bluetooth
                     setState(STATE_BT_SUBMENU);
                     break;
-                case 4: // LED Effect Mode cycle
-                    ledEffectMode = (LEDEffectMode)((ledEffectMode + 1) % 3);
-                    if (ledEffectMode == LED_OFF) setColorsOff();
+                case 4: // LEDs submenu
+                    setState(STATE_LED_SUBMENU);
                     break;
                 case 5: // Exit
                     exitApp();
@@ -1085,6 +1114,31 @@ void MusicPlayerApp::handleEnter() {
                     setState(STATE_DEVICE_MENU);
                     break;
                 }
+            }
+            break;
+
+        case STATE_LED_SUBMENU:
+            switch (menuCursorIndex) {
+                case 0: // Cycle LED mode
+                    ledEffectMode = (LEDEffectMode)((ledEffectMode + 1) % 3);
+                    if (ledEffectMode == LED_OFF) setColorsOff();
+                    break;
+                case 1: // Back LED toggle
+                    ledEnableMask ^= 0x01;
+                    if (!(ledEnableMask & 0x01)) HAL::setRgbLed(pixel_Back, 0, 0, 0, 0);
+                    break;
+                case 2: // Front Top toggle
+                    ledEnableMask ^= 0x02;
+                    if (!(ledEnableMask & 0x02)) HAL::setRgbLed(pixel_Front_Top, 0, 0, 0, 0);
+                    break;
+                case 3: // Front Mid toggle
+                    ledEnableMask ^= 0x04;
+                    if (!(ledEnableMask & 0x04)) HAL::setRgbLed(pixel_Front_Middle, 0, 0, 0, 0);
+                    break;
+                case 4: // Front Bottom toggle
+                    ledEnableMask ^= 0x08;
+                    if (!(ledEnableMask & 0x08)) HAL::setRgbLed(pixel_Front_Bottom, 0, 0, 0, 0);
+                    break;
             }
             break;
 
@@ -1126,6 +1180,7 @@ void MusicPlayerApp::handleBack() {
             break;
 
         case STATE_BT_SUBMENU:
+        case STATE_LED_SUBMENU:
             setState(STATE_MAIN_MENU);
             break;
 
@@ -1151,6 +1206,8 @@ void MusicPlayerApp::updateLEDs() {
     if (millis() - lastLEDUpdate < 33) return;  // ~30fps, matches RGBController throttle
     lastLEDUpdate = millis();
 
+    uint8_t r = 0, g = 0, b = 0, w = 0;
+
     if (ledEffectMode == LED_REACTIVE && isPlaying) {
         // EMA smoothing (α=0.25) + gamma (0.6) — follows Booper pattern
         float raw = currentAmplitude;
@@ -1158,8 +1215,6 @@ void MusicPlayerApp::updateLEDs() {
         float curved = powf(raw, 0.6f);
         ledSmoothedAmplitude = 0.25f * curved + 0.75f * ledSmoothedAmplitude;
         float amp = ledSmoothedAmplitude;
-
-        uint8_t r = 0, g = 0, b = 0, w = 0;
 
         if (amp < 0.15f) {
             // Quiet: dim blue pulse (breathing)
@@ -1178,23 +1233,24 @@ void MusicPlayerApp::updateLEDs() {
             w = (uint8_t)(t * 30.0f);
         }
 
-        // Front 3 pixels: full color (marks dirty), back pixel: dimmed
-        setDeterminedColorsFront(r, g, b, w);
-        HAL::setRgbLed(pixel_Back, r / 3, g / 3, b / 3, w / 3);
-
     } else if (ledEffectMode == LED_PULSE) {
         // Gentle breathing regardless of audio
         float pulse = (sinf(millis() / 2000.0f * 3.14159f) + 1.0f) * 0.5f;
-        uint8_t b = (uint8_t)(2.0f + pulse * 6.0f);
-        setDeterminedColorsFront(0, 0, b, 0);
-        HAL::setRgbLed(pixel_Back, 0, 0, b / 2, 0);
+        b = (uint8_t)(2.0f + pulse * 6.0f);
 
     } else if (ledEffectMode == LED_REACTIVE && !isPlaying) {
         // Reactive but not playing: dim idle pulse
         float pulse = (sinf(millis() / 3000.0f * 3.14159f) + 1.0f) * 0.5f;
-        uint8_t b = (uint8_t)(1.0f + pulse * 3.0f);
-        setDeterminedColorsAll(0, 0, b, 0);
+        b = (uint8_t)(1.0f + pulse * 3.0f);
     }
+
+    // Apply per-LED mask: only set enabled LEDs, disabled ones stay dark
+    // Front pixels get full color, back pixel gets dimmed (÷3)
+    if (ledEnableMask & 0x02) HAL::setRgbLed(pixel_Front_Top, r, g, b, w);
+    if (ledEnableMask & 0x04) HAL::setRgbLed(pixel_Front_Middle, r, g, b, w);
+    if (ledEnableMask & 0x08) HAL::setRgbLed(pixel_Front_Bottom, r, g, b, w);
+    if (ledEnableMask & 0x01) HAL::setRgbLed(pixel_Back, r / 3, g / 3, b / 3, w / 3);
+    markDirty();  // ensure strip.show() fires
 }
 
 // =========================================================================
@@ -1205,21 +1261,23 @@ void MusicPlayerApp::saveSettings() {
     prefs.begin("mpsettings", false);
     prefs.putBool("shuffle", shuffleEnabled);
     prefs.putUChar("ledmode", (uint8_t)ledEffectMode);
-    prefs.putBool("viz", visualizerEnabled);
+    prefs.putUChar("vizmode", (uint8_t)visualizerMode);
+    prefs.putUChar("ledmask", ledEnableMask);
     prefs.end();
-    MPLAYER_LOGF("saveSettings: shuffle=%d led=%d viz=%d",
-        shuffleEnabled, ledEffectMode, visualizerEnabled);
+    MPLAYER_LOGF("saveSettings: shuffle=%d led=%d vizmode=%d ledmask=0x%02X",
+        shuffleEnabled, ledEffectMode, visualizerMode, ledEnableMask);
 }
 
 void MusicPlayerApp::loadSettings() {
     Preferences prefs;
     prefs.begin("mpsettings", true);  // read-only
     shuffleEnabled = prefs.getBool("shuffle", false);
-    ledEffectMode = (LEDEffectMode)prefs.getUChar("ledmode", LED_REACTIVE);
-    visualizerEnabled = prefs.getBool("viz", false);
+    ledEffectMode = (LEDEffectMode)prefs.getUChar("ledmode", LED_OFF);
+    visualizerMode = (VisualizerMode)prefs.getUChar("vizmode", VIZ_OFF);
+    ledEnableMask = prefs.getUChar("ledmask", 0x0F);
     prefs.end();
-    MPLAYER_LOGF("loadSettings: shuffle=%d led=%d viz=%d",
-        shuffleEnabled, ledEffectMode, visualizerEnabled);
+    MPLAYER_LOGF("loadSettings: shuffle=%d led=%d vizmode=%d ledmask=0x%02X",
+        shuffleEnabled, ledEffectMode, visualizerMode, ledEnableMask);
 }
 
 // =========================================================================
@@ -1370,6 +1428,17 @@ void MusicPlayerApp::renderBtSubMenu() {
     drawList(items, menuCursorIndex, menuScrollOffset);
 }
 
+void MusicPlayerApp::renderLedSubMenu() {
+    drawHeader("LEDs");
+
+    std::vector<String> items;
+    int count = getLedSubMenuCount();
+    for (int i = 0; i < count; i++) {
+        items.push_back(getLedSubMenuItem(i));
+    }
+    drawList(items, menuCursorIndex, menuScrollOffset);
+}
+
 void MusicPlayerApp::renderFileBrowser() {
     drawHeader("Library");
 
@@ -1467,12 +1536,22 @@ void MusicPlayerApp::renderPlayer() {
         display.drawString(0, 47, "V");
         display.setTextAlignment(TEXT_ALIGN_RIGHT);
         display.drawString(128, 47, String(volumePct));
-    } else if (visualizerEnabled && isPlaying) {
-        // 16-bar amplitude visualizer, y=48-63
+    } else if (visualizerMode == VIZ_AMPLITUDE && isPlaying) {
+        // 16-bar amplitude visualizer (time-domain), y=48-63
         for (int i = 0; i < 16; i++) {
             int idx = (amplitudeHistoryIndex + i) % 16;
             int barH = (int)(amplitudeHistory[idx] * 14.0f);
             if (barH < 1 && amplitudeHistory[idx] > 0.01f) barH = 1;
+            if (barH > 0) {
+                display.fillRect(i * 8, 63 - barH, 7, barH);
+            }
+        }
+    } else if (visualizerMode == VIZ_SPECTRUM && isPlaying) {
+        // 16-bar spectrum visualizer (frequency-domain, VFD-style), y=48-63
+        for (int i = 0; i < 16; i++) {
+            int barH = (int)(spectrumBands[i] * 14.0f);
+            if (barH > 14) barH = 14;
+            if (barH < 1 && spectrumBands[i] > 0.01f) barH = 1;
             if (barH > 0) {
                 display.fillRect(i * 8, 63 - barH, 7, barH);
             }

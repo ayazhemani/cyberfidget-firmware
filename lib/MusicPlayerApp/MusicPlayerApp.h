@@ -19,7 +19,13 @@
 #include "AudioTools/AudioLibs/A2DPStream.h"
 #include "AudioTools/Disk/AudioSourceIdxSD.h"
 #include "AudioTools/AudioCodecs/CodecMP3Helix.h"
-#include "AudioTools/CoreAudio/AudioStreams.h"  // VolumeMeter
+#include "SpectrumAnalyzer.h"
+
+enum VisualizerMode : uint8_t {
+    VIZ_OFF = 0,
+    VIZ_AMPLITUDE = 1,
+    VIZ_SPECTRUM = 2
+};
 
 enum LEDEffectMode : uint8_t {
     LED_OFF = 0,
@@ -34,6 +40,7 @@ enum MusicAppState {
     STATE_CONNECT_FAIL,     // Connection failed
     STATE_MAIN_MENU,        // iPod-style hub menu
     STATE_BT_SUBMENU,       // Bluetooth settings
+    STATE_LED_SUBMENU,      // LED settings (mode + per-LED on/off)
     STATE_FILE_BROWSER,     // Browse songs with metadata
     STATE_PLAYER,           // Now Playing
     STATE_SCANNING_LIBRARY, // Scanning MP3 ID3 tags
@@ -101,7 +108,7 @@ private:
     audio_tools::AudioSourceIdxSD* pSourceSD = nullptr;
     audio_tools::MP3DecoderHelix decoder;
     audio_tools::AudioPlayer* pPlayer = nullptr;
-    audio_tools::VolumeMeter* pVolumeMeter = nullptr;
+    SpectrumAnalyzer* pSpectrumAnalyzer = nullptr;
     bool sdAvailable = false;
     bool audioPipelineReady = false;
 
@@ -164,16 +171,18 @@ private:
     unsigned long lastMarqueeUpdate = 0;
 
     // LED effects
-    LEDEffectMode ledEffectMode = LED_REACTIVE;
+    LEDEffectMode ledEffectMode = LED_OFF;
+    uint8_t ledEnableMask = 0x0F;  // bitmask: bit0=Back, bit1=FrontTop, bit2=FrontMid, bit3=FrontBot
     unsigned long lastLEDUpdate = 0;
     float ledSmoothedAmplitude = 0.0f;
     void updateLEDs();
 
     // OLED visualizer
-    bool visualizerEnabled = false;
+    VisualizerMode visualizerMode = VIZ_OFF;
     float amplitudeHistory[16] = {0};
     int amplitudeHistoryIndex = 0;
     unsigned long lastVisualizerSample = 0;
+    float spectrumBands[16] = {0};  // smoothed spectrum for display
 
     // Settings persistence (NVS)
     void saveSettings();
@@ -200,6 +209,10 @@ private:
     int getBtSubMenuCount() const;
     String getBtSubMenuItem(int index) const;
 
+    // LED submenu items
+    int getLedSubMenuCount() const;
+    String getLedSubMenuItem(int index) const;
+
     // Rendering
     void drawHeader(const String& title);
     void drawList(const std::vector<String>& items, int cursor, int scrollOffset);
@@ -211,6 +224,7 @@ private:
     void renderConnectFail();
     void renderMainMenu();
     void renderBtSubMenu();
+    void renderLedSubMenu();
     void renderFileBrowser();
     void renderPlayer();
     void renderScanningLibrary();

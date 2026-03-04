@@ -1,4 +1,5 @@
 #include "MusicPlayerApp.h"
+#include "RGBController.h"
 #include "globals.h"        // millis_APP_LASTINTERACTION (sleep prevention)
 #include <SD.h>
 #include <SPI.h>
@@ -158,6 +159,9 @@ void MusicPlayerApp::begin() {
     // Load resume state (track path + byte position from last session)
     loadPlaybackState();
 
+    // Load persistent settings (shuffle, LED mode, visualizer)
+    loadSettings();
+
     // Reset scrub state
     scrubButtonDir = 0;
     scrubActive = false;
@@ -173,7 +177,9 @@ void MusicPlayerApp::begin() {
 
 void MusicPlayerApp::end() {
     MPLAYER_LOG("end: enter");
+    saveSettings();       // Persist shuffle, LED mode, visualizer toggle
     savePlaybackState();  // Remember position for resume on next launch
+    setColorsOff();       // Turn off LEDs on app exit
     stopPlayback();
     destroyAudioPipeline();
 
@@ -243,6 +249,16 @@ void MusicPlayerApp::update() {
             updateVolumeFromSlider();
             pPlayer->copy();
 
+            // Sample amplitude for LED effects + visualizer
+            if (pVolumeMeter) {
+                currentAmplitude = pVolumeMeter->volumeRatio();
+                if (visualizerEnabled && millis() - lastVisualizerSample > 60) {
+                    amplitudeHistory[amplitudeHistoryIndex] = currentAmplitude;
+                    amplitudeHistoryIndex = (amplitudeHistoryIndex + 1) % 16;
+                    lastVisualizerSample = millis();
+                }
+            }
+
             // Check if track ended
             if (!pPlayer->isActive()) {
                 isPlaying = false;
@@ -260,6 +276,9 @@ void MusicPlayerApp::update() {
             }
         }
     }
+
+    // Update music-reactive LEDs
+    updateLEDs();
 
     // State-specific polling
     switch (currentState) {
@@ -431,7 +450,11 @@ void MusicPlayerApp::createAudioPipeline() {
     }
 
     if (pSourceSD) {
-        pPlayer = new AudioPlayer(*pSourceSD, *pA2dpStream, decoder);
+        // Insert VolumeMeter between player and A2DP output for amplitude metering
+        if (!pVolumeMeter) {
+            pVolumeMeter = new VolumeMeter(*pA2dpStream);
+        }
+        pPlayer = new AudioPlayer(*pSourceSD, *pVolumeMeter, decoder);
         pPlayer->setVolume(1.0);
         pPlayer->setMetadataCallback(onMetadata);
         // Initialize the decoder pipeline and SD source without selecting a stream.
@@ -838,7 +861,11 @@ String MusicPlayerApp::getMainMenuItem(int index) const {
         case 1: return "Browse Songs";
         case 2: return shuffleEnabled ? "Shuffle: On" : "Shuffle: Off";
         case 3: return "Bluetooth";
-        case 4: return "Exit";
+        case 4: {
+            static const char* modes[] = {"Off", "Reactive", "Pulse"};
+            return String("LEDs: ") + modes[ledEffectMode];
+        }
+        case 5: return "Exit";
         default: return "";
     }
 }
@@ -911,7 +938,11 @@ void MusicPlayerApp::onButtonBack(const ButtonEvent& event) {
 // Navigation Logic
 // =========================================================================
 void MusicPlayerApp::handleUp() {
-    if (currentState == STATE_PLAYER || currentState == STATE_BT_CONNECTING ||
+    if (currentState == STATE_PLAYER) {
+        visualizerEnabled = !visualizerEnabled;
+        return;
+    }
+    if (currentState == STATE_BT_CONNECTING ||
         currentState == STATE_BT_SWITCHING || currentState == STATE_SCANNING_LIBRARY) return;
 
     if (menuCursorIndex > 0) {
@@ -922,7 +953,11 @@ void MusicPlayerApp::handleUp() {
 }
 
 void MusicPlayerApp::handleDown() {
-    if (currentState == STATE_PLAYER || currentState == STATE_BT_CONNECTING ||
+    if (currentState == STATE_PLAYER) {
+        visualizerEnabled = !visualizerEnabled;
+        return;
+    }
+    if (currentState == STATE_BT_CONNECTING ||
         currentState == STATE_BT_SWITCHING || currentState == STATE_SCANNING_LIBRARY) return;
 
     int listSize = getListSize();
@@ -1023,7 +1058,11 @@ void MusicPlayerApp::handleEnter() {
                 case 3: // Bluetooth
                     setState(STATE_BT_SUBMENU);
                     break;
-                case 4: // Exit
+                case 4: // LED Effect Mode cycle
+                    ledEffectMode = (LEDEffectMode)((ledEffectMode + 1) % 3);
+                    if (ledEffectMode == LED_OFF) setColorsOff();
+                    break;
+                case 5: // Exit
                     exitApp();
                     break;
             }
@@ -1102,6 +1141,89 @@ void MusicPlayerApp::handleBack() {
         default:
             break;
     }
+}
+
+// =========================================================================
+// LED Effects
+// =========================================================================
+void MusicPlayerApp::updateLEDs() {
+    if (ledEffectMode == LED_OFF) return;
+    if (millis() - lastLEDUpdate < 33) return;  // ~30fps, matches RGBController throttle
+    lastLEDUpdate = millis();
+
+    if (ledEffectMode == LED_REACTIVE && isPlaying) {
+        // EMA smoothing (α=0.25) + gamma (0.6) — follows Booper pattern
+        float raw = currentAmplitude;
+        if (raw > 1.0f) raw = 1.0f;
+        float curved = powf(raw, 0.6f);
+        ledSmoothedAmplitude = 0.25f * curved + 0.75f * ledSmoothedAmplitude;
+        float amp = ledSmoothedAmplitude;
+
+        uint8_t r = 0, g = 0, b = 0, w = 0;
+
+        if (amp < 0.15f) {
+            // Quiet: dim blue pulse (breathing)
+            float pulse = (sinf(millis() / 1000.0f * 3.14159f) + 1.0f) * 0.5f;
+            b = (uint8_t)(3.0f + pulse * 5.0f);
+        } else if (amp < 0.5f) {
+            // Medium: cyan → green gradient
+            float t = (amp - 0.15f) / 0.35f;
+            g = (uint8_t)(5.0f + t * 15.0f);
+            b = (uint8_t)(5.0f + (1.0f - t) * 10.0f);
+        } else {
+            // Loud: red + white flash
+            float t = (amp - 0.5f) / 0.5f;
+            if (t > 1.0f) t = 1.0f;
+            r = (uint8_t)(15.0f + t * 10.0f);
+            w = (uint8_t)(t * 30.0f);
+        }
+
+        // Front 3 pixels: full color, back pixel: dimmed
+        HAL::setRgbLed(pixel_Front_Top, r, g, b, w);
+        HAL::setRgbLed(pixel_Front_Middle, r, g, b, w);
+        HAL::setRgbLed(pixel_Front_Bottom, r, g, b, w);
+        HAL::setRgbLed(pixel_Back, r / 3, g / 3, b / 3, w / 3);
+
+    } else if (ledEffectMode == LED_PULSE) {
+        // Gentle breathing regardless of audio
+        float pulse = (sinf(millis() / 2000.0f * 3.14159f) + 1.0f) * 0.5f;
+        uint8_t b = (uint8_t)(2.0f + pulse * 6.0f);
+        HAL::setRgbLed(pixel_Front_Top, 0, 0, b, 0);
+        HAL::setRgbLed(pixel_Front_Middle, 0, 0, b, 0);
+        HAL::setRgbLed(pixel_Front_Bottom, 0, 0, b, 0);
+        HAL::setRgbLed(pixel_Back, 0, 0, b / 2, 0);
+
+    } else if (ledEffectMode == LED_REACTIVE && !isPlaying) {
+        // Reactive but not playing: dim idle pulse
+        float pulse = (sinf(millis() / 3000.0f * 3.14159f) + 1.0f) * 0.5f;
+        uint8_t b = (uint8_t)(1.0f + pulse * 3.0f);
+        setDeterminedColorsAll(0, 0, b, 0);
+    }
+}
+
+// =========================================================================
+// Settings Persistence (NVS)
+// =========================================================================
+void MusicPlayerApp::saveSettings() {
+    Preferences prefs;
+    prefs.begin("mpsettings", false);
+    prefs.putBool("shuffle", shuffleEnabled);
+    prefs.putUChar("ledmode", (uint8_t)ledEffectMode);
+    prefs.putBool("viz", visualizerEnabled);
+    prefs.end();
+    MPLAYER_LOGF("saveSettings: shuffle=%d led=%d viz=%d",
+        shuffleEnabled, ledEffectMode, visualizerEnabled);
+}
+
+void MusicPlayerApp::loadSettings() {
+    Preferences prefs;
+    prefs.begin("mpsettings", true);  // read-only
+    shuffleEnabled = prefs.getBool("shuffle", false);
+    ledEffectMode = (LEDEffectMode)prefs.getUChar("ledmode", LED_REACTIVE);
+    visualizerEnabled = prefs.getBool("viz", false);
+    prefs.end();
+    MPLAYER_LOGF("loadSettings: shuffle=%d led=%d viz=%d",
+        shuffleEnabled, ledEffectMode, visualizerEnabled);
 }
 
 // =========================================================================
@@ -1336,7 +1458,7 @@ void MusicPlayerApp::renderPlayer() {
     if (shuffleEnabled) status += "  [S]";
     display.drawString(64, 31, status);
 
-    // Bottom bar: playhead with time OR volume overlay (stays at y=50)
+    // Bottom bar: volume overlay > visualizer > playhead (priority order)
     bool showVolume = (lastVolumeChangeTime > 0 && millis() - lastVolumeChangeTime < 2000);
     if (showVolume) {
         // Volume overlay — shows briefly when slider is touched
@@ -1349,6 +1471,16 @@ void MusicPlayerApp::renderPlayer() {
         display.drawString(0, 47, "V");
         display.setTextAlignment(TEXT_ALIGN_RIGHT);
         display.drawString(128, 47, String(volumePct));
+    } else if (visualizerEnabled && isPlaying) {
+        // 16-bar amplitude visualizer, y=48-63
+        for (int i = 0; i < 16; i++) {
+            int idx = (amplitudeHistoryIndex + i) % 16;
+            int barH = (int)(amplitudeHistory[idx] * 14.0f);
+            if (barH < 1 && amplitudeHistory[idx] > 0.01f) barH = 1;
+            if (barH > 0) {
+                display.fillRect(i * 8, 63 - barH, 7, barH);
+            }
+        }
     } else {
         // Playhead with elapsed / remaining time
         size_t filePos = 0, fileSize = currentTrackFileSize;

@@ -11,7 +11,7 @@
 class AudioManager;
 class ButtonManager;
 class SPARKFUN_LIS2DH12;
-// NeoPixel disabled for IRAM savings - RGBController functions are stubbed
+class Adafruit_NeoPixel;
 
 // Buttons
 extern const int button_TopLeft;
@@ -34,12 +34,6 @@ extern const int button_UpIndex;
 extern const int button_DownIndex;
 extern const int button_SelectIndex;
 extern const int button_EnterIndex;
-
-// RGBW LEDS
-extern const uint16_t pixel_Front_Top;
-extern const uint16_t pixel_Front_Middle;
-extern const uint16_t pixel_Front_Bottom;
-extern const uint16_t pixel_Back;
 
 // RGBW LEDS
 extern const uint16_t pixel_Front_Top;
@@ -107,6 +101,8 @@ namespace HAL
     void updateAccelerometer();
     void printWakeupReason();
     void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b, uint8_t w);
+    void setRgbLedsOff();
+    Adafruit_NeoPixel& strip();
 
     // Display-related methods
     DisplayProxy& displayProxy();

@@ -19,6 +19,13 @@
 #include "AudioTools/AudioLibs/A2DPStream.h"
 #include "AudioTools/Disk/AudioSourceIdxSD.h"
 #include "AudioTools/AudioCodecs/CodecMP3Helix.h"
+#include "AudioTools/CoreAudio/AudioStreams.h"  // VolumeMeter
+
+enum LEDEffectMode : uint8_t {
+    LED_OFF = 0,
+    LED_REACTIVE = 1,
+    LED_PULSE = 2
+};
 
 enum MusicAppState {
     STATE_DEVICE_MENU,      // Remembered devices + "Scan for new..."
@@ -94,8 +101,12 @@ private:
     audio_tools::AudioSourceIdxSD* pSourceSD = nullptr;
     audio_tools::MP3DecoderHelix decoder;
     audio_tools::AudioPlayer* pPlayer = nullptr;
+    audio_tools::VolumeMeter* pVolumeMeter = nullptr;
     bool sdAvailable = false;
     bool audioPipelineReady = false;
+
+    // Audio amplitude (for LED effects + visualizer)
+    float currentAmplitude = 0.0f;
 
     // SD card
     void initSD();
@@ -152,6 +163,22 @@ private:
     int marqueeOffset = 0;
     unsigned long lastMarqueeUpdate = 0;
 
+    // LED effects
+    LEDEffectMode ledEffectMode = LED_REACTIVE;
+    unsigned long lastLEDUpdate = 0;
+    float ledSmoothedAmplitude = 0.0f;
+    void updateLEDs();
+
+    // OLED visualizer
+    bool visualizerEnabled = false;
+    float amplitudeHistory[16] = {0};
+    int amplitudeHistoryIndex = 0;
+    unsigned long lastVisualizerSample = 0;
+
+    // Settings persistence (NVS)
+    void saveSettings();
+    void loadSettings();
+
     // Navigation
     void handleUp();
     void handleDown();
@@ -166,7 +193,7 @@ private:
     void setState(MusicAppState newState);
 
     // Main menu items
-    static const int MAIN_MENU_COUNT = 5;
+    static const int MAIN_MENU_COUNT = 6;
     String getMainMenuItem(int index) const;
 
     // BT submenu items

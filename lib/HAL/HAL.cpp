@@ -6,6 +6,7 @@
 #include <esp_task_wdt.h>
 #include <esp_system.h>
 #include <SSD1306Wire.h>
+#include <Adafruit_NeoPixel.h>
 
 #include "AudioManager.h"
 #include "BatteryManager.h"
@@ -23,7 +24,8 @@ constexpr int CHRG_ENA       = 13;
 constexpr int OLED_RESET     = 7;
 constexpr int VOLT_READ_PIN  = 35;  // Analog pin for slider voltage reading
 
-// RGBW LED pixel indices (kept for API compatibility even when NeoPixel is disabled)
+// RGBW LEDs (PIN_NEOPIXEL macro defined by board variant = GPIO 0)
+constexpr int RGB_COUNT    = 4;
 const uint16_t pixel_Front_Top    = 1;
 const uint16_t pixel_Front_Middle = 2;
 const uint16_t pixel_Front_Bottom = 3;
@@ -109,6 +111,9 @@ namespace {
 
     static SPARKFUN_LIS2DH12 s_accel;
     static BatteryManager s_batteryManager;
+
+    // RGBW LEDs
+    static Adafruit_NeoPixel s_rgbStrip(RGB_COUNT, 0, NEO_GRBW + NEO_KHZ800);
 
     // Real display
     static SSD1306Wire s_realDisplay(0x3C, SDA, SCL);
@@ -243,15 +248,17 @@ namespace HAL
         s_realDisplay.display();
     }
 
+    Adafruit_NeoPixel& strip() { return s_rgbStrip; }
+
     void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b, uint8_t w)
     {
-        // No-op: NeoPixel disabled for IRAM savings
-        (void)index; (void)r; (void)g; (void)b; (void)w;
+        s_rgbStrip.setPixelColor(index, s_rgbStrip.Color(r, g, b, w));
+        // No show() here — updateStrip() handles throttled show via RGBController
     }
 
     void setRgbLedsOff()
     {
-        setColorsOff(); // calls stubbed RGBController function
+        setColorsOff();
     }
 
     void chargingEnable()

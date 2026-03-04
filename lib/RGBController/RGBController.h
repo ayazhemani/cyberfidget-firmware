@@ -2,9 +2,10 @@
 #define RGBCONTROLLER_H
 
 #include <Arduino.h>
+#include <Adafruit_NeoPixel.h>
 
-// RGB LED control functions - stubbed out when NeoPixel is disabled for IRAM savings.
-// These will be re-enabled when we find IRAM headroom for the RMT driver.
+// RGB LED control functions — uses HAL::strip() for NeoPixel access.
+// updateStrip() is throttled to ~30fps via dirty flag.
 void initRGB();
 void updateStrip();
 

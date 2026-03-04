@@ -255,14 +255,24 @@ void WebPortalApp::begin() {
     btStop();
     delay(100);
 
-    // Start WiFi AP
-    WP_LOG("begin: starting WiFi AP");
-    WiFi.mode(WIFI_AP);
+    // Start WiFi in AP+STA dual mode
+    WP_LOG("begin: starting WiFi AP+STA");
+    WiFi.mode(WIFI_AP_STA);
     WiFi.softAP(AP_SSID);
     delay(100);
     WP_LOGF("begin: AP started, IP=%s", WiFi.softAPIP().toString().c_str());
 
-    // Start captive portal DNS
+    // Auto-connect to saved WiFi network (STA)
+    staConnected = false;
+    loadWifiCreds();
+
+    // mDNS: cyberfidget.local
+    if (MDNS.begin("cyberfidget")) {
+        MDNS.addService("http", "tcp", 80);
+        WP_LOG("begin: mDNS started (cyberfidget.local)");
+    }
+
+    // Start captive portal DNS (binds to AP interface only)
     dnsServer.start(53, "*", WiFi.softAPIP());
 
     // Create web server
@@ -291,12 +301,15 @@ void WebPortalApp::end() {
         server = nullptr;
     }
 
-    // Stop DNS
+    // Stop DNS + mDNS
     dnsServer.stop();
+    MDNS.end();
 
-    // Stop WiFi
+    // Stop WiFi (STA + AP)
+    WiFi.disconnect(false);
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_OFF);
+    staConnected = false;
     delay(100);
     WP_LOG("end: WiFi stopped");
 
@@ -309,6 +322,21 @@ void WebPortalApp::end() {
 void WebPortalApp::update() {
     // Keep device awake
     millis_APP_LASTINTERACTION = millis_NOW;
+
+    // Track STA connection state
+    if (staSSID.length() && !staConnected) {
+        if (WiFi.status() == WL_CONNECTED) {
+            staConnected = true;
+            WP_LOGF("STA connected, IP=%s", WiFi.localIP().toString().c_str());
+        } else if (millis() - staConnectStart > STA_TIMEOUT_MS) {
+            WP_LOG("STA connect timeout");
+            staSSID = "";
+        }
+    }
+    if (staConnected && WiFi.status() != WL_CONNECTED) {
+        staConnected = false;
+        WP_LOG("STA connection lost");
+    }
 
     // Process DNS requests for captive portal
     dnsServer.processNextRequest();
@@ -365,6 +393,51 @@ void WebPortalApp::invalidateMusicCache() {
         SD.remove(CACHE_PATH);
         WP_LOG("invalidated music cache");
     }
+}
+
+// ---------------------------------------------------------------------------
+// WiFi STA helpers
+// ---------------------------------------------------------------------------
+void WebPortalApp::loadWifiCreds() {
+    Preferences prefs;
+    prefs.begin("wificfg", true);  // read-only
+    staSSID = prefs.getString("ssid", "");
+    String pass = prefs.getString("pass", "");
+    prefs.end();
+    if (staSSID.length()) {
+        WP_LOGF("auto-connecting to: %s", staSSID.c_str());
+        WiFi.begin(staSSID.c_str(), pass.c_str());
+        staConnectStart = millis();
+    }
+}
+
+void WebPortalApp::connectSTA(const String& ssid, const String& pass, bool save) {
+    WiFi.disconnect(false);  // disconnect STA only, keep AP
+    delay(100);
+    WiFi.begin(ssid.c_str(), pass.c_str());
+    staSSID = ssid;
+    staConnectStart = millis();
+    staConnected = false;
+    WP_LOGF("connecting to: %s", ssid.c_str());
+    if (save) {
+        Preferences prefs;
+        prefs.begin("wificfg", false);
+        prefs.putString("ssid", ssid);
+        prefs.putString("pass", pass);
+        prefs.end();
+        WP_LOG("saved WiFi credentials");
+    }
+}
+
+void WebPortalApp::disconnectSTA() {
+    WiFi.disconnect(false);
+    staSSID = "";
+    staConnected = false;
+    Preferences prefs;
+    prefs.begin("wificfg", false);
+    prefs.clear();
+    prefs.end();
+    WP_LOG("WiFi credentials cleared");
 }
 
 // ---------------------------------------------------------------------------
@@ -449,6 +522,32 @@ void WebPortalApp::setupRoutes() {
     // API: Delete playlist
     server->on("/api/playlist/delete", HTTP_POST, [this](AsyncWebServerRequest* req) {
         handlePlaylistDelete(req);
+    });
+
+    // API: WiFi scan
+    server->on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest* req) {
+        handleWifiScan(req);
+    });
+
+    // API: WiFi connect (POST with JSON body)
+    server->on("/api/wifi/connect", HTTP_POST,
+        [](AsyncWebServerRequest* req) {
+            // Handled in body callback
+        },
+        nullptr,
+        [this](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t index, size_t total) {
+            handleWifiConnect(req, data, len, index, total);
+        }
+    );
+
+    // API: WiFi status
+    server->on("/api/wifi/status", HTTP_GET, [this](AsyncWebServerRequest* req) {
+        handleWifiStatus(req);
+    });
+
+    // API: WiFi forget
+    server->on("/api/wifi/forget", HTTP_POST, [this](AsyncWebServerRequest* req) {
+        handleWifiForget(req);
     });
 
     // Captive portal catch-all: redirect everything else to our page
@@ -835,6 +934,107 @@ void WebPortalApp::handlePlaylistDelete(AsyncWebServerRequest* req) {
 }
 
 // ---------------------------------------------------------------------------
+// WiFi route handlers
+// ---------------------------------------------------------------------------
+void WebPortalApp::handleWifiScan(AsyncWebServerRequest* req) {
+    int result = WiFi.scanComplete();
+
+    if (result == WIFI_SCAN_FAILED) {
+        // No scan in progress — start async scan
+        WP_LOG("WiFi scan starting (async)");
+        WiFi.scanNetworks(true);  // true = async, non-blocking
+        req->send(200, "application/json", "{\"status\":\"scanning\"}");
+        return;
+    }
+
+    if (result == WIFI_SCAN_RUNNING) {
+        // Still scanning — tell client to poll again
+        req->send(200, "application/json", "{\"status\":\"scanning\"}");
+        return;
+    }
+
+    // result >= 0: scan complete
+    WP_LOGF("WiFi scan found %d networks", result);
+    String json = "[";
+    bool first = true;
+    // Deduplicate by SSID (keep strongest signal — scan results sorted by RSSI)
+    for (int i = 0; i < result; i++) {
+        String ssid = WiFi.SSID(i);
+        if (!ssid.length()) continue;
+
+        // Check for duplicate SSID already emitted
+        bool dup = false;
+        for (int j = 0; j < i; j++) {
+            if (WiFi.SSID(j) == ssid) { dup = true; break; }
+        }
+        if (dup) continue;
+
+        if (!first) json += ",";
+        first = false;
+        json += "{\"ssid\":\"" + escJSON(ssid) + "\"";
+        json += ",\"rssi\":" + String(WiFi.RSSI(i));
+        json += ",\"secure\":" + String(WiFi.encryptionType(i) != WIFI_AUTH_OPEN ? "true" : "false");
+        json += "}";
+    }
+    WiFi.scanDelete();
+    json += "]";
+    req->send(200, "application/json", json);
+}
+
+void WebPortalApp::handleWifiConnect(AsyncWebServerRequest* req, uint8_t* data,
+                                      size_t len, size_t index, size_t total) {
+    static String body;
+    if (index == 0) body = "";
+    body += String((char*)data, len);
+
+    if (index + len >= total) {
+        // Parse JSON: {"ssid":"...","pass":"..."}
+        String ssid, pass;
+        int ssidStart = body.indexOf("\"ssid\"");
+        if (ssidStart >= 0) {
+            int valStart = body.indexOf('"', body.indexOf(':', ssidStart) + 1);
+            int valEnd = body.indexOf('"', valStart + 1);
+            if (valStart >= 0 && valEnd > valStart) ssid = body.substring(valStart + 1, valEnd);
+        }
+        int passStart = body.indexOf("\"pass\"");
+        if (passStart >= 0) {
+            int valStart = body.indexOf('"', body.indexOf(':', passStart) + 1);
+            int valEnd = body.indexOf('"', valStart + 1);
+            if (valStart >= 0 && valEnd > valStart) pass = body.substring(valStart + 1, valEnd);
+        }
+
+        if (!ssid.length()) {
+            req->send(400, "application/json", "{\"error\":\"Missing ssid\"}");
+            return;
+        }
+
+        connectSTA(ssid, pass, true);
+        req->send(200, "application/json", "{\"status\":\"connecting\"}");
+    }
+}
+
+void WebPortalApp::handleWifiStatus(AsyncWebServerRequest* req) {
+    String json = "{";
+    json += "\"connected\":" + String(staConnected ? "true" : "false");
+    if (staConnected) {
+        json += ",\"ssid\":\"" + escJSON(staSSID) + "\"";
+        json += ",\"ip\":\"" + WiFi.localIP().toString() + "\"";
+        json += ",\"mdns\":\"cyberfidget.local\"";
+    } else if (staSSID.length()) {
+        json += ",\"ssid\":\"" + escJSON(staSSID) + "\"";
+        json += ",\"status\":\"connecting\"";
+    }
+    json += ",\"ap_ip\":\"" + WiFi.softAPIP().toString() + "\"";
+    json += "}";
+    req->send(200, "application/json", json);
+}
+
+void WebPortalApp::handleWifiForget(AsyncWebServerRequest* req) {
+    disconnectSTA();
+    req->send(200, "application/json", "{\"status\":\"ok\"}");
+}
+
+// ---------------------------------------------------------------------------
 // OLED rendering
 // ---------------------------------------------------------------------------
 void WebPortalApp::render() {
@@ -859,31 +1059,34 @@ void WebPortalApp::render() {
     display.setFont(ArialMT_Plain_10);
     display.setTextAlignment(TEXT_ALIGN_LEFT);
 
-    // WiFi SSID
-    display.drawString(4, 16, String("WiFi: ") + AP_SSID);
+    // AP info
+    display.drawString(4, 16, String("AP: ") + WiFi.softAPIP().toString());
 
-    // IP address
-    display.drawString(4, 28, String("IP: ") + WiFi.softAPIP().toString());
+    // STA info
+    if (staConnected) {
+        display.drawString(4, 28, staSSID + " " + WiFi.localIP().toString());
+        display.drawString(4, 40, "cyberfidget.local");
+    } else if (staSSID.length()) {
+        display.drawString(4, 28, "Connecting: " + staSSID);
+        display.drawString(4, 40, String("Files: ") + String(fileCount));
+    } else {
+        display.drawString(4, 28, "WiFi: not connected");
+        display.drawString(4, 40, String("Files: ") + String(fileCount));
+    }
 
     if (uploadInProgress && uploadBytesTotal > 0) {
-        // Upload progress
-        display.drawString(4, 40, "Uploading...");
+        // Upload progress (overwrites bottom line)
         int pct = (int)((uint64_t)uploadBytesReceived * 100 / uploadBytesTotal);
         if (pct > 100) pct = 100;
         display.drawProgressBar(4, 54, 100, 8, pct);
         display.setTextAlignment(TEXT_ALIGN_RIGHT);
         display.drawString(124, 52, String(pct) + "%");
     } else {
-        // File count
-        display.drawString(4, 40, String("Files: ") + String(fileCount));
-
-        // Connected clients
+        // File count + clients
         int clients = WiFi.softAPgetStationNum();
-        if (clients > 0) {
-            display.drawString(4, 52, "Connected (" + String(clients) + ")");
-        } else {
-            display.drawString(4, 52, "Waiting...");
-        }
+        String info = String(fileCount) + " files";
+        if (clients > 0) info += " | " + String(clients) + " client" + (clients > 1 ? "s" : "");
+        display.drawString(4, 52, info);
     }
 
     display.display();

@@ -193,6 +193,33 @@ input[type="file"]{display:none}
 /* Empty */
 .empty{text-align:center;color:var(--text-secondary);padding:20px;font-size:0.9em}
 
+/* WiFi Settings */
+.wifi-card{background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.wifi-card h3{font-size:0.92em;margin-bottom:12px;color:var(--accent)}
+.wifi-card .info-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.88em}
+.wifi-card .info-row .label{color:var(--text-secondary)}
+.wifi-card .info-row .val{color:var(--text-primary);font-family:monospace}
+.wifi-card .info-row .val.accent{color:var(--accent)}
+.network-list{list-style:none;margin:10px 0}
+.network-list li{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius);cursor:pointer;transition:background 0.15s;font-size:0.88em}
+.network-list li:hover{background:var(--accent-dim)}
+.network-list li.selected{background:var(--accent-dim);border:1px solid var(--accent)}
+.network-list .ssid{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.network-list .signal{color:var(--text-secondary);font-size:0.82em;white-space:nowrap}
+.network-list .lock{font-size:0.8em;color:var(--text-secondary)}
+.wifi-input{width:100%;padding:8px 10px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);font-size:0.9em;margin:8px 0}
+.wifi-input:focus{border-color:var(--accent);outline:none}
+.wifi-actions{display:flex;gap:8px;margin-top:12px}
+.wifi-spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Connection status bar */
+.conn-bar{padding:6px 20px;background:var(--bg-tertiary);border-bottom:1px solid var(--border);font-size:0.78em;color:var(--text-secondary);display:flex;gap:16px;flex-wrap:wrap}
+.conn-bar .tag{display:inline-flex;align-items:center;gap:4px}
+.conn-bar .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.conn-bar .dot.on{background:var(--success)}
+.conn-bar .dot.off{background:var(--text-secondary)}
+
 /* Mobile */
 @media(max-width:700px){
   .hamburger{display:flex}
@@ -230,7 +257,6 @@ input[type="file"]{display:none}
     </div>
     <div class="nav-item" data-page="settings" onclick="showPage('settings')">
       <span class="icon">&#9881;</span> Settings
-      <span class="badge">Soon</span>
     </div>
     <div class="nav-item" data-page="live" onclick="showPage('live')">
       <span class="icon">&#9733;</span> Live Playlist
@@ -243,6 +269,11 @@ input[type="file"]{display:none}
   <div class="page-header">
     <h1 id="pageTitle">Media Manager</h1>
     <div class="status" id="statusBar">Loading...</div>
+  </div>
+
+  <div class="conn-bar" id="connBar">
+    <span class="tag"><span class="dot on"></span> AP: <span id="connAP">192.168.4.1</span></span>
+    <span class="tag" id="connSTATag" style="display:none"><span class="dot" id="connSTADot"></span> WiFi: <span id="connSTA">-</span></span>
   </div>
 
   <div class="banner" id="captiveBanner">
@@ -302,7 +333,35 @@ input[type="file"]{display:none}
   </div>
 
   <div class="content" id="settingsPage" style="display:none">
-    <div class="empty">Settings page coming soon.</div>
+    <div class="wifi-card" id="wifiStatusCard">
+      <h3>WiFi Connection</h3>
+      <div id="wifiStatusContent">
+        <div class="info-row"><span class="label">Status</span><span class="val" id="wifiStatusText">Not connected</span></div>
+      </div>
+    </div>
+
+    <div class="wifi-card">
+      <h3>Available Networks</h3>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-accent" onclick="scanWifi()" id="scanBtn">Scan for Networks</button>
+      </div>
+      <ul class="network-list" id="networkList"></ul>
+      <div id="wifiConnectForm" style="display:none">
+        <div style="font-size:0.85em;margin-bottom:4px;color:var(--text-secondary)">Connecting to: <strong id="selectedSSID" style="color:var(--text-primary)"></strong></div>
+        <input type="password" class="wifi-input" id="wifiPass" placeholder="Password (leave empty for open network)">
+        <div class="wifi-actions">
+          <button class="btn" onclick="cancelWifiConnect()">Cancel</button>
+          <button class="btn btn-accent" onclick="doWifiConnect()" id="connectBtn">Connect</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="wifi-card">
+      <h3>Access Point</h3>
+      <div class="info-row"><span class="label">SSID</span><span class="val">CyberFidget</span></div>
+      <div class="info-row"><span class="label">IP</span><span class="val accent" id="apIPDisplay">192.168.4.1</span></div>
+      <div class="info-row"><span class="label">Status</span><span class="val" style="color:var(--success)">Always available</span></div>
+    </div>
   </div>
   <div class="content" id="livePage" style="display:none">
     <div class="empty">Live collaborative playlist coming soon.</div>
@@ -814,6 +873,125 @@ function addToNewPl(){
   };
 }
 
+// ─── WiFi Settings ───
+let selectedSSID='';
+async function loadWifiStatus(){
+  try{
+    const r=await fetch('/api/wifi/status');
+    const s=await r.json();
+    const tag=$('connSTATag'),dot=$('connSTADot'),sta=$('connSTA');
+    const sc=$('wifiStatusContent');
+    $('connAP').textContent=s.ap_ip||'192.168.4.1';
+    $('apIPDisplay').textContent=s.ap_ip||'192.168.4.1';
+    if(s.connected){
+      tag.style.display='';dot.className='dot on';
+      sta.textContent=s.mdns+' ('+s.ip+')';
+      sc.innerHTML='<div class="info-row"><span class="label">Status</span><span class="val" style="color:var(--success)">Connected</span></div>'+
+        '<div class="info-row"><span class="label">Network</span><span class="val">'+esc(s.ssid)+'</span></div>'+
+        '<div class="info-row"><span class="label">IP Address</span><span class="val accent">'+s.ip+'</span></div>'+
+        '<div class="info-row"><span class="label">mDNS</span><span class="val accent">'+s.mdns+'</span></div>'+
+        '<div style="margin-top:12px"><button class="btn btn-del" onclick="forgetWifi()">Forget Network</button></div>';
+    }else if(s.ssid&&s.status==='connecting'){
+      tag.style.display='';dot.className='dot off';
+      sta.textContent='Connecting to '+s.ssid+'...';
+      sc.innerHTML='<div class="info-row"><span class="label">Status</span><span class="val"><span class="wifi-spinner"></span>Connecting to '+esc(s.ssid)+'...</span></div>';
+      setTimeout(loadWifiStatus,2000);
+    }else{
+      tag.style.display='none';
+      sc.innerHTML='<div class="info-row"><span class="label">Status</span><span class="val">Not connected</span></div>';
+    }
+  }catch(e){}
+}
+
+function signalBars(rssi){
+  const n=rssi>-50?4:rssi>-60?3:rssi>-70?2:1;
+  let b='';
+  for(let i=1;i<=4;i++)b+='<span style="display:inline-block;width:3px;height:'+(4+i*3)+'px;background:'+(i<=n?'var(--accent)':'var(--border)')+';margin-right:1px;border-radius:1px;vertical-align:bottom"></span>';
+  return b;
+}
+
+async function scanWifi(){
+  const btn=$('scanBtn');
+  btn.disabled=true;btn.innerHTML='<span class="wifi-spinner"></span>Scanning...';
+  $('networkList').innerHTML='<li class="empty" style="padding:12px">Scanning nearby networks...</li>';
+  try{
+    // Start async scan, then poll until results are ready
+    const r=await fetch('/api/wifi/scan');
+    let data=await r.json();
+    if(data.status==='scanning'){
+      // Poll until scan completes
+      let attempts=0;
+      while(attempts<15){
+        await new Promise(ok=>setTimeout(ok,500));
+        const p=await fetch('/api/wifi/scan');
+        data=await p.json();
+        if(!data.status)break; // got results (array)
+        attempts++;
+      }
+      if(data.status){$('networkList').innerHTML='<li class="empty" style="padding:12px">Scan timed out</li>';return}
+    }
+    const nets=Array.isArray(data)?data:[];
+    if(!nets.length){$('networkList').innerHTML='<li class="empty" style="padding:12px">No networks found</li>';return}
+    $('networkList').innerHTML=nets.map(n=>
+      '<li onclick="selectNetwork(\''+esc(n.ssid)+'\')">'+
+      '<span class="lock">'+(n.secure?'&#128274;':'&#128275;')+'</span>'+
+      '<span class="ssid">'+esc(n.ssid)+'</span>'+
+      '<span class="signal">'+signalBars(n.rssi)+' '+n.rssi+'</span>'+
+      '</li>'
+    ).join('');
+  }catch(e){$('networkList').innerHTML='<li class="empty" style="padding:12px">Scan failed</li>'}
+  finally{btn.disabled=false;btn.textContent='Scan for Networks'}
+}
+
+function selectNetwork(ssid){
+  selectedSSID=ssid;
+  $('selectedSSID').textContent=ssid;
+  $('wifiPass').value='';
+  $('wifiConnectForm').style.display='';
+  $('wifiPass').focus();
+  document.querySelectorAll('.network-list li').forEach(li=>{
+    li.classList.toggle('selected',li.querySelector('.ssid')?.textContent===ssid);
+  });
+}
+
+function cancelWifiConnect(){
+  $('wifiConnectForm').style.display='none';
+  selectedSSID='';
+  document.querySelectorAll('.network-list li').forEach(li=>li.classList.remove('selected'));
+}
+
+async function doWifiConnect(){
+  if(!selectedSSID)return;
+  const btn=$('connectBtn');
+  btn.disabled=true;btn.innerHTML='<span class="wifi-spinner"></span>Connecting...';
+  try{
+    await fetch('/api/wifi/connect',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ssid:selectedSSID,pass:$('wifiPass').value})});
+    $('wifiConnectForm').style.display='none';
+    toast('Connecting to '+selectedSSID+'...');
+    // Poll for connection status
+    let attempts=0;
+    const poll=async()=>{
+      const r=await fetch('/api/wifi/status');
+      const s=await r.json();
+      if(s.connected){toast('Connected to '+s.ssid+'!');loadWifiStatus();return}
+      if(++attempts<10)setTimeout(poll,2000);
+      else{toast('Connection timed out');loadWifiStatus()}
+    };
+    setTimeout(poll,2000);
+  }catch(e){toast('Connection failed')}
+  finally{btn.disabled=false;btn.textContent='Connect'}
+}
+
+async function forgetWifi(){
+  if(!confirm('Forget saved WiFi network?'))return;
+  await fetch('/api/wifi/forget',{method:'POST'});
+  toast('WiFi network forgotten');
+  loadWifiStatus();
+}
+
+$('wifiPass').addEventListener('keydown',e=>{if(e.key==='Enter')doWifiConnect()});
+
 // ─── Captive Portal Detection ───
 function detectCaptive(){
   // Android captive portal WebView and iOS CaptiveNetwork have limited file input support
@@ -834,6 +1012,7 @@ detectCaptive();
 $('searchRow').classList.add('show'); // table is default view
 loadFiles();
 loadPlaylists();
+loadWifiStatus();
 </script>
 </body>
 </html>

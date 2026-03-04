@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
+#include <ESPmDNS.h>
+#include <Preferences.h>
 
 #include "HAL.h"
 #include "AppDefs.h"
@@ -33,6 +35,12 @@ private:
     bool sdReady = false;
     int fileCount = 0;
 
+    // WiFi STA state
+    bool staConnected = false;
+    String staSSID;
+    unsigned long staConnectStart = 0;
+    static const unsigned long STA_TIMEOUT_MS = 15000;
+
     // Upload tracking (written by async handler, read by render loop)
     volatile bool uploadInProgress = false;
     volatile size_t uploadBytesReceived = 0;
@@ -43,6 +51,11 @@ private:
     void initSD();
     void countFilesRecursive(const char* dir);
     void invalidateMusicCache();
+
+    // WiFi STA helpers
+    void loadWifiCreds();
+    void connectSTA(const String& ssid, const String& pass, bool save);
+    void disconnectSTA();
 
     // Web server setup
     void setupRoutes();
@@ -60,6 +73,12 @@ private:
     void handlePlaylistGet(AsyncWebServerRequest* req);
     void handlePlaylistSave(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t index, size_t total);
     void handlePlaylistDelete(AsyncWebServerRequest* req);
+
+    // WiFi route handlers
+    void handleWifiScan(AsyncWebServerRequest* req);
+    void handleWifiConnect(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t index, size_t total);
+    void handleWifiStatus(AsyncWebServerRequest* req);
+    void handleWifiForget(AsyncWebServerRequest* req);
 
     // OLED rendering
     void render();

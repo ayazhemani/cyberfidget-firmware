@@ -1178,19 +1178,15 @@ void MusicPlayerApp::updateLEDs() {
             w = (uint8_t)(t * 30.0f);
         }
 
-        // Front 3 pixels: full color, back pixel: dimmed
-        HAL::setRgbLed(pixel_Front_Top, r, g, b, w);
-        HAL::setRgbLed(pixel_Front_Middle, r, g, b, w);
-        HAL::setRgbLed(pixel_Front_Bottom, r, g, b, w);
+        // Front 3 pixels: full color (marks dirty), back pixel: dimmed
+        setDeterminedColorsFront(r, g, b, w);
         HAL::setRgbLed(pixel_Back, r / 3, g / 3, b / 3, w / 3);
 
     } else if (ledEffectMode == LED_PULSE) {
         // Gentle breathing regardless of audio
         float pulse = (sinf(millis() / 2000.0f * 3.14159f) + 1.0f) * 0.5f;
         uint8_t b = (uint8_t)(2.0f + pulse * 6.0f);
-        HAL::setRgbLed(pixel_Front_Top, 0, 0, b, 0);
-        HAL::setRgbLed(pixel_Front_Middle, 0, 0, b, 0);
-        HAL::setRgbLed(pixel_Front_Bottom, 0, 0, b, 0);
+        setDeterminedColorsFront(0, 0, b, 0);
         HAL::setRgbLed(pixel_Back, 0, 0, b / 2, 0);
 
     } else if (ledEffectMode == LED_REACTIVE && !isPlaying) {

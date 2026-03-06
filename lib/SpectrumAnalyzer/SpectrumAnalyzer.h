@@ -25,11 +25,20 @@ public:
     static const int BAND_COUNT = 16;
     const float* bands();
 
+    /// Delayed versions — returns data from `delayMs` ago to compensate for BT latency
+    float delayedVolumeRatio();
+    const float* delayedBands();
+    void setDelayMs(int ms);
+    int getDelayMs() const { return delayMs; }
+
     /// Enable/disable FFT processing (saves CPU when spectrum viz is off)
     bool spectrumEnabled = false;
 
     /// Call from main loop to run pending FFT (keeps FFT out of audio write path)
     bool processFFT();
+
+    /// Store current amplitude in delay history (call from main loop when FFT is not running)
+    void storeDelayFrame();
 
 private:
     Print* p_out = nullptr;
@@ -69,4 +78,21 @@ private:
 
     /// In-place radix-2 Cooley-Tukey FFT
     static void fftRadix2(float* re, float* im, int n);
+
+    // Delay compensation ring buffer — stores recent analysis frames
+    // so LEDs can be delayed to match BT audio latency
+    struct AnalysisFrame {
+        float bands[BAND_COUNT];
+        float amplitude;
+        uint32_t timestamp;
+    };
+    static const int DELAY_HISTORY_SIZE = 16;  // ~350ms at ~43Hz FFT rate
+    AnalysisFrame delayHistory[DELAY_HISTORY_SIZE];
+    int delayWriteIdx = 0;
+    int delayMs = 150;  // default BT latency compensation (user-tunable)
+
+    // Fallback frame when delay buffer is empty
+    AnalysisFrame zeroBands = {};
+
+    const AnalysisFrame& findDelayedFrame() const;
 };

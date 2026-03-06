@@ -4,6 +4,7 @@
 #include <SD.h>
 #include <SPI.h>
 #include <esp_a2dp_api.h>  // esp_a2d_source_disconnect() — the correct API for source mode
+#include <esp_avrc_api.h>  // ESP_AVRC_PT_CMD_* — AVRCP passthrough key codes
 
 using namespace audio_tools;
 
@@ -209,6 +210,28 @@ void MusicPlayerApp::update() {
         btConnected = true;
     }
 
+    // Dispatch AVRCP commands from BT speaker (set from BT task callback)
+    if (pendingAvrcCmd != 0) {
+        uint8_t cmd = pendingAvrcCmd;
+        pendingAvrcCmd = 0;
+        MPLAYER_LOGF("AVRCP cmd: 0x%02x", cmd);
+        switch (cmd) {
+            case ESP_AVRC_PT_CMD_PLAY:
+            case ESP_AVRC_PT_CMD_PAUSE:
+                togglePlayPause();
+                break;
+            case ESP_AVRC_PT_CMD_STOP:
+                stopPlayback();
+                break;
+            case ESP_AVRC_PT_CMD_FORWARD:
+                nextTrack();
+                break;
+            case ESP_AVRC_PT_CMD_BACKWARD:
+                prevTrack();
+                break;
+        }
+    }
+
     // Scrub detection: if left/right held past threshold, enter scrub mode
     if (scrubButtonDir != 0 && !scrubActive &&
         millis() - scrubPressTime > SCRUB_HOLD_MS) {
@@ -250,24 +273,31 @@ void MusicPlayerApp::update() {
             pPlayer->copy();
 
             // Sample amplitude + spectrum for LED effects + visualizer
+            // Use delayed values to compensate for BT audio latency
             if (pSpectrumAnalyzer) {
                 pSpectrumAnalyzer->spectrumEnabled = (visualizerMode == VIZ_SPECTRUM);
-                currentAmplitude = pSpectrumAnalyzer->volumeRatio();
+                currentAmplitude = pSpectrumAnalyzer->delayedVolumeRatio();
 
                 if (visualizerMode == VIZ_AMPLITUDE && millis() - lastVisualizerSample > 60) {
                     amplitudeHistory[amplitudeHistoryIndex] = currentAmplitude;
                     amplitudeHistoryIndex = (amplitudeHistoryIndex + 1) % 16;
                     lastVisualizerSample = millis();
+                    // Store amplitude in delay buffer (FFT not running in this mode)
+                    pSpectrumAnalyzer->storeDelayFrame();
                 } else if (visualizerMode == VIZ_SPECTRUM) {
                     // Run pending FFT here in main loop (not in audio write path)
+                    // processFFT() also stores bands + amplitude into delay buffer
                     if (pSpectrumAnalyzer->processFFT()) {
-                        const float* raw = pSpectrumAnalyzer->bands();
+                        const float* raw = pSpectrumAnalyzer->delayedBands();
                         for (int i = 0; i < 16; i++) {
                             // Fast attack, slow decay (VFD-style)
                             if (raw[i] > spectrumBands[i]) spectrumBands[i] = raw[i];
                             else spectrumBands[i] = spectrumBands[i] * 0.85f + raw[i] * 0.15f;
                         }
                     }
+                } else {
+                    // VIZ_OFF — still store amplitude for LED reactive mode
+                    pSpectrumAnalyzer->storeDelayFrame();
                 }
             }
 
@@ -447,6 +477,14 @@ void MusicPlayerApp::startConnectingByAddress(const SavedDevice& dev) {
         // with timeout=200, it gives up after 200ms instead of looping forever.
         cfg.tx_write_timeout_ms = 200;
         pA2dpStream->begin(cfg);
+
+        // Register AVRCP Target callback for media controls from BT speaker
+        pA2dpStream->source().set_avrc_passthrough_cmd_callback(
+            [](uint8_t key_code, uint8_t key_state) {
+                // Only act on key press (state 0), not release (state 1)
+                if (key_state != 0 || !instance) return;
+                instance->pendingAvrcCmd = key_code;
+            });
     }
 
     createAudioPipeline();
@@ -897,7 +935,7 @@ String MusicPlayerApp::getBtSubMenuItem(int index) const {
 }
 
 int MusicPlayerApp::getLedSubMenuCount() const {
-    return 5; // Mode, Back, Front Top, Front Mid, Front Bottom
+    return 6; // Mode, Back, Front Top, Front Mid, Front Bottom, Sync Delay
 }
 
 String MusicPlayerApp::getLedSubMenuItem(int index) const {
@@ -908,6 +946,10 @@ String MusicPlayerApp::getLedSubMenuItem(int index) const {
         case 2: return (ledEnableMask & 0x02) ? "Front Top: On" : "Front Top: Off";
         case 3: return (ledEnableMask & 0x04) ? "Front Mid: On" : "Front Mid: Off";
         case 4: return (ledEnableMask & 0x08) ? "Front Bot: On" : "Front Bot: Off";
+        case 5: {
+            int delayMs = pSpectrumAnalyzer ? pSpectrumAnalyzer->getDelayMs() : 150;
+            return "Sync: " + String(delayMs) + "ms";
+        }
         default: return "";
     }
 }
@@ -1139,6 +1181,13 @@ void MusicPlayerApp::handleEnter() {
                     ledEnableMask ^= 0x08;
                     if (!(ledEnableMask & 0x08)) HAL::setRgbLed(pixel_Front_Bottom, 0, 0, 0, 0);
                     break;
+                case 5: // Sync Delay — cycle 0, 25, 50, ..., 300, back to 0
+                    if (pSpectrumAnalyzer) {
+                        int d = pSpectrumAnalyzer->getDelayMs() + 25;
+                        if (d > 300) d = 0;
+                        pSpectrumAnalyzer->setDelayMs(d);
+                    }
+                    break;
             }
             break;
 
@@ -1263,9 +1312,11 @@ void MusicPlayerApp::saveSettings() {
     prefs.putUChar("ledmode", (uint8_t)ledEffectMode);
     prefs.putUChar("vizmode", (uint8_t)visualizerMode);
     prefs.putUChar("ledmask", ledEnableMask);
+    prefs.putUShort("leddelay", pSpectrumAnalyzer ? pSpectrumAnalyzer->getDelayMs() : 150);
     prefs.end();
-    MPLAYER_LOGF("saveSettings: shuffle=%d led=%d vizmode=%d ledmask=0x%02X",
-        shuffleEnabled, ledEffectMode, visualizerMode, ledEnableMask);
+    MPLAYER_LOGF("saveSettings: shuffle=%d led=%d vizmode=%d ledmask=0x%02X delay=%d",
+        shuffleEnabled, ledEffectMode, visualizerMode, ledEnableMask,
+        pSpectrumAnalyzer ? pSpectrumAnalyzer->getDelayMs() : 150);
 }
 
 void MusicPlayerApp::loadSettings() {
@@ -1275,9 +1326,11 @@ void MusicPlayerApp::loadSettings() {
     ledEffectMode = (LEDEffectMode)prefs.getUChar("ledmode", LED_OFF);
     visualizerMode = (VisualizerMode)prefs.getUChar("vizmode", VIZ_OFF);
     ledEnableMask = prefs.getUChar("ledmask", 0x0F);
+    int ledDelay = prefs.getUShort("leddelay", 150);
     prefs.end();
-    MPLAYER_LOGF("loadSettings: shuffle=%d led=%d vizmode=%d ledmask=0x%02X",
-        shuffleEnabled, ledEffectMode, visualizerMode, ledEnableMask);
+    if (pSpectrumAnalyzer) pSpectrumAnalyzer->setDelayMs(ledDelay);
+    MPLAYER_LOGF("loadSettings: shuffle=%d led=%d vizmode=%d ledmask=0x%02X delay=%d",
+        shuffleEnabled, ledEffectMode, visualizerMode, ledEnableMask, ledDelay);
 }
 
 // =========================================================================

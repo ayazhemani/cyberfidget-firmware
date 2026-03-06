@@ -119,6 +119,14 @@ size_t SpectrumAnalyzer::write(const uint8_t* data, size_t len) {
 bool SpectrumAnalyzer::processFFT() {
     if (!fftPending) return false;
     runFFT();
+
+    // Store current analysis in delay history ring buffer
+    AnalysisFrame& frame = delayHistory[delayWriteIdx];
+    memcpy(frame.bands, bandMagnitudes, sizeof(bandMagnitudes));
+    frame.amplitude = peakVolume;
+    frame.timestamp = millis();
+    delayWriteIdx = (delayWriteIdx + 1) % DELAY_HISTORY_SIZE;
+
     sampleIdx = 0;
     fftPending = false;
     return true;
@@ -165,6 +173,43 @@ void SpectrumAnalyzer::runFFT() {
 
 float SpectrumAnalyzer::volumeRatio() { return peakVolume; }
 const float* SpectrumAnalyzer::bands() { return bandMagnitudes; }
+
+void SpectrumAnalyzer::setDelayMs(int ms) { delayMs = ms; }
+
+void SpectrumAnalyzer::storeDelayFrame() {
+    AnalysisFrame& frame = delayHistory[delayWriteIdx];
+    memcpy(frame.bands, bandMagnitudes, sizeof(bandMagnitudes));
+    frame.amplitude = peakVolume;
+    frame.timestamp = millis();
+    delayWriteIdx = (delayWriteIdx + 1) % DELAY_HISTORY_SIZE;
+}
+
+// Find the frame closest to (now - delayMs) in the ring buffer
+const SpectrumAnalyzer::AnalysisFrame& SpectrumAnalyzer::findDelayedFrame() const {
+    if (delayMs <= 0) return delayHistory[(delayWriteIdx - 1 + DELAY_HISTORY_SIZE) % DELAY_HISTORY_SIZE];
+    uint32_t target = millis() - delayMs;
+    int bestIdx = -1;
+    uint32_t bestDiff = UINT32_MAX;
+    for (int i = 0; i < DELAY_HISTORY_SIZE; i++) {
+        if (delayHistory[i].timestamp == 0) continue;  // unused slot
+        uint32_t diff = (target >= delayHistory[i].timestamp)
+            ? (target - delayHistory[i].timestamp)
+            : (delayHistory[i].timestamp - target);
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            bestIdx = i;
+        }
+    }
+    return (bestIdx >= 0) ? delayHistory[bestIdx] : zeroBands;
+}
+
+float SpectrumAnalyzer::delayedVolumeRatio() {
+    return findDelayedFrame().amplitude;
+}
+
+const float* SpectrumAnalyzer::delayedBands() {
+    return findDelayedFrame().bands;
+}
 
 // ---------------------------------------------------------------------------
 // Radix-2 Cooley-Tukey FFT (in-place, iterative)

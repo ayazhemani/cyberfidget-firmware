@@ -103,6 +103,9 @@ private:
     unsigned long switchStartTime = 0;
     bool switchWaitingForDisconnect = true;
 
+    // AVRCP remote command (set from BT task, consumed in update())
+    volatile uint8_t pendingAvrcCmd = 0;
+
     // Audio pipeline (heap-allocated for lifecycle management)
     audio_tools::A2DPStream* pA2dpStream = nullptr;
     audio_tools::AudioSourceIdxSD* pSourceSD = nullptr;

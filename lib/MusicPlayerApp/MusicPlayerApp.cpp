@@ -479,11 +479,11 @@ void MusicPlayerApp::startConnectingByAddress(const SavedDevice& dev) {
         pA2dpStream->begin(cfg);
 
         // Register AVRCP Target callback for media controls from BT speaker
-        pA2dpStream->source().set_avrc_passthrough_cmd_callback(
-            [](uint8_t key_code, uint8_t key_state) {
-                // Only act on key press (state 0), not release (state 1)
-                if (key_state != 0 || !instance) return;
-                instance->pendingAvrcCmd = key_code;
+        pA2dpStream->source().set_avrc_passthru_command_callback(
+            [](uint8_t key, bool isReleased) {
+                // Only act on key press, not release
+                if (isReleased || !instance) return;
+                instance->pendingAvrcCmd = key;
             });
     }
 

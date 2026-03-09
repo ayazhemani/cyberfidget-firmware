@@ -1,4 +1,5 @@
 #include "MusicPlayerApp.h"
+#include "AudioManager.h"
 #include "RGBController.h"
 #include "globals.h"        // millis_APP_LASTINTERACTION (sleep prevention)
 #include <SD.h>
@@ -134,6 +135,7 @@ void MusicPlayerApp::begin() {
     menuScrollOffset = 0;
     isPlaying = false;
     btConnected = false;
+    usingOnboardSpeaker = false;
     // NOTE: audioPipelineReady is NOT reset — the pipeline persists across
     // app enter/exit cycles. Recreating it after active playback crashes.
     nowPlayingTitle = "";
@@ -205,7 +207,7 @@ void MusicPlayerApp::update() {
     }
 
     // Detect BT reconnect (heartbeat auto-reconnect recovered the connection)
-    if (pA2dpStream && pA2dpStream->isConnected() && !btConnected) {
+    if (!usingOnboardSpeaker && pA2dpStream && pA2dpStream->isConnected() && !btConnected) {
         MPLAYER_LOG("update: BT reconnected (heartbeat recovery)");
         btConnected = true;
     }
@@ -264,7 +266,8 @@ void MusicPlayerApp::update() {
     // Drive audio pipeline only while playing
     if (isPlaying && audioPipelineReady && pPlayer) {
         // Detect BT disconnect during playback — stop before copy() blocks
-        if (pA2dpStream && !pA2dpStream->isConnected()) {
+        // (not applicable when using onboard speaker)
+        if (!usingOnboardSpeaker && pA2dpStream && !pA2dpStream->isConnected()) {
             MPLAYER_LOG("update: BT disconnected during playback, stopping");
             stopPlayback();
             btConnected = false;
@@ -424,6 +427,17 @@ void MusicPlayerApp::startConnectingByAddress(const SavedDevice& dev) {
         scannerActive = false;
     }
 
+    // If switching from onboard speaker, tear down I2S pipeline first
+    if (usingOnboardSpeaker) {
+        MPLAYER_LOG("startConnectingByAddress: switching from onboard speaker");
+        stopPlayback();
+        // Clean up I2S pipeline objects so BT can rebuild fresh
+        if (pSpectrumAnalyzer) { delete pSpectrumAnalyzer; pSpectrumAnalyzer = nullptr; }
+        if (pPlayer) { delete pPlayer; pPlayer = nullptr; }
+        audioPipelineReady = false;
+        stopOnboardSpeaker();
+    }
+
     connectingDeviceName = dev.name;
     btConnected = false;
 
@@ -493,17 +507,91 @@ void MusicPlayerApp::startConnectingByAddress(const SavedDevice& dev) {
     setState(STATE_BT_CONNECTING);
 }
 
+void MusicPlayerApp::startOnboardSpeaker() {
+    MPLAYER_LOG("startOnboardSpeaker: enter");
+
+    // If currently connected to BT, disconnect first
+    if (pA2dpStream && pA2dpStream->isConnected()) {
+        stopPlayback();
+        disconnectBT();
+    }
+
+    usingOnboardSpeaker = true;
+    btConnected = false;
+    connectedDeviceName = "Onboard Speaker";
+
+    // Release AudioManager's I2S port 0 so we can use it
+    HAL::audioManager().releaseI2S();
+
+    // Create I2S output stream for MAX98357A DAC
+    if (!pI2sOut) {
+        pI2sOut = new I2SStream();
+        auto cfg = pI2sOut->defaultConfig(TX_MODE);
+        cfg.port_no         = 0;
+        cfg.i2s_format      = I2S_LSB_FORMAT;
+        cfg.pin_ws          = 27;   // LRCLK
+        cfg.pin_bck         = 26;   // BCLK
+        cfg.pin_data        = 14;   // DOUT
+        cfg.sample_rate     = 44100;
+        cfg.channels        = 2;
+        cfg.bits_per_sample = 16;
+        cfg.buffer_count    = 8;
+        cfg.buffer_size     = 512;
+        pI2sOut->begin(cfg);
+
+        // Volume control wrapper for I2S output
+        pI2sVolume = new VolumeStream(*pI2sOut);
+        auto vcfg = pI2sVolume->defaultConfig();
+        vcfg.sample_rate     = 44100;
+        vcfg.channels        = 2;
+        vcfg.bits_per_sample = 16;
+        pI2sVolume->begin(vcfg);
+        pI2sVolume->setVolume(0.7f);
+    }
+
+    createAudioPipeline();
+    setState(STATE_MAIN_MENU);
+    MPLAYER_LOG("startOnboardSpeaker: ready");
+}
+
+void MusicPlayerApp::stopOnboardSpeaker() {
+    if (!usingOnboardSpeaker) return;
+    MPLAYER_LOG("stopOnboardSpeaker: enter");
+
+    usingOnboardSpeaker = false;
+
+    if (pI2sVolume) {
+        pI2sVolume->end();
+        delete pI2sVolume;
+        pI2sVolume = nullptr;
+    }
+    if (pI2sOut) {
+        pI2sOut->end();
+        delete pI2sOut;
+        pI2sOut = nullptr;
+    }
+
+    // Give AudioManager its I2S port back
+    HAL::audioManager().reclaimI2S();
+    MPLAYER_LOG("stopOnboardSpeaker: I2S returned to AudioManager");
+}
+
 void MusicPlayerApp::createAudioPipeline() {
-    if (audioPipelineReady || !pA2dpStream) return;
+    if (audioPipelineReady) return;
+    // Need at least one output stream
+    if (!pA2dpStream && !pI2sVolume) return;
 
     if (sdAvailable && !pSourceSD) {
         pSourceSD = new AudioSourceIdxSD(MEDIA_DIR, "mp3", PIN_SD_CS);
     }
 
     if (pSourceSD) {
-        // Insert SpectrumAnalyzer between player and A2DP output for amplitude + FFT
+        // Insert SpectrumAnalyzer between player and output (BT or I2S)
         if (!pSpectrumAnalyzer) {
-            pSpectrumAnalyzer = new SpectrumAnalyzer(*pA2dpStream);
+            Print& outputStream = usingOnboardSpeaker
+                ? static_cast<Print&>(*pI2sVolume)
+                : static_cast<Print&>(*pA2dpStream);
+            pSpectrumAnalyzer = new SpectrumAnalyzer(outputStream);
             pSpectrumAnalyzer->begin(44100, 2, 16);
         }
         pPlayer = new AudioPlayer(*pSourceSD, *pSpectrumAnalyzer, decoder);
@@ -557,15 +645,30 @@ void MusicPlayerApp::destroyAudioPipeline() {
     isPlaying = false;
     // NOTE: Don't call pPlayer->stop() here — stopPlayback() handles it.
 
+    if (usingOnboardSpeaker) {
+        // Clean up I2S output — safe to fully tear down unlike BT
+        stopOnboardSpeaker();
+        // SpectrumAnalyzer's output pointer is now invalid — must recreate next time
+        if (pSpectrumAnalyzer) {
+            delete pSpectrumAnalyzer;
+            pSpectrumAnalyzer = nullptr;
+        }
+        if (pPlayer) {
+            delete pPlayer;
+            pPlayer = nullptr;
+        }
+        audioPipelineReady = false;
+    } else {
 #if MUSIC_PLAYER_DISCONNECT_ON_EXIT
-    disconnectBT();
+        disconnectBT();
 #else
-    // Keep BT connected on exit — avoids BT stack degradation from
-    // repeated disconnect/reconnect cycles. On re-entry, isConnected()
-    // fast path skips straight to main menu.
-    MPLAYER_LOG("destroyAudioPipeline: keeping BT connected (DISCONNECT_ON_EXIT=0)");
-    btConnected = false;
+        // Keep BT connected on exit — avoids BT stack degradation from
+        // repeated disconnect/reconnect cycles. On re-entry, isConnected()
+        // fast path skips straight to main menu.
+        MPLAYER_LOG("destroyAudioPipeline: keeping BT connected (DISCONNECT_ON_EXIT=0)");
+        btConnected = false;
 #endif
+    }
     MPLAYER_LOG("destroyAudioPipeline: done");
 }
 
@@ -733,12 +836,17 @@ void MusicPlayerApp::stopPlayback() {
     MPLAYER_LOG("stopPlayback: enter");
     isPlaying = false;
     if (pPlayer) {
-        // Disable auto-fade before stopping. Auto-fade writes silence (2KB+)
-        // to the A2DPStream output, which hangs after multiple BT disconnect/
-        // reconnect cycles due to accumulated BT stack state corruption.
-        pPlayer->setAutoFade(false);
+        if (!usingOnboardSpeaker) {
+            // Disable auto-fade before stopping. Auto-fade writes silence (2KB+)
+            // to the A2DPStream output, which hangs after multiple BT disconnect/
+            // reconnect cycles due to accumulated BT stack state corruption.
+            // Safe to leave auto-fade on for I2S output.
+            pPlayer->setAutoFade(false);
+        }
         pPlayer->stop();
-        pPlayer->setAutoFade(true);
+        if (!usingOnboardSpeaker) {
+            pPlayer->setAutoFade(true);
+        }
     }
     MPLAYER_LOG("stopPlayback: done");
 }
@@ -784,12 +892,17 @@ void MusicPlayerApp::togglePlayPause() {
 }
 
 void MusicPlayerApp::updateVolumeFromSlider() {
-    if (!pA2dpStream || !pA2dpStream->isConnected()) return;
     // Invert slider direction so "up" = louder
     float vol = (100.0f - sliderPosition_Percentage_Filtered) / 100.0f;
     static float lastVol = -1.0;
     if (abs(vol - lastVol) > 0.03) {
-        pA2dpStream->setVolume(vol);
+        if (usingOnboardSpeaker && pI2sVolume) {
+            pI2sVolume->setVolume(vol);
+        } else if (pA2dpStream && pA2dpStream->isConnected()) {
+            pA2dpStream->setVolume(vol);
+        } else {
+            return;  // No output available
+        }
         lastVol = vol;
         lastVolumeChangeTime = millis();  // Trigger volume overlay in UI
     }
@@ -884,7 +997,7 @@ void MusicPlayerApp::resetCursor() {
 int MusicPlayerApp::getListSize() const {
     switch (currentState) {
         case STATE_DEVICE_MENU:
-            return savedDevices.size() + 1; // +1 for "Scan for new..."
+            return savedDevices.size() + 2; // +1 for "Onboard Speaker", +1 for "Scan for new..."
         case STATE_BT_SCANNING:
             return btScanner.getResultCount();
         case STATE_MAIN_MENU:
@@ -914,7 +1027,7 @@ String MusicPlayerApp::getMainMenuItem(int index) const {
         case 0: return "Now Playing";
         case 1: return "Browse Songs";
         case 2: return shuffleEnabled ? "Shuffle: On" : "Shuffle: Off";
-        case 3: return "Bluetooth";
+        case 3: return usingOnboardSpeaker ? "Output" : "Bluetooth";
         case 4: return "LEDs";
         case 5: return "Exit";
         default: return "";
@@ -922,10 +1035,18 @@ String MusicPlayerApp::getMainMenuItem(int index) const {
 }
 
 int MusicPlayerApp::getBtSubMenuCount() const {
+    if (usingOnboardSpeaker) return 2; // Status, Switch Output
     return 3; // Status, Disconnect, Forget All
 }
 
 String MusicPlayerApp::getBtSubMenuItem(int index) const {
+    if (usingOnboardSpeaker) {
+        switch (index) {
+            case 0: return "Output: Onboard Speaker";
+            case 1: return "Switch Output...";
+            default: return "";
+        }
+    }
     switch (index) {
         case 0: return btConnected ? ("Connected: " + connectedDeviceName) : "Not Connected";
         case 1: return "Disconnect";
@@ -1055,10 +1176,13 @@ void MusicPlayerApp::handleRight() {
 void MusicPlayerApp::handleEnter() {
     switch (currentState) {
         case STATE_DEVICE_MENU: {
-            if (menuCursorIndex < (int)savedDevices.size()) {
-                // Copy device data before saveDevice() modifies the vector
-                // (erase + insert invalidates references)
-                SavedDevice dev = savedDevices[menuCursorIndex];
+            if (menuCursorIndex == 0) {
+                // "Onboard Speaker" selected
+                startOnboardSpeaker();
+            } else if (menuCursorIndex <= (int)savedDevices.size()) {
+                // Saved BT device selected (index shifted by 1 for Onboard Speaker)
+                int devIdx = menuCursorIndex - 1;
+                SavedDevice dev = savedDevices[devIdx];
                 saveDevice(dev.name, dev.address); // Move to front
                 startConnectingByAddress(dev);
             } else {
@@ -1140,21 +1264,32 @@ void MusicPlayerApp::handleEnter() {
             break;
 
         case STATE_BT_SUBMENU:
-            switch (menuCursorIndex) {
-                case 0: // Status (info only)
-                    break;
-                case 1: { // Disconnect — always disconnects (explicit user action)
-                    stopPlayback();
-                    disconnectBT();
-                    setState(STATE_DEVICE_MENU);
-                    break;
+            if (usingOnboardSpeaker) {
+                switch (menuCursorIndex) {
+                    case 0: break; // Status (info only)
+                    case 1: // Switch Output — tear down I2S and go to device menu
+                        stopPlayback();
+                        destroyAudioPipeline();
+                        setState(STATE_DEVICE_MENU);
+                        break;
                 }
-                case 2: { // Forget All
-                    forgetAllDevices();
-                    stopPlayback();
-                    disconnectBT();
-                    setState(STATE_DEVICE_MENU);
-                    break;
+            } else {
+                switch (menuCursorIndex) {
+                    case 0: // Status (info only)
+                        break;
+                    case 1: { // Disconnect — always disconnects (explicit user action)
+                        stopPlayback();
+                        disconnectBT();
+                        setState(STATE_DEVICE_MENU);
+                        break;
+                    }
+                    case 2: { // Forget All
+                        forgetAllDevices();
+                        stopPlayback();
+                        disconnectBT();
+                        setState(STATE_DEVICE_MENU);
+                        break;
+                    }
                 }
             }
             break;
@@ -1378,9 +1513,10 @@ void MusicPlayerApp::drawScrollBar(int totalItems, int visibleItems, int scrollO
 }
 
 void MusicPlayerApp::renderDeviceMenu() {
-    drawHeader("Bluetooth");
+    drawHeader("Audio Output");
 
     std::vector<String> items;
+    items.push_back("Onboard Speaker");
     for (const auto& dev : savedDevices) {
         items.push_back(dev.name);
     }
@@ -1471,7 +1607,7 @@ void MusicPlayerApp::renderMainMenu() {
 }
 
 void MusicPlayerApp::renderBtSubMenu() {
-    drawHeader("Bluetooth");
+    drawHeader(usingOnboardSpeaker ? "Output" : "Bluetooth");
 
     std::vector<String> items;
     int count = getBtSubMenuCount();
@@ -1513,8 +1649,15 @@ void MusicPlayerApp::renderFileBrowser() {
 void MusicPlayerApp::renderPlayer() {
     drawHeader("Now Playing");
 
-    // BT icon top-left (drawn over white header in black) — shifted right 3px
-    if (btConnected) {
+    // Output icon top-left (drawn over white header in black) — shifted right 3px
+    if (usingOnboardSpeaker) {
+        // Speaker icon: simple 5-char glyph drawn as text
+        display.setColor(BLACK);
+        display.setFont(ArialMT_Plain_10);
+        display.setTextAlignment(TEXT_ALIGN_LEFT);
+        display.drawString(2, 1, "spk");
+        display.setColor(WHITE);
+    } else if (btConnected) {
         display.setColor(BLACK);
         display.drawXbm(5, 2, BT_ICON_WIDTH, BT_ICON_HEIGHT, bt_icon_bits);
         display.setColor(WHITE);

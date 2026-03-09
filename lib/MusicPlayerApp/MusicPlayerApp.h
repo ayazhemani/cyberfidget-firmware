@@ -17,8 +17,11 @@
 #include "AudioTools/Disk/AudioSource.h"
 #include "AudioTools/CoreAudio/AudioPlayer.h"
 #include "AudioTools/AudioLibs/A2DPStream.h"
+#include "AudioTools/CoreAudio/AudioStreams.h"
 #include "AudioTools/Disk/AudioSourceIdxSD.h"
 #include "AudioTools/AudioCodecs/CodecMP3Helix.h"
+#include "AudioTools/CoreAudio/AudioI2S/I2SStream.h"
+#include "AudioTools/CoreAudio/VolumeStream.h"
 #include "SpectrumAnalyzer.h"
 
 enum VisualizerMode : uint8_t {
@@ -106,8 +109,13 @@ private:
     // AVRCP remote command (set from BT task, consumed in update())
     volatile uint8_t pendingAvrcCmd = 0;
 
+    // Audio output mode
+    bool usingOnboardSpeaker = false;  // true = I2S DAC, false = BT A2DP
+
     // Audio pipeline (heap-allocated for lifecycle management)
     audio_tools::A2DPStream* pA2dpStream = nullptr;
+    audio_tools::I2SStream* pI2sOut = nullptr;         // I2S output for onboard speaker
+    audio_tools::VolumeStream* pI2sVolume = nullptr;   // Volume control for I2S output
     audio_tools::AudioSourceIdxSD* pSourceSD = nullptr;
     audio_tools::MP3DecoderHelix decoder;
     audio_tools::AudioPlayer* pPlayer = nullptr;
@@ -123,6 +131,8 @@ private:
 
     // Connection lifecycle
     void startConnectingByAddress(const SavedDevice& dev);
+    void startOnboardSpeaker();
+    void stopOnboardSpeaker();
     void createAudioPipeline();
     void destroyAudioPipeline();
     void disconnectBT();

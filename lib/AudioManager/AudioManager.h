@@ -21,6 +21,10 @@ public:
     void playTone(float frequency, int durationMs = 0); // 0 = indefinite
     void stopTone();
     
+    // I2S port sharing — music player needs I2S0 for onboard speaker output
+    void releaseI2S();   // Stop I2S TX so another stream can use port 0
+    void reclaimI2S();   // Restart I2S TX for tone generation
+
     // Mic control
     void enableMic(bool on);
     bool isMicEnabled() const { return micEnabled; }

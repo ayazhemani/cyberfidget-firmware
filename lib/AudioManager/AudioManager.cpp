@@ -112,6 +112,25 @@ void AudioManager::stopTone() {
         // volume.setVolume(0.0f); // optional instant silence
     }
 }
+void AudioManager::releaseI2S() {
+    stopTone();
+    i2s.end();
+}
+
+void AudioManager::reclaimI2S() {
+    auto cfg = i2s.defaultConfig(TX_MODE);
+    cfg.port_no         = 0;
+    cfg.i2s_format      = I2S_LSB_FORMAT;
+    cfg.pin_ws          = 27;
+    cfg.pin_bck         = 26;
+    cfg.pin_data        = 14;
+    cfg.channels        = 2;
+    cfg.bits_per_sample = 16;
+    cfg.buffer_count    = 12;
+    cfg.buffer_size     = 256;
+    i2s.begin(cfg);
+}
+
 void AudioManager::enableMic(bool on) {
     micRunRequested = on; // task will do the rest
 }

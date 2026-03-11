@@ -6,12 +6,11 @@
 #include <Arduino.h>
 #include "ButtonManager.h"
 #include "DisplayProxy.h"
-#include "ClockDisplay.h"
 
 class PowerManager {
 public:
     // Constructor
-    PowerManager(ButtonManager& buttonManager, ClockDisplay& clockDisplay);
+    PowerManager(ButtonManager& buttonManager);
 
     // Initialize the power manager
     void begin();
@@ -33,7 +32,7 @@ public:
 private:
     // The function to display the shutdown screen
     void drawShutdownScreen();
-    
+
     // The callback function for button press event
     static void onButtonPressCallback(const ButtonEvent &event);
     static void onButtonBackPressed(const ButtonEvent& event);
@@ -41,7 +40,6 @@ private:
     // Reference to display and buttonManager
     DisplayProxy& display;
     ButtonManager& buttonManager;
-    ClockDisplay& clockDisplay;
 
     // Add a static instance reference
     static PowerManager* instance;

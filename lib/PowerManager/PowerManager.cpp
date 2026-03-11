@@ -4,16 +4,15 @@
 #include "HAL.h"
 #include "MenuManager.h"
 
-PowerManager powermanager(HAL::buttonManager(), clockDisplay);
+PowerManager powermanager(HAL::buttonManager());
 
 // Initialize the static instance reference
 PowerManager* PowerManager::instance = nullptr;
 
-PowerManager::PowerManager(ButtonManager& btnMgr, ClockDisplay& clkDsply)
-    : display(HAL::displayProxy()), 
-    buttonManager(btnMgr), 
-    clockDisplay(clkDsply), 
-    lastTapTime(0) 
+PowerManager::PowerManager(ButtonManager& btnMgr)
+    : display(HAL::displayProxy()),
+    buttonManager(btnMgr),
+    lastTapTime(0)
 {
     // Set the static instance to this object
     instance = this;
@@ -63,9 +62,7 @@ void PowerManager::onButtonPressCallback(const ButtonEvent &event) {
                 instance->display.setFont(ArialMT_Plain_10);
                 instance->display.drawString(64, 30, "Powering off...");
                 instance->display.display();
-                
-                // Optional: save state before sleep
-                instance->clockDisplay.saveTime();  // Commented out if using external display manager call
+
                 instance->buttonManager.saveButtonCounters();
 
                 delay(500);
@@ -85,34 +82,33 @@ void PowerManager::onButtonBackPressed(const ButtonEvent& event)
         ESP_LOGI(TAG_MAIN, "onButtonBackPressed => calling end() + returning to menu...");
         instance->end();
         MenuManager::instance().returnToMenu();
-    } 
+    }
 }
 
 void PowerManager::deepSleep() {
     // Go to deep sleep
     if(preventSleepWhileCharging){
         if(batteryChangeRate < sleepChargingChangeThreshold){ // If discharging greater than 10% per hour, shut down
-            clockDisplay.saveTime(); // Save the current clock time to Preferences so that it can be recovered later.
             instance->buttonManager.saveButtonCounters();
-            
+
             ESP_LOGI(TAG_MAIN, "Going to sleep now...");
-            
+
             display.clear();
             display.setFont(ArialMT_Plain_10);
             display.drawString(64, 20, "Going to sleep now...");
             display.display();
-            
+
             delay(3000);
             esp_deep_sleep_start();
         }
         } else {
             ESP_LOGI(TAG_MAIN, "Going to sleep now...");
-        
+
             display.clear();
             display.setFont(ArialMT_Plain_10);
             display.drawString(64, 20, "Going to sleep now...");
             display.display();
-        
+
             delay(3000);
             esp_deep_sleep_start();
         }

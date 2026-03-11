@@ -1,18 +1,8 @@
 /**
- * The user (or developer) adds lines here. 
- * The macro is spelled "APP_ENTRY" so we can expand it in multiple ways.
+ * CyberFidget App Manifest
  *
  * Format:
  *   APP_ENTRY(EnumName, "Menu Label", "CategoryPath", beginFunc, endFunc, runFunc)
- *
- * - "CategoryPath" can be something like:
- *       "Screensavers"
- *       "Games"
- *       "Tools/WiFi"
- *       "Music/Player"
- *   etc. 
- *
- * If you want an app at the root, you can specify "" or "Root" or whatever system you prefer.
  */
 
 // MUST include app in AppManifest_Includes.h if it is not already included
@@ -44,28 +34,13 @@ APP_ENTRY(APP_EXAMPLE_BUTTONCOUNTERS,"Button Counters",     "Examples",       []
 APP_ENTRY(APP_EXAMPLE_TIMEONCOUNTER, "Time On Counter",     "Examples",       [](){ timeOnCounterApp.begin();                }, [](){ timeOnCounterApp.end();                }, [](){ timeOnCounterApp.update();                })
 APP_ENTRY(APP_EXAMPLE_PROGRESSBAR,   "Progress Bar",        "Examples",       [](){ progressBarApp.begin();                  }, [](){ progressBarApp.end();                  }, [](){ progressBarApp.update();                  })
 APP_ENTRY(APP_REACTION_TIME,         "Reaction Time",       "Games",          [](){ reactionTimeGame.begin();                }, [](){ reactionTimeGame.end();                }, [](){ reactionTimeGame.update();                })
-APP_ENTRY(APP_WIFI_MANAGER,          "WiFi Manager",        "Tools",          [](){ wifiManagerCF_App.begin();               }, [](){ wifiManagerCF_App.end();               }, [](){ wifiManagerCF_App.update();               })
 APP_ENTRY(APP_SERIAL_DISPLAY,        "Serial Display",      "Tools",          [](){ serialDisplayApp.begin();                }, [](){ serialDisplayApp.end();                }, [](){ serialDisplayApp.update();                })
 APP_ENTRY(APP_STRATAGEM_GAME,        "Stratagem",           "Games",          [](){ stratagemGame.begin();                   }, [](){ stratagemGame.end();                   }, [](){ stratagemGame.update();                   })
 APP_ENTRY(APP_GRAVEYARDSCREENSAVER,  "Graveyard",           "Screensavers",   [](){ graveyardScreensaverApp.begin();         }, [](){ graveyardScreensaverApp.end();         }, [](){ graveyardScreensaverApp.update();         })
-APP_ENTRY(
-       APP_GHOSTS,
-       "Ghosts",
-       "Screensavers",
-       [](){ ghostsApp.begin(); },
-       [](){ ghostsApp.end(); },
-       [](){ ghostsApp.update(); }
-   )
-
-APP_ENTRY(
-       APP_EYE,
-       "Eye",
-       "Screensavers",
-       [](){ eyeApp.begin(); },
-       [](){ eyeApp.end(); },
-       [](){ eyeApp.update(); }
-   )
-
-
-//
-// ... more lines as needed ...
+APP_ENTRY(APP_GHOSTS,                "Ghosts",              "Screensavers",   [](){ ghostsApp.begin();                       }, [](){ ghostsApp.end();                       }, [](){ ghostsApp.update();                       })
+APP_ENTRY(APP_EYE,                   "Eye",                 "Screensavers",   [](){ eyeApp.begin();                          }, [](){ eyeApp.end();                          }, [](){ eyeApp.update();                          })
+APP_ENTRY(APP_CYBERFIDGIE,           "CyberFidgie",         "Screensavers",   [](){ myScreensaverApp.begin();                }, [](){ myScreensaverApp.end();                }, [](){ myScreensaverApp.update();                })
+APP_ENTRY(APP_SPLOOTY,               "Splooty",             "Screensavers",   [](){ splootyApp.begin();                      }, [](){ splootyApp.end();                      }, [](){ splootyApp.update();                      })
+APP_ENTRY(APP_SPACESHIP,             "Spaceship",           "Games",          [](){ spaceshipApp.begin();                    }, [](){ spaceshipApp.end();                    }, [](){ spaceshipApp.update();                    })
+APP_ENTRY(APP_MUSIC_PLAYER,          "Music Player",        "Media",          [](){ musicPlayerApp.begin();                  }, [](){ musicPlayerApp.end();                  }, [](){ musicPlayerApp.update();                  })
+APP_ENTRY(APP_WEB_PORTAL,            "CyberFidget Portal",  "Tools",          [](){ webPortalApp.begin();                    }, [](){ webPortalApp.end();                    }, [](){ webPortalApp.update();                    })

@@ -11,7 +11,6 @@
 class AudioManager;
 class ButtonManager;
 class SPARKFUN_LIS2DH12;
-class WiFiManagerCF;
 class Adafruit_NeoPixel;
 
 // Buttons
@@ -35,12 +34,6 @@ extern const int button_UpIndex;
 extern const int button_DownIndex;
 extern const int button_SelectIndex;
 extern const int button_EnterIndex;
-
-// RGBW LEDS
-extern const uint16_t pixel_Front_Top;
-extern const uint16_t pixel_Front_Middle;
-extern const uint16_t pixel_Front_Bottom;
-extern const uint16_t pixel_Back;
 
 // RGBW LEDS
 extern const uint16_t pixel_Front_Top;
@@ -95,11 +88,7 @@ namespace HAL
     ButtonManager& buttonManager();
 
     SPARKFUN_LIS2DH12& accelerometer();
-    WiFiManagerCF& wifiManagerCF();
 
-    // Class accessor
-    Adafruit_NeoPixel& strip(); 
-    
     // If you want to set wake pins, deep sleep, etc. directly from AppManager
     void configureWakeupPins();
     void enterDeepSleep();
@@ -112,6 +101,8 @@ namespace HAL
     void updateAccelerometer();
     void printWakeupReason();
     void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b, uint8_t w);
+    void setRgbLedsOff();
+    Adafruit_NeoPixel& strip();
 
     // Display-related methods
     DisplayProxy& displayProxy();

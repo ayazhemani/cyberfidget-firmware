@@ -19,11 +19,11 @@ PixelWaterfallGame::PixelWaterfallGame(ButtonManager& btnMgr)
 
 void PixelWaterfallGame::begin() {
     resetPixels();
-    buttonManager.registerCallback(BTN_BACK, ButtonManager::PRESS, onBackPressed);
+    buttonManager.registerCallback(button_SelectIndex, onBackPressed);
 }
 
 void PixelWaterfallGame::end() {
-    buttonManager.unregisterCallback(BTN_BACK, ButtonManager::PRESS, onBackPressed);
+    buttonManager.unregisterCallback(button_SelectIndex);
     pixels.clear();
     pixels.shrink_to_fit();
 }

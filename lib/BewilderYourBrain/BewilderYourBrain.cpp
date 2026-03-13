@@ -19,11 +19,11 @@ BewilderYourBrain::BewilderYourBrain(ButtonManager& btnMgr)
 void BewilderYourBrain::begin() {
     initializeLines();
     lastUpdateTime = millis();
-    buttonManager.registerCallback(BTN_BACK, ButtonManager::PRESS, onBackPressed);
+    buttonManager.registerCallback(button_SelectIndex, onBackPressed);
 }
 
 void BewilderYourBrain::end() {
-    buttonManager.unregisterCallback(BTN_BACK, ButtonManager::PRESS, onBackPressed);
+    buttonManager.unregisterCallback(button_SelectIndex);
 }
 
 void BewilderYourBrain::update() {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #ifndef WEB_PORTAL_APP_H
 #define WEB_PORTAL_APP_H
 

@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (c) 2023-2026 Dismo Industries LLC
 # Build CyberFidget WASM for the browser emulator.
 #
 # Prerequisites: Emscripten SDK

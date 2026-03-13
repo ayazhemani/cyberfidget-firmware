@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2023-2026 Dismo Industries LLC
+
 @echo off
 REM Change directory to .pio/build/adafruit_feather_esp32_v2
 cd /d "%~dp0.pio\build\adafruit_feather_esp32_v2"

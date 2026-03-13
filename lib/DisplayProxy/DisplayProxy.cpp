@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "DisplayProxy.h"
 //#include "BatteryManager.h"  // Uncomment if battery info is needed
 //#include "icons.h"           // Uncomment if you want to use icon data

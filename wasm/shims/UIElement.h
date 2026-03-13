@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #ifndef WASM_UIELEMENT_H
 #define WASM_UIELEMENT_H
 

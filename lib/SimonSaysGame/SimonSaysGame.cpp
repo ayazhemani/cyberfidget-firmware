@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "SimonSaysGame.h"
 #include "globals.h"  // Replace with your actual global button index definitions
 #include "HAL.h"

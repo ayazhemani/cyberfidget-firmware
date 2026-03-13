@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "Booper.h"
 #include "globals.h" // For slider position and button indices
 #include "HAL.h"  // Use our proxy header
@@ -44,15 +47,6 @@ void Booper::update() {
     // --- Read mic levels once ---
     const float micLin = audioManager.getMicVolumeLinear(); // 0..1
     const float micDb  = audioManager.getMicVolumeDb();     // dBFS (<=0)
-
-    // static uint32_t lastPrint = 0;
-    // uint32_t now = millis();
-    // if (now - lastPrint >= 100) {   // 10 Hz
-    //     ESP_LOGI(TAG_MAIN, "Mic level: linear=%.3f  dB=%.1f\n",
-    //                     audioManager.getMicVolumeLinear(),
-    //                     audioManager.getMicVolumeDb());
-    //     lastPrint = now;
-    // }
 
     // ---- Choose your feel: dB or linear ----
     // Flip this flag to try the other curve
@@ -109,10 +103,6 @@ void Booper::registerButtonCallbacks() {
     buttonManager.registerCallback(button_MiddleLeftIndex,  buttonPressedCallback);
     buttonManager.registerCallback(button_MiddleRightIndex, buttonPressedCallback);
 
-    // Use TopLeft and TopRight buttons to adjust octave
-    // buttonManager.registerCallback(button_TopLeftIndex, buttonPressedCallback);
-    // buttonManager.registerCallback(button_TopRightIndex, buttonPressedCallback);
-
     // Exit App
     buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
     buttonManager.registerCallback(button_BottomRightIndex,onButtonSelectPressed);
@@ -137,23 +127,8 @@ void Booper::buttonPressedCallback(const ButtonEvent& event) {
 void Booper::handleButtonEvent(const ButtonEvent& event) {
     // Handle button events
     if (event.eventType == ButtonEvent_Pressed) {
-        // if (event.buttonIndex == button_TopLeftIndex) {
-        //     // Decrease octave
-        //     adjustOctave(-1);
-        // } else if (event.buttonIndex == button_TopRightIndex) {
-        //     // Increase octave
-        //     adjustOctave(1);
-        // } else {
-        //     // Play tone for other buttons
-        //     float freq = getFrequencyForButton(event.buttonIndex);
-        //     audioManager.playTone(freq);
-        //     // toneStopTime = 0; // Not needed if we stop tone on button release
-        // }
-
-        // Play tone for other buttons
         float freq = getFrequencyForButton(event.buttonIndex);
         audioManager.playTone(freq);
-        // toneStopTime = 0; // Not needed if we stop tone on button release
     } else if (event.eventType == ButtonEvent_Released) {
         // Stop tone when button is released
         if (event.buttonIndex == button_TopLeftIndex ||
@@ -210,34 +185,6 @@ void Booper::updateVolumeFromSlider() {
 
 
 
-// Static callback handlers:
-// void Booper::onButtonLeftPressed(const ButtonEvent& event)
-// {
-//     // Example: do nothing or implement "move to previous root category"? 
-//     // Since it's a nested menu, left/right might not do anything if you only have
-//     // vertical list navigation. Feel free to define your own logic.
-// }
-// void Booper::onButtonRightPressed(const ButtonEvent& event)
-// {
-//     // Press
-//     if (event.eventType == ButtonEvent_Pressed){
-//         // Same as above
-//     }    
-// }
-// void Booper::onButtonUpPressed(const ButtonEvent& event)
-// {
-//     // Press
-//     if (event.eventType == ButtonEvent_Pressed){
-//         instance().moveHighlightUp();
-//     }
-// }
-// void Booper::onButtonDownPressed(const ButtonEvent& event)
-// {
-//     // Press
-//     if (event.eventType == ButtonEvent_Pressed){
-//         instance().moveHighlightDown();
-//     }
-// }
 void Booper::onButtonBackPressed(const ButtonEvent& event)
 {    // Press
     if (event.eventType == ButtonEvent_Released){

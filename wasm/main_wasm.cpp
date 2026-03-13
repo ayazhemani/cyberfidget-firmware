@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "HAL.h"
 #include "globals.h"
 #include "DisplayProxy.h"

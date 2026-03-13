@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #ifndef WASM_APP_MANAGER_H
 #define WASM_APP_MANAGER_H
 

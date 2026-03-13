@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 // ThingPulse OLEDDisplayFonts — MIT License
 // https://github.com/ThingPulse/esp8266-oled-ssd1306
 // Arrays renamed with _data suffix to avoid conflicts with our extern pointers.

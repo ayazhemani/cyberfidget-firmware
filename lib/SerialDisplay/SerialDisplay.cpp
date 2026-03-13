@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "SerialDisplay.h"
 #include "globals.h"
 #include "HAL.h"           // For HAL::displayProxy()
@@ -67,22 +70,15 @@ void serialDataScreenProcessor() {
                 scrollOffset = maxScrollOffset;
             }
 
-            Serial.printf("Parsed lineCount: %d\n", lineCount);
-            for (int i = 0; i < lineCount; i++) {
-                Serial.printf("Line %d: %s\n", i, dataLines[i].c_str());
-            }
-
             // Instead of resetting currentLine and scrollOffset, preserve them:
             //currentLine = 0;
             //scrollOffset = 0;
 
             incomingData = "";
             lastDataTime = millis();
-            Serial.println(", Data processed.");
         } else {
             // Append non-newline characters to incomingData
             incomingData += incomingChar;
-            Serial.print(incomingChar);  // Debug print to show character accumulation
         }
     }
 
@@ -177,9 +173,6 @@ void drawSerialDataScreen() {
 
     display.display();
     isScreenUpdated = true;
-
-    Serial.printf("scrollOffset=%d, maxScrollOffset=%d, lineCount=%d, lineHeight=%d\n", 
-              scrollOffset, maxScrollOffset, lineCount, lineHeight);
 }
 
 void drawDefaultInfoScreen() {

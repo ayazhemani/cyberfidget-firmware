@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "DinoGame.h"
 #include "HAL.h"
 #include "MenuManager.h"
@@ -67,8 +70,6 @@ void DinoGame::resetGame() {
     pterodactylUnlocked = false;
 
     initGround();
-
-    Serial.println("DinoGame: resetGame().");
 }
 
 //---------------------------------------------------------------------------------
@@ -191,7 +192,6 @@ void DinoGame::handleJump() {
     if(!isJumping && !isDucking && dinoY == 0){
         isJumping = true;
         dinoVelocity = 5.0f;  // jump velocity
-        Serial.println("Dino jumps!");
     }
 }
 
@@ -199,16 +199,13 @@ void DinoGame::handleDuck(ButtonEventType evType) {
     if(evType == ButtonEvent_Pressed){
         if(!isJumping){
             isDucking = true;
-            Serial.println("Dino ducks!");
         }
     } else if(evType == ButtonEvent_Released){
         isDucking = false;
-        Serial.println("Dino stands up.");
     }
 }
 
 void DinoGame::handleReset() {
-    Serial.println("DinoGame: Reset pressed!");
     resetGame();
 }
 
@@ -283,10 +280,7 @@ void DinoGame::updateObstacles() {
             obstaclesAvoidedCount++;
             if(!pterodactylUnlocked && obstaclesAvoidedCount >= pterodactylUnlockAt){
                 pterodactylUnlocked = true;
-                Serial.println("Pterodactyls unlocked!");
             }
-            Serial.print("Obstacle avoided! Score=");
-            Serial.println(obstaclesAvoidedCount);
         }
     }
 
@@ -314,7 +308,6 @@ void DinoGame::spawnObstacle() {
         }
 
         obstacles[obstacleCount++] = obs;
-        Serial.println(String("Spawned: ")+(obs.isHigh?"Pterodactyl":"Cactus"));
     }
 }
 
@@ -351,7 +344,6 @@ void DinoGame::checkCollisions() {
                              Pterodactyl_16x16, 16,16, ox,20))
             {
                 gameOver=true;
-                Serial.println("Collision with Pterodactyl!");
                 return;
             }
         } else {
@@ -360,7 +352,6 @@ void DinoGame::checkCollisions() {
                              Cactus_8x16, 8,16, ox,32))
             {
                 gameOver=true;
-                Serial.println("Collision with Cactus!");
                 return;
             }
         }

@@ -1,10 +1,19 @@
-.pio/*
-!.pio/build/
-.pio/build/*
-!.pio/build/adafruit_feather_esp32_v2/
-.pio/build/adafruit_feather_esp32_v2/*
-!.pio/build/adafruit_feather_esp32_v2/firmware.bin
-!.pio/build/adafruit_feather_esp32_v2/merged_firmware.bin
-.vscode
+# PlatformIO build artifacts
+.pio/
+
+# IDE / AI tool configs
+.vscode/
+.claude/
+.cursor/
+
+# Credentials
+include/credentials.h
+
+# WASM build artifacts
 wasm/build/
 wasm/app/
+wasm/font_preview/build/
+
+# Logs
+*.log
+PLAN.md

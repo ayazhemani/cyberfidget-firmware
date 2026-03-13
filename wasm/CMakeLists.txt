@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (c) 2023-2026 Dismo Industries LLC
 cmake_minimum_required(VERSION 3.13)
 project(cyberfidget_wasm)
 

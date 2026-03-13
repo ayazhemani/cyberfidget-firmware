@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 // Real ThingPulse font data (MIT licensed) for pixel-perfect rendering.
 // The _data arrays are static in the included header; our extern pointers
 // (declared in SSD1306Wire.h) simply alias them.

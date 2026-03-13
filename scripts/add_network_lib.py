@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2023-2026 Dismo Industries LLC
+
 """
 PlatformIO pre-build script: Network Library
 

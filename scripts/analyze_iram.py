@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2023-2026 Dismo Industries LLC
+
 #!/usr/bin/env python
 """Analyze IRAM usage from linker map file - all code in IRAM address range."""
 import re, sys

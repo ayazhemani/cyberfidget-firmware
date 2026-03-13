@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "MenuManager.h"
 #include "Flashlight.h"
 #include "Booper.h"
@@ -21,3 +24,5 @@
 #include "Spaceship.h"
 #include "MusicPlayerApp.h"
 #include "WebPortalApp.h"
+#include "BewilderYourBrain.h"
+#include "PixelWaterfallGame.h"

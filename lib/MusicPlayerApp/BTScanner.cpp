@@ -1,6 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "BTScanner.h"
 #include <esp_bt.h>
 #include <esp_bt_main.h>
+#include <esp_log.h>
+
+static const char* TAG_BT = "BTScanner";
 
 BTScanner* BTScanner::_instance = nullptr;
 
@@ -12,7 +18,7 @@ bool BTScanner::begin() {
     // If bluedroid is already running (e.g. A2DPStream owns the BT stack),
     // just register our GAP callback and scan — don't touch the stack.
     if (esp_bluedroid_get_status() == ESP_BLUEDROID_STATUS_ENABLED) {
-        Serial.println("[BTScanner] BT stack already running, reusing");
+        ESP_LOGI(TAG_BT, "BT stack already running, reusing");
         esp_bt_gap_register_callback(gapCallback);
         _btInitialized = true;
         _ownsStack = false;
@@ -24,22 +30,22 @@ bool BTScanner::begin() {
     // from releasing BT controller memory at startup.
     if (!btStarted()) {
         if (!btStart()) {
-            Serial.println("[BTScanner] btStart failed");
+            ESP_LOGI(TAG_BT, "btStart failed");
             return false;
         }
     }
 
-    Serial.println("[BTScanner] BT controller enabled OK");
+    ESP_LOGI(TAG_BT, "BT controller enabled OK");
 
     esp_err_t ret = esp_bluedroid_init();
     if (ret != ESP_OK) {
-        Serial.printf("[BTScanner] bluedroid init failed: 0x%x\n", ret);
+        ESP_LOGI(TAG_BT, "bluedroid init failed: 0x%x", ret);
         return false;
     }
 
     ret = esp_bluedroid_enable();
     if (ret != ESP_OK) {
-        Serial.printf("[BTScanner] bluedroid enable failed: 0x%x\n", ret);
+        ESP_LOGI(TAG_BT, "bluedroid enable failed: 0x%x", ret);
         esp_bluedroid_deinit();
         return false;
     }
@@ -66,7 +72,7 @@ bool BTScanner::startScan(int durationSec) {
 
     esp_err_t err = esp_bt_gap_start_discovery(ESP_BT_INQ_MODE_GENERAL_INQUIRY, units, 0);
     if (err != ESP_OK) {
-        Serial.printf("[BTScanner] start_discovery failed: %d\n", err);
+        ESP_LOGI(TAG_BT, "start_discovery failed: %d", err);
         _scanning = false;
         return false;
     }

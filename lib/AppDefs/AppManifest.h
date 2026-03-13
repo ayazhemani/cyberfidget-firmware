@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 /**
  * CyberFidget App Manifest
  *
@@ -44,3 +47,5 @@ APP_ENTRY(APP_SPLOOTY,               "Splooty",             "Screensavers",   []
 APP_ENTRY(APP_SPACESHIP,             "Spaceship",           "Games",          [](){ spaceshipApp.begin();                    }, [](){ spaceshipApp.end();                    }, [](){ spaceshipApp.update();                    })
 APP_ENTRY(APP_MUSIC_PLAYER,          "Music Player",        "Media",          [](){ musicPlayerApp.begin();                  }, [](){ musicPlayerApp.end();                  }, [](){ musicPlayerApp.update();                  })
 APP_ENTRY(APP_WEB_PORTAL,            "CyberFidget Portal",  "Tools",          [](){ webPortalApp.begin();                    }, [](){ webPortalApp.end();                    }, [](){ webPortalApp.update();                    })
+APP_ENTRY(APP_BEWILDER_YOUR_BRAIN,   "Bewilder Your Brain", "Screensavers",   [](){ bewilderYourBrainApp.begin();             }, [](){ bewilderYourBrainApp.end();             }, [](){ bewilderYourBrainApp.update();             })
+APP_ENTRY(APP_PIXEL_WATERFALL,       "Pixel Waterfall",     "Games",          [](){ pixelWaterfallGame.begin();               }, [](){ pixelWaterfallGame.end();               }, [](){ pixelWaterfallGame.update();               })

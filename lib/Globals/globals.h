@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
@@ -5,7 +8,6 @@
 #include <time.h>
 #include "esp_log.h"
 #include "HAL.h"
-#include "fontSuiGenerisRg.h" 
 
 // Global timers
 extern unsigned long millis_NOW;

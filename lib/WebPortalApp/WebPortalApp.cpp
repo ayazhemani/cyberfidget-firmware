@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "WebPortalApp.h"
 #include "portal_page.h"
 #include "MenuManager.h"
@@ -14,8 +17,8 @@
 #define WEB_PORTAL_DEBUG 1
 
 #if WEB_PORTAL_DEBUG
-  #define WP_LOG(msg)          Serial.println("[WebPortal] " msg)
-  #define WP_LOGF(fmt, ...)    Serial.printf("[WebPortal] " fmt "\n", ##__VA_ARGS__)
+  #define WP_LOG(msg)          ESP_LOGD(TAG_MAIN, "[WebPortal] " msg)
+  #define WP_LOGF(fmt, ...)    ESP_LOGD(TAG_MAIN, "[WebPortal] " fmt, ##__VA_ARGS__)
 #else
   #define WP_LOG(msg)          ((void)0)
   #define WP_LOGF(fmt, ...)    ((void)0)

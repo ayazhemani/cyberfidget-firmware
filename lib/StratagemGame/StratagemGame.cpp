@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "StratagemGame.h"
 #include "HAL.h"
 #include "globals.h" // If needed for button_*Index, but we are now using new button_*Index variables from HAL

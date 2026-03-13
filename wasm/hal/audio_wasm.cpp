@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 // WASM AudioManager implementation — uses Web Audio API for tone generation
 
 #include "AudioManager.h"

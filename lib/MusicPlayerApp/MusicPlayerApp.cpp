@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "MusicPlayerApp.h"
 #include "AudioManager.h"
 #include "RGBController.h"
@@ -64,8 +67,8 @@ using namespace audio_tools;
 #define MUSIC_PLAYER_DISCONNECT_ON_EXIT 0
 
 #if MUSIC_PLAYER_DEBUG
-  #define MPLAYER_LOG(msg) Serial.println("[MusicPlayer] " msg)
-  #define MPLAYER_LOGF(fmt, ...) Serial.printf("[MusicPlayer] " fmt "\n", ##__VA_ARGS__)
+  #define MPLAYER_LOG(msg) ESP_LOGD(TAG_MAIN, "[MusicPlayer] " msg)
+  #define MPLAYER_LOGF(fmt, ...) ESP_LOGD(TAG_MAIN, "[MusicPlayer] " fmt, ##__VA_ARGS__)
 #else
   #define MPLAYER_LOG(msg) ((void)0)
   #define MPLAYER_LOGF(fmt, ...) ((void)0)

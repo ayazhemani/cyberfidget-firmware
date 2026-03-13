@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "HAL.h"
 
 // Include all low-level libraries and drivers:
@@ -139,8 +142,6 @@ namespace HAL
         digitalWrite(POWER_PIN_AUX, HIGH);
 
         Serial.begin(921600);
-        Serial.println();
-        Serial.println();
 
         // Initialize display
         s_realDisplay.init();
@@ -150,7 +151,7 @@ namespace HAL
         Wire.begin(SDA, SCL);
         if (!s_accel.begin())
         {
-            Serial.println("Accelerometer not detected. Halting...");
+            ESP_LOGI(TAG_MAIN, "Accelerometer not detected. Halting...");
             while (1);
         }
 
@@ -213,11 +214,6 @@ namespace HAL
     void enterDeepSleep()
     {
         esp_deep_sleep_start();
-    }
-
-    float getBatteryVoltage()
-    {
-        return 3.7f;  // placeholder
     }
 
     float getAccelerometerX() { return s_accel.getX(); }
@@ -286,22 +282,22 @@ namespace HAL
 
         switch (wakeup_reason) {
           case ESP_SLEEP_WAKEUP_EXT0:
-            Serial.println("Wakeup caused by external signal using RTC_IO");
+            ESP_LOGI(TAG_MAIN, "Wakeup caused by external signal using RTC_IO");
             break;
           case ESP_SLEEP_WAKEUP_EXT1:
-            Serial.println("Wakeup caused by external signal using RTC_CNTL");
+            ESP_LOGI(TAG_MAIN, "Wakeup caused by external signal using RTC_CNTL");
             break;
           case ESP_SLEEP_WAKEUP_TIMER:
-            Serial.println("Wakeup caused by timer");
+            ESP_LOGI(TAG_MAIN, "Wakeup caused by timer");
             break;
           case ESP_SLEEP_WAKEUP_TOUCHPAD:
-            Serial.println("Wakeup caused by touchpad");
+            ESP_LOGI(TAG_MAIN, "Wakeup caused by touchpad");
             break;
           case ESP_SLEEP_WAKEUP_ULP:
-            Serial.println("Wakeup caused by ULP program");
+            ESP_LOGI(TAG_MAIN, "Wakeup caused by ULP program");
             break;
           default:
-            Serial.println("Wakeup was not caused by deep sleep");
+            ESP_LOGI(TAG_MAIN, "Wakeup was not caused by deep sleep");
             break;
         }
       }

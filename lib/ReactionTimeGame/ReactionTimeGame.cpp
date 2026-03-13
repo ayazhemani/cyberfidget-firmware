@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 // ReactionTimeGame.cpp
 #include "ReactionTimeGame.h"
 #include "HAL.h"
@@ -87,7 +90,7 @@ void ReactionTimeGame::update() {
         ESP_LOGI(TAG_MAIN, "Displaying 'Press to start...' screen.");
         display.clear();
         display.setTextAlignment(TEXT_ALIGN_CENTER);
-        display.setFont(suiGenerisRg_20);
+        display.setFont(ArialMT_Plain_24);
         display.drawString(64, 22, "Press to start");
         display.display();
         messageDisplayed = true;

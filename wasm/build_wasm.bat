@@ -1,4 +1,6 @@
 @echo off
+REM SPDX-License-Identifier: GPL-3.0-or-later
+REM Copyright (c) 2023-2026 Dismo Industries LLC
 REM Build CyberFidget WASM for the browser emulator (Windows).
 REM
 REM Prerequisites: Emscripten SDK

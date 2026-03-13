@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later WITH Cyberfidget-HAL-exception
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
 #include "ClockDisplay.h"
 
 #include "HAL.h"     // For DisplayProxy
@@ -10,7 +13,7 @@
 // Define a minimum valid epoch (here we assume any time after Sept 2020 is valid)
 #define MIN_VALID_EPOCH 1600000000UL
 
-extern const uint8_t suiGenerisRg_20[];  // Font used 
+extern const uint8_t ArialMT_Plain_24[];
 
 ClockDisplay clockDisplay;
 
@@ -152,8 +155,7 @@ void ClockDisplay::displayTime() {
     // Clear the display before drawing
     m_display.clear();
     
-    // Set the main font (using your preferred style; ensure suiGenerisRg_20 is defined)
-    m_display.setFont(suiGenerisRg_20);
+    m_display.setFont(ArialMT_Plain_24);
     m_display.setTextAlignment(TEXT_ALIGN_CENTER);
     // Draw the time string (positioned roughly centered)
     m_display.drawString(64, 22, String(buffer));
@@ -201,7 +203,7 @@ void ClockDisplay::saveTime() {
     m_preferences.putULong("lastTime", m_currentTime);
     m_preferences.putULong("lastMillis", millis());
     m_preferences.end();
-    Serial.println("ClockDisplay: Time saved to Preferences.");
+    ESP_LOGD(TAG_MAIN, "ClockDisplay: Time saved to Preferences.");
 }
 
 // ---------------------------------------------------------------------
@@ -240,23 +242,9 @@ void ClockDisplay::end() {
 }
 
 void ClockDisplay::registerButtonCallbacks() {
-    // Register callbacks for the buttons
-    //buttonManager.registerCallback(button_TopLeftIndex,     buttonPressedCallback);
-    //buttonManager.registerCallback(button_TopRightIndex,    buttonPressedCallback);
-    //buttonManager.registerCallback(button_MiddleLeftIndex,  buttonPressedCallback);
-    //buttonManager.registerCallback(button_MiddleRightIndex, buttonPressedCallback);
-
-    // Exit App
     buttonManager.registerCallback(button_BottomLeftIndex, onButtonBackPressed);
-    //buttonManager.registerCallback(button_BottomRightIndex,onButtonSelectPressed);
 }
 
 void ClockDisplay::unregisterButtonCallbacks() {
-    // Unregister callbacks
-    //buttonManager.unregisterCallback(button_TopLeftIndex);
-    //buttonManager.unregisterCallback(button_TopRightIndex);
-    //buttonManager.unregisterCallback(button_MiddleLeftIndex);
-    //buttonManager.unregisterCallback(button_MiddleRightIndex);
     buttonManager.unregisterCallback(button_BottomLeftIndex);
-    //buttonManager.unregisterCallback(button_BottomRightIndex);
 }

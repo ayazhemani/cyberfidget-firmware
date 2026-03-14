@@ -38,7 +38,38 @@ public:
         return ((uint32_t)w << 24) | ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
     }
 
-    uint32_t ColorHSV(uint16_t hue, uint8_t sat = 255, uint8_t val = 255);
+    uint32_t ColorHSV(uint16_t hue, uint8_t sat = 255, uint8_t val = 255) {
+        // Simplified HSV-to-RGB for WASM shim (matches Adafruit_NeoPixel algorithm)
+        uint32_t r, g, b;
+
+        // Hue is 0-65535, map to 0-1535 (6 sectors of 256)
+        hue = (hue * 1536L + 32768) / 65536;
+        uint8_t lo = hue & 0xFF;
+        uint8_t hi = 255 - lo;
+
+        switch ((hue >> 8) % 6) {
+            case 0: r = 255; g = lo;  b = 0;   break;
+            case 1: r = hi;  g = 255; b = 0;   break;
+            case 2: r = 0;   g = 255; b = lo;  break;
+            case 3: r = 0;   g = hi;  b = 255; break;
+            case 4: r = lo;  g = 0;   b = 255; break;
+            default: r = 255; g = 0;  b = hi;  break;
+        }
+
+        // Apply saturation
+        uint32_t s1 = 1 + sat;
+        r = ((r * s1) >> 8) + 255 - sat;
+        g = ((g * s1) >> 8) + 255 - sat;
+        b = ((b * s1) >> 8) + 255 - sat;
+
+        // Apply value (brightness)
+        uint32_t v1 = 1 + val;
+        r = (r * v1) >> 8;
+        g = (g * v1) >> 8;
+        b = (b * v1) >> 8;
+
+        return ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+    }
 
     static uint32_t gamma32(uint32_t c) { return c; }
 

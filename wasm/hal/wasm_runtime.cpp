@@ -66,25 +66,4 @@ TwoWire Wire;
 // ---- WiFi singleton ----
 WiFiClass WiFi;
 
-// ---- NeoPixel color utility ----
-#include "Adafruit_NeoPixel.h"
-
-uint32_t Adafruit_NeoPixel::ColorHSV(uint16_t hue, uint8_t sat, uint8_t val) {
-    uint8_t r, g, b;
-    uint16_t h = hue / 256;
-    uint8_t region = h / 43;
-    uint8_t remainder = (h - (region * 43)) * 6;
-    uint8_t p = (val * (255 - sat)) >> 8;
-    uint8_t q = (val * (255 - ((sat * remainder) >> 8))) >> 8;
-    uint8_t t = (val * (255 - ((sat * (255 - remainder)) >> 8))) >> 8;
-
-    switch (region) {
-        case 0:  r = val; g = t;   b = p;   break;
-        case 1:  r = q;   g = val; b = p;   break;
-        case 2:  r = p;   g = val; b = t;   break;
-        case 3:  r = p;   g = q;   b = val; break;
-        case 4:  r = t;   g = p;   b = val; break;
-        default: r = val; g = p;   b = q;   break;
-    }
-    return Color(r, g, b);
-}
+// ColorHSV is now defined inline in shims/Adafruit_NeoPixel.h

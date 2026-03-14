@@ -75,7 +75,7 @@ jobs:
           mkdir -p wasm/app
           echo "${APP_HEADER_B64}" | base64 -d > "wasm/app/${APP_NAME}.h"
           echo "${APP_CPP_B64}" | base64 -d > "wasm/app/${APP_NAME}.cpp"
-          echo "#include \"${APP_NAME}.h\"" > wasm/app/app_include.h
+          printf '#include "App.h"\n#include "%s.h"\n' "${APP_NAME}" > wasm/app/app_include.h
           echo "=== Custom app files ==="
           ls -la wasm/app/
           echo "=== Header preview ==="

@@ -24,6 +24,45 @@
 #elif defined(WASM_APP_MATRIXSCREENSAVER)
     #include "MatrixScreensaver.h"
     #define APP_INSTANCE  matrixScreensaver
+#elif defined(WASM_APP_SPACESHIP)
+    #include "Spaceship.h"
+    #define APP_INSTANCE  spaceshipApp
+#elif defined(WASM_APP_BEWILDERYOURBRAIN)
+    #include "BewilderYourBrain.h"
+    #define APP_INSTANCE  bewilderYourBrainApp
+#elif defined(WASM_APP_REACTIONTIMEGAME)
+    #include "ReactionTimeGame.h"
+    #define APP_INSTANCE  reactionTimeGame
+#elif defined(WASM_APP_SPHFLUIDGAME)
+    #include "SPHFluidGame.h"
+    #define APP_INSTANCE  sphFluidGame
+#elif defined(WASM_APP_SIMONSAYSGAME)
+    #include "SimonSaysGame.h"
+    #define APP_INSTANCE  simonSaysGame
+#elif defined(WASM_APP_STRATAGEMGAME)
+    #include "StratagemGame.h"
+    #define APP_INSTANCE  stratagemGame
+#elif defined(WASM_APP_BOOPER)
+    #include "Booper.h"
+    #define APP_INSTANCE  booper
+#elif defined(WASM_APP_EYE)
+    #include "Eye.h"
+    #define APP_INSTANCE  eyeApp
+#elif defined(WASM_APP_GHOSTS)
+    #include "Ghosts.h"
+    #define APP_INSTANCE  ghostsApp
+#elif defined(WASM_APP_SPLOOTY)
+    #include "Splooty.h"
+    #define APP_INSTANCE  splootyApp
+#elif defined(WASM_APP_GRAVEYARDSCREENSAVER)
+    #include "GraveyardScreensaver.h"
+    #define APP_INSTANCE  graveyardScreensaverApp
+#elif defined(WASM_APP_CYBERFIDGIE)
+    #include "MyScreensaver.h"
+    #define APP_INSTANCE  myScreensaverApp
+#elif defined(WASM_APP_BOOTANIMATION)
+    #include "BootAnimation.h"
+    #define APP_INSTANCE  bootAnimationApp
 #elif defined(WASM_APP_CUSTOM)
     #include "app_include.h"
     #define APP_INSTANCE  WASM_CUSTOM_INSTANCE

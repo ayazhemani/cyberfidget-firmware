@@ -126,7 +126,7 @@ void drawSliderProgressBar() {
   strip.setPixelColor(pixel_Front_Top, strip.Color(red, green, blue, 0));
   strip.setPixelColor(pixel_Front_Middle, strip.Color(8 - red, 8 - green, 8 - blue, 0));
   strip.setPixelColor(pixel_Front_Bottom, strip.Color(red, green, blue, 0));
-
+  markDirty();
   updateStrip();
 }
 

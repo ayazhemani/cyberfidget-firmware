@@ -59,6 +59,8 @@ include_directories(
     ${LIB_DIR}/Images
     ${LIB_DIR}/CyberFidgie
     ${LIB_DIR}/Splooty
+    ${LIB_DIR}/Spaceship
+    ${LIB_DIR}/BewilderYourBrain
 )
 
 # ---- Source files ----
@@ -99,6 +101,71 @@ elseif(WASM_APP STREQUAL "MatrixScreensaver")
     add_compile_definitions(WASM_APP_MATRIXSCREENSAVER)
     list(APPEND FW_SOURCES
         ${LIB_DIR}/MatrixScreensaver/MatrixScreensaver.cpp
+    )
+elseif(WASM_APP STREQUAL "Spaceship")
+    add_compile_definitions(WASM_APP_SPACESHIP)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/Spaceship/Spaceship.cpp
+    )
+elseif(WASM_APP STREQUAL "BewilderYourBrain")
+    add_compile_definitions(WASM_APP_BEWILDERYOURBRAIN)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/BewilderYourBrain/BewilderYourBrain.cpp
+    )
+elseif(WASM_APP STREQUAL "ReactionTimeGame")
+    add_compile_definitions(WASM_APP_REACTIONTIMEGAME)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/ReactionTimeGame/ReactionTimeGame.cpp
+    )
+elseif(WASM_APP STREQUAL "SPHFluidGame")
+    add_compile_definitions(WASM_APP_SPHFLUIDGAME)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/SPHFluidGame/SPHFluidGame.cpp
+    )
+elseif(WASM_APP STREQUAL "SimonSaysGame")
+    add_compile_definitions(WASM_APP_SIMONSAYSGAME)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/SimonSaysGame/SimonSaysGame.cpp
+    )
+elseif(WASM_APP STREQUAL "StratagemGame")
+    add_compile_definitions(WASM_APP_STRATAGEMGAME)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/StratagemGame/StratagemGame.cpp
+    )
+elseif(WASM_APP STREQUAL "Booper")
+    add_compile_definitions(WASM_APP_BOOPER)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/Booper/Booper.cpp
+    )
+elseif(WASM_APP STREQUAL "Eye")
+    add_compile_definitions(WASM_APP_EYE)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/Eye/Eye.cpp
+    )
+elseif(WASM_APP STREQUAL "Ghosts")
+    add_compile_definitions(WASM_APP_GHOSTS)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/Ghosts/Ghosts.cpp
+    )
+elseif(WASM_APP STREQUAL "Splooty")
+    add_compile_definitions(WASM_APP_SPLOOTY)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/Splooty/Splooty.cpp
+    )
+elseif(WASM_APP STREQUAL "GraveyardScreensaver")
+    add_compile_definitions(WASM_APP_GRAVEYARDSCREENSAVER)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/GraveyardScreensaver/GraveyardScreensaver.cpp
+    )
+elseif(WASM_APP STREQUAL "CyberFidgie")
+    add_compile_definitions(WASM_APP_CYBERFIDGIE)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/CyberFidgie/MyScreensaver.cpp
+    )
+elseif(WASM_APP STREQUAL "BootAnimation")
+    add_compile_definitions(WASM_APP_BOOTANIMATION)
+    list(APPEND FW_SOURCES
+        ${LIB_DIR}/BootAnimation/BootAnimation.cpp
     )
 elseif(WASM_APP STREQUAL "Custom")
     if(NOT DEFINED CUSTOM_APP_NAME)

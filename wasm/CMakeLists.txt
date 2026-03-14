@@ -184,6 +184,13 @@ elseif(WASM_APP STREQUAL "Custom")
     add_compile_definitions(WASM_CUSTOM_INSTANCE=${CUSTOM_APP_INSTANCE})
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/app)
     list(APPEND FW_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/app/${CUSTOM_APP_NAME}.cpp)
+
+    # Force-include common headers so AI-generated code compiles even if
+    # the AI forgot to #include ButtonManager.h, AudioManager.h, etc.
+    set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/app/${CUSTOM_APP_NAME}.cpp
+        PROPERTIES COMPILE_FLAGS "-include ${CMAKE_CURRENT_SOURCE_DIR}/shims/cf_custom_app.h"
+    )
 else()
     message(STATUS "Building default demo (no app selected)")
 endif()

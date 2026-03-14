@@ -44,6 +44,15 @@ jobs:
       - name: Build firmware
         run: pio run -e local
 
+      - name: Merge firmware binary
+        run: |
+          esptool.py --chip esp32 merge_bin \
+            -o .pio/build/local/merged_firmware.bin \
+            --flash_mode dio --flash_freq 80m --flash_size 8MB \
+            0x1000 .pio/build/local/bootloader.bin \
+            0x8000 .pio/build/local/partitions.bin \
+            0x10000 .pio/build/local/firmware.bin
+
       - name: Verify merged binary exists
         run: |
           MERGED=".pio/build/local/merged_firmware.bin"

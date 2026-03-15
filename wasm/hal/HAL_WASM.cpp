@@ -197,6 +197,7 @@ namespace HAL {
 
     void setRgbLed(int index, uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
         s_rgbStrip.setPixelColor(index, Adafruit_NeoPixel::Color(r, g, b, w));
+        invalidateColorCache();
         s_rgbStrip.show();
     }
 

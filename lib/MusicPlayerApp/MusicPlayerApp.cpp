@@ -148,6 +148,9 @@ void MusicPlayerApp::begin() {
     currentTrackIndex = -1;
     marqueeOffset = 0;
 
+    // Clear any LEDs left over from a previous app
+    setColorsOff();
+
     // Register all 6 button callbacks
     buttonManager.registerCallback(button_UpIndex, onButtonUp);
     buttonManager.registerCallback(button_DownIndex, onButtonDown);
@@ -1431,13 +1434,12 @@ void MusicPlayerApp::updateLEDs() {
         b = (uint8_t)(1.0f + pulse * 3.0f);
     }
 
-    // Apply per-LED mask: only set enabled LEDs, disabled ones stay dark
+    // Apply per-LED mask: enabled LEDs get color, disabled ones get zeroed
     // Front pixels get full color, back pixel gets dimmed (÷3)
-    if (ledEnableMask & 0x02) HAL::setRgbLed(pixel_Front_Top, r, g, b, w);
-    if (ledEnableMask & 0x04) HAL::setRgbLed(pixel_Front_Middle, r, g, b, w);
-    if (ledEnableMask & 0x08) HAL::setRgbLed(pixel_Front_Bottom, r, g, b, w);
-    if (ledEnableMask & 0x01) HAL::setRgbLed(pixel_Back, r / 3, g / 3, b / 3, w / 3);
-    markDirty();  // ensure strip.show() fires
+    HAL::setRgbLed(pixel_Front_Top,    (ledEnableMask & 0x02) ? r     : 0, (ledEnableMask & 0x02) ? g     : 0, (ledEnableMask & 0x02) ? b     : 0, (ledEnableMask & 0x02) ? w     : 0);
+    HAL::setRgbLed(pixel_Front_Middle, (ledEnableMask & 0x04) ? r     : 0, (ledEnableMask & 0x04) ? g     : 0, (ledEnableMask & 0x04) ? b     : 0, (ledEnableMask & 0x04) ? w     : 0);
+    HAL::setRgbLed(pixel_Front_Bottom, (ledEnableMask & 0x08) ? r     : 0, (ledEnableMask & 0x08) ? g     : 0, (ledEnableMask & 0x08) ? b     : 0, (ledEnableMask & 0x08) ? w     : 0);
+    HAL::setRgbLed(pixel_Back,         (ledEnableMask & 0x01) ? r / 3 : 0, (ledEnableMask & 0x01) ? g / 3 : 0, (ledEnableMask & 0x01) ? b / 3 : 0, (ledEnableMask & 0x01) ? w / 3 : 0);
 }
 
 // =========================================================================

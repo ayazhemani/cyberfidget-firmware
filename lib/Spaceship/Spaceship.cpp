@@ -258,7 +258,6 @@ void Spaceship::updatePhysics(float dt) {
     uint8_t glow = (uint8_t)clampf((speed - speedMin) / (speedMax - speedMin) * 8.0f, 0.0f, 8.0f);
     HAL::setRgbLed(pixel_Front_Top, 0, glow, 0, 0);
     HAL::setRgbLed(pixel_Front_Middle, 0, 0, glow, 0);
-    markDirty();
 }
 
 void Spaceship::drawScene() {

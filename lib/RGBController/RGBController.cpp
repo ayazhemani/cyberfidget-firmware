@@ -22,6 +22,7 @@ static uint8_t s_lastR = 0, s_lastG = 0, s_lastB = 0, s_lastW = 0;
 static bool    s_lastAllValid = false;
 
 void markDirty() { s_dirty = true; }
+void invalidateColorCache() { s_lastAllValid = false; }
 
 static void colorSet(uint32_t c, uint8_t /*wait*/) {
   // This is a blanket setter; it invalidates last-all cache.

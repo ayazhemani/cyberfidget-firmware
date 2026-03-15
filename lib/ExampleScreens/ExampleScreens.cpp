@@ -123,10 +123,9 @@ void drawSliderProgressBar() {
 
   uint8_t red, green, blue;
   mapToRainbow(sliderPosition_12Bits_Filtered, 8, red, green, blue);
-  strip.setPixelColor(pixel_Front_Top, strip.Color(red, green, blue, 0));
-  strip.setPixelColor(pixel_Front_Middle, strip.Color(8 - red, 8 - green, 8 - blue, 0));
-  strip.setPixelColor(pixel_Front_Bottom, strip.Color(red, green, blue, 0));
-  markDirty();
+  HAL::setRgbLed(pixel_Front_Top, red, green, blue, 0);
+  HAL::setRgbLed(pixel_Front_Middle, 8 - red, 8 - green, 8 - blue, 0);
+  HAL::setRgbLed(pixel_Front_Bottom, red, green, blue, 0);
   updateStrip();
 }
 

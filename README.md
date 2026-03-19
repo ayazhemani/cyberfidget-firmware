@@ -15,7 +15,7 @@ Open-source firmware for the [Cyber Fidget](https://cyberfidget.com) — a handh
 ### Prerequisites
 
 - [PlatformIO](https://platformio.org/) (CLI or VS Code extension)
-- ESP32 board (Adafruit Feather ESP32 V2 or compatible)
+- Cyber Fidget Mainboard
 
 ### Flash
 

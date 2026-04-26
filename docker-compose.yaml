@@ -9,7 +9,7 @@ services:
       - ${HOST_WORKSPACE:-.}:/workspace:rw
       - ${HOST_WORKSPACE:-.}/bin:/workspace/bin:rw
       - pio_cache:/root/.platformio
-      - /workspace/.pio
+      - pio_build_data:/workspace/.pio
     working_dir: /workspace
 
   build:
@@ -74,3 +74,4 @@ services:
 
 volumes:
   pio_cache:
+  pio_build_data:

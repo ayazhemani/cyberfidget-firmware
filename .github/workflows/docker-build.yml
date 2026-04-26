@@ -1,0 +1,35 @@
+name: Build & Release Firmware (Docker)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  docker-build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create bin directory
+        run: mkdir -p bin
+
+      - name: Run Build and Release via Docker Compose
+        env:
+          # Pass GitHub-provided secrets and vars into the environment
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+          GITHUB_REPO_FORK: ${{ github.repository_owner }}
+          GITHUB_REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          # Use --abort-on-container-exit to ensure the GHA fails if Docker fails
+          docker compose up --build --abort-on-container-exit --exit-code-from release
+
+      - name: Cleanup (Optional)
+        if: always()
+        run: docker compose down -v

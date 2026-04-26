@@ -7,6 +7,7 @@ pipeline {
     stages {
         stage('Compile') {
             steps {
+                sh 'env | grep -E "HOST_WORKSPACE|DOCKER"'
                 sh 'docker compose run --rm build'
             }
         }

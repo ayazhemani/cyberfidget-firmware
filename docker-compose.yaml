@@ -24,9 +24,9 @@ services:
       build:
         condition: service_completed_successfully
     command: >
-      python3 -m esptool --chip esp32 merge_bin 
-      -o ./bin/merged_firmware.bin 
-      --flash_mode dio --flash_freq 80m --flash_size 8MB 
+      python3 -m esptool --chip esp32 merge-bin 
+      -o bin/merged_firmware.bin 
+      --flash-mode dio --flash-freq 80m --flash-size 8MB 
       0x1000 .pio/build/local/bootloader.bin 
       0x8000 .pio/build/local/partitions.bin 
       0x10000 .pio/build/local/firmware.bin
@@ -35,7 +35,7 @@ services:
   release:
     image: curlimages/curl:latest
     volumes:
-      - ./bin:/workspace/bin:ro
+      - ${HOST_WORKSPACE:-.}/bin:/workspace/bin:ro
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
       - TAG_NAME=${TAG_NAME}

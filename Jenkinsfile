@@ -3,6 +3,7 @@ pipeline {
     environment {
         // Map Jenkins credentials to the environment for Docker Compose
         GITHUB_TOKEN = credentials('github-pat')
+        HOST_WORKSPACE = "${DOCKER_VOLUME_ROOT}${WORKSPACE.replace('/var/jenkins_home', '')}"
     }
     stages {
         stage('Compile') {

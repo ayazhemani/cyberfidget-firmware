@@ -10,6 +10,9 @@ bin/
 # Credentials
 include/credentials.h
 
+# Version Header
+lib/Globals/version.h
+
 # WASM build artifacts
 wasm/build/
 wasm/app/

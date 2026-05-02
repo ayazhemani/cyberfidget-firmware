@@ -46,3 +46,10 @@ struct tm currentTime   = {0};
 // Audio beep logic
 bool beepActive       = false;
 float beepFrequency   = 440.0f;
+
+void getFirmwareVersion(char* buffer, size_t bufferSize){
+// Version is defined in version.h
+const char* version = FW_VERSION_STR;
+strncpy(buffer, version, bufferSize - 1);
+buffer[bufferSize - 1] = '\0'; // Ensure null-termination
+}

@@ -8,6 +8,7 @@
 #include <time.h>
 #include "esp_log.h"
 #include "HAL.h"
+#include "version.h"
 
 // Global timers
 extern unsigned long millis_NOW;
@@ -51,6 +52,6 @@ extern struct tm currentTime;
 extern bool beepActive;
 extern float beepFrequency;
 
-
+void getFirmwareVersion(char* buffer, size_t bufferSize);
 
 #endif // GLOBALS_H

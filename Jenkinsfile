@@ -20,7 +20,7 @@ pipeline {
             when { buildingTag() }
             steps {
                 // Pass the Git tag into the container
-                sh "TAG_NAME=${env.TAG_NAME} docker compose run --rm release"
+                sh "docker compose run --rm release"
             }
         }
     }

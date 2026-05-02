@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2023-2026 Dismo Industries LLC
+
+/**
+ * Cyber Fidget Firmware — Template file used for versioning
+ * in scripts/update_version.py
+ */
+
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
+#define FW_VERSION_MAJOR 0
+#define FW_VERSION_MINOR 0
+#define FW_VERSION_PATCH 0
+#define FW_VERSION_TAG ""
+
+#define VERSION_ENCODE(major, minor, patch) (((major) << 16) | ((minor) << 8) | (patch))
+#define FW_VERSION VERSION_ENCODE(FW_VERSION_MAJOR, FW_VERSION_MINOR, FW_VERSION_PATCH)
+
+#define FW_VERSION_STR \
+    STRINGIFY(FW_VERSION_MAJOR) "." \
+    STRINGIFY(FW_VERSION_MINOR) "." \
+    STRINGIFY(FW_VERSION_PATCH) "+" \
+    FW_VERSION_TAG

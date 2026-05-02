@@ -15,7 +15,7 @@ services:
   build:
     <<: *base
     command: >
-      python3 -m platformio run -e local
+      python3 -m platformio run -e local -v
 
 
   merge:
@@ -38,7 +38,6 @@ services:
       - ${HOST_WORKSPACE:-.}/bin:/workspace/bin:ro
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - TAG_NAME=${TAG_NAME}
       - REPO_FORK=${GITHUB_REPO_FORK}
       - REPO_NAME=${GITHUB_REPO_NAME}
     working_dir: /workspace
@@ -46,6 +45,20 @@ services:
       sh -c "
       API_URL=\"https://api.github.com/repos/$$REPO_FORK/$$REPO_NAME/releases\" &&
       AUTH_HDR=\"Authorization: token $$GITHUB_TOKEN\" &&
+
+      echo 'Reading the firmware VERSION file...' &&
+      VERSION=$$(cat VERSION | xargs) &&
+      echo "Firmware version: $$VERSION" &&
+
+      echo 'Reading existing release tag from GitHub...' &&
+      RESPONSE=$$(curl -s -H \"$$AUTH_HDR\" \"$$API_URL/tags/$$TAG_NAME\") &&
+      TAG_NAME=$$(echo \"$$RESPONSE\" | grep 'tag_name' | sed -E 's/.*\"([^\"]+)\".*/\1/') &&
+
+      echo "Ensuring $$VERSION is greater than $$TAG_NAME..." &&
+      if [ "$(printf '%s\n%s' "$$TAG_NAME" "$$VERSION" | sort -V | tail -n1)" = "$$TAG_NAME" ]; then
+          echo 'ERROR: Version in VERSION file ($$VERSION) is not greater than the existing tag ($$TAG_NAME).';
+          exit 1;
+      fi;
 
       echo 'Checking for existing release: $$TAG_NAME...' &&
       RESPONSE=$$(curl -s -H \"$$AUTH_HDR\" \"$$API_URL/tags/$$TAG_NAME\") &&
